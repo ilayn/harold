@@ -1181,7 +1181,8 @@ def tzeros_final_compress(A,B,C,D,n,p,m):
             ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
     a,b,_,_ = sp.linalg.qz(S[:n,:n],T[:n,:n],output='complex')
     z = np.diag(b)/np.diag(a)
-
+    # TODO : Occasionally z will include 10^15-10^16 entries instead of 
+    # infinite zeros. Decide on a reasonable bound to discard.
     return z
     
 def tzeros_reduce(A,B,C,D):
@@ -1373,6 +1374,9 @@ def tf2ss(G,*args):
         for x in range(p):
             for y in range(m):
                 NumOrEmpty , num[x][y] = haroldpolydiv(num[x][y],den[x][y])
+                if num[x][y].size == 0:
+                    num[x][y] = np.array([0])
+                    den[x][y] = np.array([1])
                 if not NumOrEmpty.size == 0:
                     D[x,y] = NumOrEmpty
                     
@@ -1436,13 +1440,15 @@ def tf2ss(G,*args):
                den = [list(i) for i in zip(*den)]
                num = [list(i) for i in zip(*num)]
                p,m = m,p
-            
+
+
             coldens = [x for x in zip(*den)]
             for x in range(m):
                 lcm,mults = haroldlcm(*coldens[x])
                 for y in range(p):
                     den[y][x] = lcm
-                    num[y][x] = haroldpolymul(num[y][x],mults[y])
+                    num[y][x] = haroldpolymul(num[y][x],mults[y],
+                                                        trimzeros=False)
 
             coldegrees = [x.size-1 for x in den[0]]
 
@@ -1462,12 +1468,12 @@ def tf2ss(G,*args):
             k = 0
             for y in range(m):
                 for x in range(p):
-                    C[x,k:k+num[x][y].size] = num[x][y]
+                    C[x,k:k+num[x][y].size] = num[x][y][::-1]
                 k += coldegrees[y] 
             
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
-
+            
     try:# if the arg was a tf object
         if G.SamplingSet == 'R':
             return A,B,C,D
@@ -2587,7 +2593,7 @@ def haroldpolyadd(*args,trimzeros=True):
         s[0,max(degs)-degs[ind]:] += np.real(x)
     return s[0]
 
-def haroldpolymul(*args):
+def haroldpolymul(*args,trimzeros=True):
     """
     Simple wrapper around the scipy convolve function
     for polynomial multiplication with multiple args.
@@ -2601,7 +2607,10 @@ def haroldpolymul(*args):
     
     
     """
-    trimmedargs = tuple(map(haroldtrimleftzeros,args))
+    if trimzeros:
+        trimmedargs = tuple(map(haroldtrimleftzeros,args))
+    else:
+        trimmedargs = args
     p = trimmedargs[0]
     for x in trimmedargs[1:]:
         p = np.convolve(p,x)
