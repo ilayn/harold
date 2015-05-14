@@ -2102,8 +2102,8 @@ def canceldist(F,G):
         deficiency.
     radius : float
         The perturbation with the norm bound "upper2" is located within 
-        a disk in the complex plane whose center is on an eigenvalue of 
-        F and whose radius is bounded by this output.
+        a disk in the complex plane whose center is on "e_f" and whose 
+        radius is bounded by this output.
       
     """
     A = np.c_[F,G].T
@@ -2130,6 +2130,99 @@ def canceldist(F,G):
     radius = upper2*K
     
     return upper2 , upper1 , lower0 , e_f , radius
+
+
+
+def minimalrealization(A,B,C,mu_tol=1e-6):
+    keep_looking = True
+    
+    while keep_looking:
+        
+        n = A.shape[0]
+        # Make sure that we still have states left
+        if n == 0:
+            A , B , C = [(np.empty((1,0)))]*3
+            break
+        
+        kc = canceldist(A,B)[0]
+        ko = canceldist(A.T,C.T)[0]
+        
+        if min(kc,ko) > mu_tol: # no cancellation
+            keep_looking= False
+        else:
+            
+            Ac,Bc,Cc,blocks_c = staircase(A,B,C)
+            Ao,Bo,Co,blocks_o = staircase(A,B,C,form='o',invert=True)
+
+            """            
+             Here kc,ko reports a possible cancellation so staircase 
+             should also report fewer than n, c'ble/o'ble blocks in the 
+             decomposition. If not, staircase tol should be increased. 
+             Otherwise either infinite loop or uno'ble branch removes
+             the system matrices
+            
+             Thus, we remove the last scalar or the two-by-two block
+             artificially. Because we trust the cancelling distance, 
+             more than our first born. The possible cases of unc'ble 
+             modes are
+               
+               -- one real distinct eigenvalue
+               -- two real identical eigenvalues 
+               -- two complex conjugate eigenvalues
+                        
+             We don't regret this. This is sparta.
+            """
+            
+            if (sum(blocks_c) == n and kc <= mu_tol):
+                Ac_mod , Bc_mod , Cc_mod = Ac,Bc,Cc
+
+                while kc_mod <= mu_tol:# Until cancel dist gets big
+                    Ac_mod,Bc_mod,Cc_mod = (
+                            Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1]
+                                            )
+                    kc_mod = canceldist(Ac_mod,Bc_mod)[0]
+                
+                kc = kc_mod
+                # Fake an iterable to fool the sum below
+                blocks_c = [sum(blocks_c)-Acm.shape[0]]
+
+
+            # Same with the o'ble modes
+            if (sum(blocks_o) == n and ko <= mu_tol):
+                Ao_mod , Bo_mod , Co_mod = Ao,Bo,Co
+
+                while ko_mod <= mu_tol:# Until cancel dist gets big
+                    Ao_mod,Bo_mod,Co_mod = (
+                            Ao_mod[1:,1:],Bo_mod[1:,:],Co_mod[:,1:]
+                                            )
+                    ko_mod = canceldist(Ao_mod,Bo_mod)[0]
+                
+                ko = ko_mod
+                blocks_o = [sum(blocks_o)-Ao_mod.shape[0]]
+
+
+                    
+            if sum(blocks_c) > sum(blocks_o):
+                remove_from = 'o'
+            elif sum(blocks_c) < sum(blocks_o):
+                remove_from = 'c'
+            else: # both have the same number of states to be removed
+                if kc >= ko:
+                    remove_from = 'o'
+                else:
+                    remove_from = 'c'
+
+            print(remove_from)
+
+            if remove_from == 'c':
+                l = n - sum(blocks_c)
+                A , B , C = Ac[:l,:l] , Bc[:l,:] , Cc[:,:l]
+            else:
+                l = n - sum(blocks_o)
+                A , B , C = Ao[l:,l:] , Bo[l:,:] , Co[:,l:]
+        
+    return A , B, C
+
 
 
 def haroldsvd(D,also_rank=False,rank_tol=None):
