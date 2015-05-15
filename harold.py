@@ -2078,7 +2078,7 @@ def canceldist(F,G):
     observability degenerate distance and hence for minimality 
     assessment. 
     
-    Implements the algorithm given in D.Boley SIMAX 1990. 
+    Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990. 
     
     Parameters
     ----------
@@ -2123,9 +2123,8 @@ def canceldist(F,G):
 
     f = np.argsort(upp0)[0]
     e_f = evals[f]
-
     upper1 = upp0[f]
-    upper2 = sp.linalg.svdvals(A - e_f*B)[m-1]
+    upper2 = sp.linalg.svdvals(A - e_f*B)[-1]
     lower0 = upper2/(K+1)
     radius = upper2*K
     
@@ -2134,15 +2133,47 @@ def canceldist(F,G):
 
 
 def minimalrealization(A,B,C,mu_tol=1e-6):
+    """
+    Given state matrices A,B,C computes minimal state matrices 
+    such that the system is controllable and observable within the
+    given tolerance mu. 
+    
+    Implements a basic two pass algorithm : 
+     1- First distance to mode cancellation is computed then also 
+     the Hessenberg form is obtained with the identified o'ble/c'ble 
+     block numbers. If staircase form reports that there are no 
+     cancellations but the distance is less than the tolerance, 
+     distance wins and the respective mode is removed. 
+    
+    Uses canceldist(), and staircase() for the aforementioned checks. 
+    
+    Parameters
+    ----------
+    A,B,C : {(n,n), (n,m), (pxn)} array_like
+        System matrices to be checked for minimality
+    mu_tol: float (default 1-e6)
+        The sensitivity threshold for the cancellation to be compared 
+        with the first default output of canceldist() function.
+
+    Returns
+    -------
+
+    A,B,C : {(k,k), (k,m), (pxk)} array_like
+        System matrices that are identified as minimal with k states
+        instead of the original n where (k <= n)
+    
+    """ 
+    
     keep_looking = True
     
     while keep_looking:
-        
         n = A.shape[0]
         # Make sure that we still have states left
         if n == 0:
             A , B , C = [(np.empty((1,0)))]*3
             break
+        
+        # Set the random state
         
         kc = canceldist(A,B)[0]
         ko = canceldist(A.T,C.T)[0]
@@ -2154,6 +2185,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
             Ac,Bc,Cc,blocks_c = staircase(A,B,C)
             Ao,Bo,Co,blocks_o = staircase(A,B,C,form='o',invert=True)
 
+            # ===============Extra Check============================
             """            
              Here kc,ko reports a possible cancellation so staircase 
              should also report fewer than n, c'ble/o'ble blocks in the 
@@ -2181,7 +2213,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
                             Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1]
                                             )
                     kc_mod = canceldist(Ac_mod,Bc_mod)[0]
-                
+
                 kc = kc_mod
                 # Fake an iterable to fool the sum below
                 blocks_c = [sum(blocks_c)-Acm.shape[0]]
@@ -2200,6 +2232,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
                 ko = ko_mod
                 blocks_o = [sum(blocks_o)-Ao_mod.shape[0]]
 
+            # ===============End of Extra Check=====================
 
                     
             if sum(blocks_c) > sum(blocks_o):
@@ -2212,15 +2245,24 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
                 else:
                     remove_from = 'c'
 
-            print(remove_from)
 
             if remove_from == 'c':
-                l = n - sum(blocks_c)
+                l = sum(blocks_c)
                 A , B , C = Ac[:l,:l] , Bc[:l,:] , Cc[:,:l]
+#                print('='*50,'\n','controllable\n','='*50,'\n')
+#                print('Ac staircase was\n')
+#                print(Ac)
+#                print('\nThen removed version is\n')
+#                print(A)
             else:
                 l = n - sum(blocks_o)
                 A , B , C = Ao[l:,l:] , Bo[l:,:] , Co[:,l:]
-        
+#                print('='*50,'\n','Observable\n','='*50,'\n')
+#                print('Ao staircase was\n')
+#                print(Ao)
+#                print('\nThen removed version is\n')
+#                print(A)        
+
     return A , B, C
 
 
