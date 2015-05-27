@@ -101,10 +101,10 @@ KnownDiscretizationMethods = ('bilinear',
                               )
 
 # %% TF & SS classes
-class tf:
+class Transfer:
     """
-    tf is the one of two main system classes in harold (together with
-    ss()). 
+    Transfer is the one of two main system classes in harold (together 
+    with State()). 
 
     Main types of instantiation of this class depends on whether the 
     user wants to create a Single Input/Single Output system (SISO) or
@@ -113,7 +113,7 @@ class tf:
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
     e.g.,
     
-    >>>> G = tf([1],[1,2,1])
+    >>>> G = Transfer([1],[1,2,1])
     
     Notice that, matlab-like scalar inputs are not recognized as 1D
     arrays hence would lead to TypeError. 
@@ -125,7 +125,7 @@ class tf:
             lists are numpy array-able (explicitly checked) for numerator
             and entering a 1D list or 1D numpy array for denominator
             
-    >>>> G = tf([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
+    >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
     >>>> G.shape
     (2,2)
     
@@ -134,14 +134,14 @@ class tf:
         Python's nonnative support for arrays and tedious array
         syntax). 
         
-    >>>> G = tf([
-                  [ [1,3,2], [1,3] ],
-                  [   [1]  , [1,0] ]
-                ],# end of num
-                [
-                   [ [1,2,1] ,  [1,3,3]  ],
-                   [ [1,0,0] , [1,2,3,4] ]
-                ])
+    >>>> G = Transfer([
+                         [ [1,3,2], [1,3] ],
+                         [   [1]  , [1,0] ]
+                       ],# end of num
+                       [
+                          [ [1,2,1] ,  [1,3,3]  ],
+                          [ [1,0,0] , [1,2,3,4] ]
+                       ])
     >>>> G.shape
     (2,2)
         
@@ -154,12 +154,12 @@ class tf:
     The Sampling Period can be given as a last argument or a keyword 
     with 'dt' key or changed later with the property access.
     
-    >>>> G = tf([1],[1,4,4],0.5) 
+    >>>> G = Transfer([1],[1,4,4],0.5) 
     >>>> G.SamplingSet
     'Z'
     >>>> G.SamplingPeriod
     0.5
-    >>>> F = tf([1],[1,2])
+    >>>> F = Transfer([1],[1,2])
     >>>> F.SamplingSet
     'R'
     >>>> F.SamplingPeriod = 0.5
@@ -180,35 +180,66 @@ class tf:
 
     """
 
-    def __init__(self,num,den,dt=False):
-        """
-        Send num and den to the validator and if doesn't raise exception 
-        return the kind of valid input it has found
-        """ 
-        num,num_SMflag = validatepolymatrix(num)
-        
-        # Python doesn't have switch-case for some reason
+    def __init__(self,num,den=None,dt=False):
+
+        # Initialization Switch and Variable Defaults
+
+        self._isgain = False
+        self._isSISO = False        
+        self._DiscretizedWith = None       
+        self._DiscretizationMatrix = None
+        self._PrewarpFrequency = 0.
+        self._SamplingPeriod = False
+
+
+
+        # Submit the numerator entry to the validator. 
+        num,num_SMflag = self.validatepolymatrix(num)
+            
+        # Now we have both the normalized version of the numerator
+        # and the detected {SISO,MIMO} flag.
+
         if num_SMflag == 'S':
-            self._num = np.array(num)
+            self._num = np.atleast_2d(num)
             self._m = 1
             self._p = 1
-        else:
+        elif num_SMflag == 'M':
             self._num = num
-            self._p = max([len(num[ind]) for ind in range(len(num))])
-            self._m = len(num)
-        # Same for the denominator        
-        den,den_SMflag = validatepolymatrix(den,name='Denominator')
-        if den_SMflag == 'S':
-            # if a single entry is given for MIMO
-            if max(self._m,self._p) > 1:
-                self._den = [[np.array(den)]*self._m for n in range(self._p)]
-                init_vars_den_shape = (p,m)
+            self._p = len(self._num[0]) # should be validated already.
+            self._m = len(self._num)
+
+
+        if den is None:
+            self._isgain = True
+
+
+        if not self._isgain:
+            # Submit the denominator
+            den,den_SMflag = self.validatepolymatrix(den,name='Denominator')
+            
+            # We have two options in case of a SISO flag, either indeed 
+            # SISO or it is a MIMO TF with a common denominator
+    
+            if den_SMflag == 'S':
+                # if a single entry is given for MIMO (set by num size)
+                if max(self._m,self._p) > 1:
+                    self._den = [[np.array(den)]*self._m for n in range(self._p)]
+                    init_vars_den_shape = (self._p,self._m)
+                else:
+                    self._den = np.atleast_2d(den)
+                    init_vars_den_shape = (1,1)
             else:
                 self._den = den
-                init_vars_den_shape = (1,1)
+                init_vars_den_shape = (len(self._den[0]),len(self._den))
         else:
-            self._den = den
-            init_vars_den_shape = (len(self._den[0]),len(self._den))
+            den = np.ones((self._p,self._m)).tolist()
+            self._den = []
+            for den_row in den:
+                    self._den += [[np.array(x) for x in den_row]]
+
+            init_vars_den_shape = (self._p,self._m)
+            
+
 
         # Now check if the num and den sizes match otherwise reject
         if not (self._p,self._m) == init_vars_den_shape:
@@ -222,18 +253,13 @@ class tf:
                                 )
                             )
 
-        # TODO: Add if ZERO DYNAMICS --> Empty TF!!!!
-        self._isSISO = False
+
+        
         self._shape = (self._p,self._m)
         if self._shape == (1,1):
             self._isSISO = True
 
-        self._SamplingPeriod = False
         self.SamplingPeriod = dt
-
-        self._DiscretizedWith = None       
-        self._DiscretizationMatrix = None
-        self._PrewarpFrequency = 0.
         
         self._recalc()
 
@@ -404,24 +430,31 @@ class tf:
 
     # FIXME: Zero dynamics will fail for SISO here and a few other places
     def _recalc(self):
-        if self._isSISO:
-            self.poles = np.linalg.eigvals(haroldcompanion(self._den))
-            zeros_matrix = haroldcompanion(self._num)
-            if not zeros_matrix.size == 0:
-                self.zeros = np.linalg.eigvals(zeros_matrix)
-            else:
-                self.zeros = np.array([])
+        print(self._den,self._num)
+        if self._isgain:
+            self.poles = []
+            self.zeros = []
         else:
-            # Create a dummy statespace and check the zeros there
-            zzz = tf2ss(self._num,self._den)
-            self.zeros = tzeros(*zzz)
-            self.poles = np.linalg.eigvals(zzz[0])
+            if self._isSISO:
+                self.poles = np.linalg.eigvals(haroldcompanion(self._den))
+                zeros_matrix = haroldcompanion(self._num)
+                if not zeros_matrix.size == 0:
+                    self.zeros = np.linalg.eigvals(zeros_matrix)
+                else:
+                    self.zeros = np.array([])
+            else:
+                # Create a dummy statespace and check the zeros there
+                zzz = tf2ss(self._num,self._den)
+                self.zeros = tzeros(*zzz)
+                self.poles = np.linalg.eigvals(zzz[0])
 
 
 
     # ===========================
     # tf class arithmetic methods
     # ===========================
+
+    
 
     def __neg__(self):
         newnum = deepcopy(self._num)
@@ -534,8 +567,8 @@ class tf:
     # TODO: How to validate strides
     # ================================================================
 
-    def __getitem__(self,num_or_slice):
-        print('Lalala I"m not listening lalala')
+#    def __getitem__(self,num_or_slice):
+#        print('Lalala I"m not listening lalala')
 
     def __setitem__(self,*args):
         raise ValueError('To change the data of a subsystem, set directly\n'
@@ -584,46 +617,58 @@ class tf:
 #    def __str__(self):
 #        return ''#rootprinter(self.poles)
 
-
-def validatepolymatrix(arg,*,name='Numerator'):
-    """
+    def validatepolymatrix(self,arg,*,name='Numerator'):
+        """
+        
+        An internal command to validate whether given arguments to an
+        ss instance are valid and compatible. I am sure I'll get comments
+        on the religious Python way etc. That's not possible here because
+        we are trying to support a syntax that is not a native datatype. 
     
-    An internal command to validate whether given arguments to an
-    ss instance are valid and compatible. I am sure I'll get comments
-    on the religious Python way etc. That's not possible here. The
-    intention is too funky to try/except hoops. Still I'm leaving 
-    some room for being schooled. So if you can make a proper case
-    I'm all ears. But I will ignore any sentence that includes 
-    "Pythonic way".
+        The intention is too funky to try/except hoops. Still I'm leaving 
+        some room for being schooled. So if you can make a proper case
+        I'm all ears. But I will ignore any sentence that only(!) argues 
+        "Pythonic way".
+        
+        It also checks if the lists are 2D numpy.array'able entries.
+        Otherwise it will explode somewhere further deep, leaving no 
+        clue why the error happened. So better fail at the start.
+        
+        """
     
-    It also checks if the lists are 2D numpy.array'able entries.
-    Otherwise it will explode somewhere further deep, leaving no 
-    clue why the error happened. So better fail at type checking.
+        # Imagine a 1x2 tf. The possible entries for num, den
+        # that needs support are
+        # num = [[np.array([1,2,3]),np.array([4,5,6])]] # Sane/horrible
+        # num = [[[1,2,3],[4,5,6]]] # Sane/acceptable --> convert
+            
     
-    """
-
-    if isinstance(arg,(int,float)):# Check the most obvious choice first
-        return np.array(arg),'S'
-    elif isinstance(arg,(list,type(np.array([0.])))):
-    # No panic yet, might just be a numerical list for SISO intentions
-        if all([isinstance(x,(int,float)) for x in arg]):
+        
+    
+    
+        if isinstance(arg,(int,float)):# Excludes complex!
             return np.array(arg),'S'
-        else:
-        # Damn, it is either MIMO or invalid syntax, fingers crossed
-        # Check for list of lists
-            if all([isinstance(x,list) for x in arg]):# Go on with MIMO 
+        elif isinstance(arg,list):
+            # Either 
+            #        1. a simple unnested list --> SISO
+            #        2. a list of lists to be np.array'd --> MIMO
+    
+            #------------
+            # 1. Check whether all(!) elements are simple numbers
+            if all([isinstance(x,(int,float)) for x in arg]):
+                return np.array(arg),'S'
+            #------------    
+            # 2.Check first whether all(!) elements are also lists
+            elif all([isinstance(x,list) for x in arg]):
+                # Get the number of items in each list    
                 m = [len(arg[ind]) for ind in range(len(arg))]
-                if max(m) == min(m):# Check for consistent column numbers
-                    # I convert whatever I find inside to arrays such that 
-                    # the resulting structure is list of lists of np.arrays
-                    # Then I walk inside each list and check if all is OK
-                    # It modifies arg, we use it only for assignment afterwards.
+                # Check if the number of elements are consistent
+                if max(m) == min(m):
                     try:
                         arg =  list(map(lambda x: list(map(
                             lambda y: np.asarray(y,dtype='float'),x)),arg))
                         return arg,'M'
                     except:
-                        raise ValueError(# something was not a float
+                        raise ValueError(# something was not floating 
                         'Something is not real scalar inside the MIMO '
                         '{0} list of lists.'.format(name))
                 else:
@@ -631,19 +676,49 @@ def validatepolymatrix(arg,*,name='Numerator'):
                     'MIMO {0} lists have inconsistent\n'
                     'number of entries, I\'ve found {1} '
                     'in one and {2} in another row'.format(name,max(m),min(m)))
-            elif isinstance(arg,type(np.array([0.]))):
-                return arg,'S'
+            #------------  
             else:
-                raise TypeError(# Well, what below says...
+                raise TypeError(# 
                 '{0} starts with a list so I went in '
                 'to find either \nreal scalars or more lists, but I found'
-                ' other things.'.format(name))
-    else:
-        raise TypeError(# Neither list nor scalar, reject.
-        '{0} must either be a list of lists (MIMO)\n'
-        'or a real scalar (SISO). Scalars inside one-level'
-        ' lists such as\n[1.0] are also accepted.'.format(name))
+                ' other things that I won\'t mention.'.format(name))                
+    
+        elif (isinstance(arg,type(np.array([0.]))) # A numpy array
+                    and
+              arg.dtype in (float,int) # with numerical real data type
+                    and
+              arg.size > 0 # with at least one entry
+             ):
+    
+            # If it is a 1D array, it classifies as a SISO entry. Because 
+            # for MIMO intentions we need a LoL.
+            # If it is a 2D array nxm with n,m>1 then it is a static gain
+            # matrix and MIMO is assumed for now. 
+        
+            if arg.ndim > 1 and min(arg.shape) > 1:# e.g. np.eye(5)
 
+                arg = np.array(arg,dtype='float') # get rid of ints
+                arg_list = []
+                for arg_row in arg:
+                        arg_list += [[np.array(x) for x in arg_row]]
+                return arg_list,'M'
+
+
+            elif arg.ndim == 1 and arg.size > 1:# e.g. np.array([1,2,3])
+                arg = np.array(arg,dtype='float') # get rid of ints
+                return np.atleast_2d(arg),'S'
+
+            else: # e.g. np.array(5)
+                return np.atleast_2d(float(arg)),'S'
+        else:
+            raise TypeError(# Neither list,np.array nor scalar, reject.
+            '{0} must either be a list of lists (MIMO)\n'
+            'or a an unnested list (SISO). Numpy arrays or scalars' 
+            'inside one-level lists such as\n[1.0] are also '
+            'accepted. See the \"tf\" docstring'.format(name))
+
+
+# End of Transfer Class
 
        
 class ss:
@@ -1331,22 +1406,42 @@ def ss2tf(G):
     else:
         return num_list, den_list , G.SamplingPeriod
 
-            #FIXME : Try to get rid of this 'list'. There must be a better way! 
-            #        It is as bad as Matlab's 'cell'. But what?
+    #FIXME : Resulting TFs are not minimal per se. simplify them
 
-            #FIXME : Resulting TFs are not minimal per se. Minreal them
-
-def tf2ss(G,*args):
-    try:
+def transfertostate(tf_or_numden):
+    # mildly check if we have a transfer,state, or (num,den)
+    if isinstance(tf_or_numden,tuple):
+        G = Transfer(*tf_or_numden)
         num = G.num
         den = G.den
-        m,p = G.NumberOfInputs,G.NumberOfOutputs
-    except AttributeError: # Assume (num,den) is entered
-        num = deepcopy(G)
-        den = deepcopy(args[0])
-        m,p = len(num[0]),len(num)
-        
-    
+        m,p = G.NumberOfInputs,dummy_G.NumberOfOutputs
+    elif isinstance(tf_or_numden,ss):
+        return tf_or_numden
+    else:
+        try:
+            num = tf_or_numden.num
+            den = tf_or_numden.den
+            m,p = G.NumberOfInputs,G.NumberOfOutputs
+        except AttributeError: 
+            raise TypeError('I\'ve checked the argument for being a' 
+                   ' Transfer, a State,\nor a tuple for (num,den) but'
+                   ' none of them turned out to be the\ncase. Hence'
+                   ' I don\'t know how to convert this to a State object.')
+
+
+    it_is_a_gain = G._isgain
+
+
+    # Check if it is just a gain
+    if it_is_a_gain:
+        # TODO: Finish State._isgain object property
+        empty_size = max(m,p)
+        A = np.empty((empty_size,empty_size))
+        B = np.empty((empty_size,m))
+        C = np.empty((p,empty_size))
+        D = num/den
+        return A,B,C,D
+
     if (m,p) == (1,1): # SISO
         A = haroldcompanion(den)
         B = np.vstack((np.zeros((A.shape[0]-1,1)),1))
@@ -1369,22 +1464,49 @@ def tf2ss(G,*args):
             D = np.array([[num[0]]])
             
     else:# MIMO... Implement a "Wolowich LMS-Section 4.4 (1974)"-variant
+
         # Extract D matrix
         D = np.zeros((p,m))
-        for x in range(p):
-            for y in range(m):
-                NumOrEmpty , num[x][y] = haroldpolydiv(num[x][y],den[x][y])
-                if num[x][y].size == 0:
-                    num[x][y] = np.array([0])
-                    den[x][y] = np.array([1])
-                if not NumOrEmpty.size == 0:
-                    D[x,y] = NumOrEmpty
-                    
 
-        # Make the denominator entries monic
         for x in range(p):
             for y in range(m):
-                if den[x][y][0] != 1:
+                
+                # Possible cases (not minimality only properness !!!): 
+                # 1.  3s^2+5s+3 / s^2+5s+3  Proper
+                # 2.  s+1 / s^2+5s+3        Strictly proper
+                # 3.  s+1 / s+1             Full cancellation
+                # 4.  3   /  2              Just gains
+
+                datanum = haroldtrimleftzeros(num[x][y])
+                dataden = haroldtrimleftzeros(den[x][y])
+                nn , nd = len(datanum) , len(dataden)
+
+                if nd == 1: # Case 4 : nn should also be 1.
+                    D[x,y] = datanum/dataden
+                    num[x][y] = np.array([0.])
+
+                elif nd > nn: # Case 2 : D[x,y] is trivially zero
+                    pass # D[x,y] is already 0.
+
+                else:
+                    NumOrEmpty , datanum = haroldpolydiv(datanum,dataden)
+                    
+                    # Case 3: If all cancelled datanum is returned empty
+                    if datanum.size==0:
+                        D[x,y] = NumOrEmpty
+                        num[x][y] = np.array([0.])
+                        den[x][y] = np.array([1.])
+                        
+                    # Case 1: Proper case
+                    else:
+                        D[x,y] = NumOrEmpty
+                        num[x][y] = datanum
+
+#        for x in range(p):
+#            for y in range(m):
+
+                # Make the denominator entries monic
+                if den[x][y][0] != 1.:
                     if np.abs(den[x][y][0])<1e-5:
                         print(
                           'tf2ss Warning:\n The leading coefficient '
@@ -1394,12 +1516,12 @@ def tf2ss(G,*args):
                           
                     num[x][y] = np.array([1/den[x][y][0]])*num[x][y]
                     den[x][y] = np.array([1/den[x][y][0]])*den[x][y]
-                    
+
         # OK first check if the denominator is common in all entries
         if all([np.array_equal(den[x][y],den[0][0])
             for x in range(len(den)) for y in range(len(den[0]))]):
+
             # Nice, less work. Off to realization. Decide rows or cols?
-            
             if p >= m:# Tall or square matrix => Right Coprime Fact.
                factorside = 'r'
             else:# Fat matrix, pertranspose the LoL => LCF.
@@ -1407,8 +1529,7 @@ def tf2ss(G,*args):
                den = [list(i) for i in zip(*den)]
                num = [list(i) for i in zip(*num)]
                p,m = m,p
-            
-            
+
             d = den[0][0].size-1
             A = haroldcompanion(den[0][0])
             B = np.vstack((np.zeros((A.shape[0]-1,1)),1))
@@ -1481,7 +1602,6 @@ def tf2ss(G,*args):
             return A,B,C,D,G.SamplingPeriod
     except AttributeError:# the arg was num,den
         return A,B,C,D
-
 
 # %% Continous - Discrete Conversions
 
@@ -2165,6 +2285,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
     """ 
     
     keep_looking = True
+    run_out_of_states = False
     
     while keep_looking:
         n = A.shape[0]
@@ -2172,8 +2293,6 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
         if n == 0:
             A , B , C = [(np.empty((1,0)))]*3
             break
-        
-        # Set the random state
         
         kc = canceldist(A,B)[0]
         ko = canceldist(A.T,C.T)[0]
@@ -2206,13 +2325,18 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
             """
             
             if (sum(blocks_c) == n and kc <= mu_tol):
-                Ac_mod , Bc_mod , Cc_mod = Ac,Bc,Cc
+                Ac_mod , Bc_mod , Cc_mod , kc_mod = Ac,Bc,Cc,kc
 
                 while kc_mod <= mu_tol:# Until cancel dist gets big
                     Ac_mod,Bc_mod,Cc_mod = (
-                            Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1]
-                                            )
-                    kc_mod = canceldist(Ac_mod,Bc_mod)[0]
+                            Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1])
+                            
+                    if Ac_mod.size == 0:
+                        A , B , C = [(np.empty((1,0)))]*3
+                        run_out_of_states = True
+                        break
+                    else:
+                        kc_mod = canceldist(Ac_mod,Bc_mod)[0]
 
                 kc = kc_mod
                 # Fake an iterable to fool the sum below
@@ -2221,20 +2345,28 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
 
             # Same with the o'ble modes
             if (sum(blocks_o) == n and ko <= mu_tol):
-                Ao_mod , Bo_mod , Co_mod = Ao,Bo,Co
+                Ao_mod , Bo_mod , Co_mod , ko_mod = Ao,Bo,Co,ko
 
                 while ko_mod <= mu_tol:# Until cancel dist gets big
                     Ao_mod,Bo_mod,Co_mod = (
-                            Ao_mod[1:,1:],Bo_mod[1:,:],Co_mod[:,1:]
-                                            )
-                    ko_mod = canceldist(Ao_mod,Bo_mod)[0]
+                            Ao_mod[1:,1:],Bo_mod[1:,:],Co_mod[:,1:])
+                    
+                    # If there is nothing left, break out everything
+                    if Ao_mod.size == 0:
+                        A , B , C = [(np.empty((1,0)))]*3
+                        run_out_of_states = True
+                        break
+                    else:
+                        ko_mod = canceldist(Ao_mod,Bo_mod)[0]
+
                 
                 ko = ko_mod
                 blocks_o = [sum(blocks_o)-Ao_mod.shape[0]]
 
             # ===============End of Extra Check=====================
-
-                    
+             
+            if run_out_of_states: break
+             
             if sum(blocks_c) > sum(blocks_o):
                 remove_from = 'o'
             elif sum(blocks_c) < sum(blocks_o):
@@ -2249,22 +2381,11 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
             if remove_from == 'c':
                 l = sum(blocks_c)
                 A , B , C = Ac[:l,:l] , Bc[:l,:] , Cc[:,:l]
-#                print('='*50,'\n','controllable\n','='*50,'\n')
-#                print('Ac staircase was\n')
-#                print(Ac)
-#                print('\nThen removed version is\n')
-#                print(A)
             else:
                 l = n - sum(blocks_o)
                 A , B , C = Ao[l:,l:] , Bo[l:,:] , Co[:,l:]
-#                print('='*50,'\n','Observable\n','='*50,'\n')
-#                print('Ao staircase was\n')
-#                print(Ao)
-#                print('\nThen removed version is\n')
-#                print(A)        
-
+ 
     return A , B, C
-
 
 
 def haroldsvd(D,also_rank=False,rank_tol=None):
@@ -2658,6 +2779,9 @@ def haroldcompanion(somearray):
     if len(somearray)==0:
         return np.array([])
 
+    # regularize to flat 1D np.array
+    
+    somearray = np.array(somearray,dtype='float').flatten()
 
     ta = haroldtrimleftzeros(somearray)
     # convert to monic polynomial. 

@@ -20,7 +20,7 @@ By the way, if you are interested in robust control you would probably appreciat
 All the functions are written with MIMO intentions at the outset which is inevitable if we are serious about avoiding SLICOT. 
 
   - The function names are verbose and (hopefully) understandable. 
-  - Programmatically, only two classes exist `tf` and `ss` and the rest is number crunching.
+  - Programmatically, only two classes exist `Transfer` and `State` and the rest is number crunching.
   - Interactive plots suitable for Ipython (if I can fix that nasty last problem) hence way better Bode, Nyquist plots and root loci (in case people are still using). 
   - Numerical polynomial operations (as opposed to symbolic) such as Least Common Multiples, Greatest Common Divisors etc. which is tested via pathological examples found in academic papers and to some extent practically on strange transfer matrices.
   - Matrix-pencil based subroutines, Hessenberg forms and transmission zero computations (this one I've tested as much as I can). Agrees with matlab, if not better resolution, and typically much faster for reasons I don't know yet.
