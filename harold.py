@@ -33,8 +33,6 @@ THE SOFTWARE.
 
 """
 
-
-
 # %% Imports/shorthands
 import numpy as np
 import scipy as sp
@@ -44,19 +42,9 @@ from scipy.signal import deconvolve
 from itertools import zip_longest
 import collections
 
-
-
 # %% Urgent TODOS
 """
-
-- Switch to r_[] and c_[] notation for proper readability instead of 
-    hstack, vstack if possible.
    
-- Implement the resampling to the slowest Sampling Period of systems for 
-    LTI arithmetic..
-    - TF MIMO arithmetics requires resampling if dt of systems are 
-      different. Allow for resampling and convert to the slowest. 
-    
 - Documentation (Need a lot of time for this)
 
 - __repr__ of ss and tf are too rough, clean up
@@ -68,20 +56,27 @@ import collections
 
 - Write the c2d, d2c and d2d properly. (almost done)
 
-       Write a section in the manual why this alpha works with 3d plots of 
-       Riemann sphere with a link to the original video. 
-       Finish the pgfplots part --> Try to fix the /.estyle bug
-
-- Record the discretization method in the instance such that if exists 
-  the d2c understands the previous discretization method and inverts 
-  according to that information. (Looks like DONE)
-
-- tf2ss and ss2tf First rename these! Then implement duck typing. Current 
-  syntax is too clunky
-
 - mat file saving (if matlab plays nice,loading too. But not much hope)
 
 - Convert ctrb to obsv to staircase and canceldist form. And rename!
+
+- Switch to r_[] and c_[] notation for proper readability instead of 
+    hstack, vstack if possible.
+
+
+==== (ABORTED) =====
+
+- Implement the resampling to the slowest Sampling Period of systems for 
+    LTI arithmetic. TF MIMO arithmetics requires resampling if dt of 
+    systems are different. Allow for resampling and convert to the slowest. 
+
+      Too complicated for now 
+
+
+- ZeroPoleGain Class
+
+      I don't see why this should be included or things that can't be done
+      with Transfer(). 
 
 
 """
@@ -450,11 +445,9 @@ class Transfer:
 
 
 
-    # ===========================
-    # tf class arithmetic methods
-    # ===========================
-
-    
+    # =================================
+    # Transfer class arithmetic methods
+    # =================================
 
     def __neg__(self):
         newnum = deepcopy(self._num)
@@ -1419,8 +1412,9 @@ def transfertostate(tf_or_numden):
         return tf_or_numden
     else:
         try:
-            num = tf_or_numden.num
-            den = tf_or_numden.den
+            G = tf_or_numden
+            num = G.num
+            den = G.den
             m,p = G.NumberOfInputs,G.NumberOfOutputs
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
@@ -1445,25 +1439,34 @@ def transfertostate(tf_or_numden):
     if (m,p) == (1,1): # SISO
         A = haroldcompanion(den)
         B = np.vstack((np.zeros((A.shape[0]-1,1)),1))
-
         num = haroldtrimleftzeros(num)
         den = haroldtrimleftzeros(den)
 
         # Monic denominator
-        if den[0] != 1.:
-            d = den[0]
+        if den[0,0] != 1.:
+            d = den[0,0]
             num,den = num/d,den/d
-            
-        if len(num) < len(den):
-            C = np.zeros((1,len(den)-1))
-            C[0,:len(num)] = num[::-1]
+
+        if num.shape[1] < den.shape[1]:
+            C = np.zeros((1,den.shape[1]-1))
+            C[0,:num.shape[1]] = num[::-1]
             D = np.array([[0]])
-        else:
-            C = num - den*num[0]
-            C = np.array(C[-1:0:-1],ndmin=2)
-            D = np.array([[num[0]]])
-            
-    else:# MIMO... Implement a "Wolowich LMS-Section 4.4 (1974)"-variant
+        else: 
+            # Watch out for full cancellation !!
+            NumOrEmpty , datanum = haroldpolydiv(num.flatten(),den.flatten())
+
+            # If all cancelled datanum is returned empty
+            if datanum.size==0:
+                A = None
+                B = None
+                C = None
+            else:
+                C = np.array(datanum[-1:0:-1],ndmin=2)
+                
+            D = np.array([[NumOrEmpty]])
+
+
+    else:# MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
 
         # Extract D matrix
         D = np.zeros((p,m))
@@ -2804,7 +2807,7 @@ def haroldtrimleftzeros(somearray):
     # in an array, i.e., [0,0,2,3,1,0] becomes [2,3,1,0]
 
     # Kind of normalize for indexing with at_least2d
-    if any(somearray):# if not completely zero
+    if any(np.array(somearray,dtype='float').flatten()):# if not all zero
         try:
             n = next(x for x,y in enumerate(np.atleast_2d(somearray)[0]) 
                         if y != 0.)
