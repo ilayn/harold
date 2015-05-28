@@ -423,9 +423,8 @@ class Transfer:
                self._PrewarpFrequency = value
                
 
-    # FIXME: Zero dynamics will fail for SISO here and a few other places
     def _recalc(self):
-        print(self._den,self._num)
+
         if self._isgain:
             self.poles = []
             self.zeros = []
@@ -439,7 +438,7 @@ class Transfer:
                     self.zeros = np.array([])
             else:
                 # Create a dummy statespace and check the zeros there
-                zzz = tf2ss(self._num,self._den)
+                zzz = transfertostate(self._num,self._den)
                 self.zeros = tzeros(*zzz)
                 self.poles = np.linalg.eigvals(zzz[0])
 
@@ -467,14 +466,14 @@ class Transfer:
                 newnum = haroldpolyadd(other*self._den,self._num)
                 return tf(newnum,self._den,self._SamplingPeriod)
 
-            elif isinstance(other,(ss,tf)):
+            elif isinstance(other,(State,Transfer)):
                 if not other.shape == (1,1):
                     raise TypeError('The shapes of the systems '
                             'are not compatible for addition: '
                             '{0} vs. SISO.'.format(other.shape))
 
-                elif isinstance(other,ss): return ss(
-                    *tf2ss(self._num,self._den),
+                elif isinstance(other,State): return State(
+                    *transfertostate(self._num,self._den),
                     dt=self._SamplingPeriod) + other
                     
                 elif isinstance(other,tf):
@@ -484,20 +483,22 @@ class Transfer:
                         np.convolve(other.num.flatten(),mults[1])
                             )
 
-                    return tf(newnum,lcm)
+                    return Transfer(newnum,lcm)
             else:
                 raise TypeError('I don\'t know how to add a '
                                 '{0} to a transfer function '
                                 '(yet).'.format(type(other).__name__))
         else:
             if isinstance(other,(int,float)):
-                # ss addition is much better
-                tempsys = ss(*tf2ss(self._num,self._den))
+                # ss addition is much easier
+                tempsys = State(*transfertostate(self._num,self._den))
                 tempsys.d += np.ones_like(tempsys.d)
-                return tf(*(ss2tf(tempsys),self._SamplingPeriod))
+                return Transfer(*(statetotransfer(tempsys),
+                                  self._SamplingPeriod)
+                                )
 
 
-            elif isinstance(other,(ss,tf)):
+            elif isinstance(other,(State,Transfer)):
                 if not other.shape == self._shape:
                     raise TypeError('The shapes of the systems '
                                 'are not sdfcompatible for addition: '
@@ -507,10 +508,10 @@ class Transfer:
                                                     )
                                                 )
                 #shapes match
-                tempsys_self = ss(*tf2ss(self._num,self._den),
+                tempsys_self = State(*transfertostate(self._num,self._den),
                                       dt = self._SamplingPeriod)
                 
-                return tf(tempsys_self + other)
+                return Transfer(tempsys_self + other)
             else:
                 raise TypeError('I don\'t know how to add a '
                                 '{0} to a transfer function '
@@ -529,20 +530,20 @@ class Transfer:
         if self._isSISO:
         # Handle the constant matrices, ints, floats, ss and tfs
             if isinstance(other,(int,float)):
-                return tf(other*self._num,self._den,self._SamplingPeriod)
+                return Transfer(other*self._num,self._den,self._SamplingPeriod)
 
-            if isinstance(other,(ss,tf)):
+            if isinstance(other,(State,Transfer)):
                 if not other.shape == (1,1):
                     raise TypeError('The shapes of the systems '
                             'are not compatible for multiplication: '
                             '{0} vs. SISO.'.format(other.shape))
 
-                if isinstance(other,ss): 
-                    return other * ss(*tf2ss(self)) 
+                if isinstance(other,State): 
+                    return other * State(*transfertostate(self)) 
                 else:
                     newnum = np.convolve(self._num,other.num)
                     newden = np.convolve(self._den,other.den)
-                    return tf(newnum,newden)
+                    return Transfer(newnum,newden)
 
             else:
                 raise TypeError('I don\'t know how to multiply a '
@@ -714,16 +715,16 @@ class Transfer:
 # End of Transfer Class
 
        
-class ss:
+class State:
     """
     
-    ss is the one of two main system classes in harold (together with
-    tf()). 
+    State() is the one of two main system classes in harold (together with
+    Transfer() ). 
     
-    A ss object can be instantiated in a straightforward manner by 
+    A State object can be instantiated in a straightforward manner by 
     entering 2D arrays. 
     
-    >>>> G = ss([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1])
+    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1])
     
     
     However, the preferred way is to make everything a numpy array.
@@ -735,12 +736,12 @@ class ss:
     The Sampling Period can be given as a last argument or a keyword 
     with 'dt' key or changed later with the property access.
     
-    >>>> G = ss([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)
+    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)
     >>>> G.SamplingSet
     'Z'
     >>>> G.SamplingPeriod
     0.5
-    >>>> F = ss(1,2,3,4)
+    >>>> F = State(1,2,3,4)
     >>>> F.SamplingSet
     'R'
     >>>> F.SamplingPeriod = 0.5
@@ -751,7 +752,7 @@ class ss:
     
     Setting  SamplingPeriod property to 'False' value to the will make 
     the system continous time again and relevant properties are reset
-    to CT properties.
+    to continuous-time properties.
 
     Warning: Unlike matlab or other tools, a discrete time system 
     needs a specified sampling period (and possibly a discretization 
@@ -761,22 +762,38 @@ class ss:
 
     
     """
+
+    @classmethod
+    def gain(cls,d,dt=False):
+        return cls(None, None, None,d,dt)
     
     def __init__(self,a,b,c,d,dt=False):
-        a,b,c,d = validateabcdmatrix(a,b,c,d)
-        self._a , self._b , self._c , self._d = a,b,c,d
-        self.SamplingPeriod = dt
+
+        self._SamplingPeriod = False
         self._DiscretizedWith = None
         self._DiscretizationMatrix = None
         self._PrewarpFrequency = 0.
-        self._m = self._b.shape[1]
-        self._p = self._c.shape[0]
-
-        # TODO: Add if ZERO DYNAMICS --> Empty SS!!!!
         self._isSISO = False
+        self._isgain = False
+        
+        
+        if a == None and b == None and c == None:
+            self._isgain = True
+            self._a , self._b , self._c , self._d = a,b,c,d
+            (self._m , self._p) = self._d.shape
+            
+        else:
+            a,b,c,d = validateabcdmatrix(a,b,c,d)
+            self._a , self._b , self._c , self._d = a,b,c,d
+            self._m = self._b.shape[1]
+            self._p = self._c.shape[0]
+
+
         self._shape = (self._p,self._m)
         if self._shape == (1,1):
             self._isSISO = True
+
+        self.SamplingPeriod = dt
 
         self._recalc()
 
@@ -964,8 +981,11 @@ class ss:
                self._PrewarpFrequency = value
            
 
-    # FIXME: Zero dynamics will fail for SISO here and a few other places
     def _recalc(self):
+        if self._isgain:
+            self.poles = []
+            self.zeros = []
+        else:
             self.zeros = tzeros(self._a,self._b,self._c,self._d)
             self.poles = np.linalg.eigvals(self._a)
 
@@ -977,9 +997,12 @@ class ss:
     # ===========================
 
     def __neg__(self):
-        newC = deepcopy(self._c)
-        newC = -1.*newC
-        return ss(self._a, self._b, newC, self._d, self._SamplingPeriod)
+        if self._isgain:
+            return State.gain(-self._d, self._SamplingPeriod)
+        else:
+            newC = deepcopy(self._c)
+            newC = -1.*newC
+            return State(self._a, self._b, newC, self._d, self._SamplingPeriod)
 
 
 
@@ -991,7 +1014,7 @@ class ss:
                 addb = np.vstack((self._b,other.b))
                 addc = np.hstack((self._c,other.c))
                 addd = self._d + other.d
-                return ss(adda,addb,addc,addd)
+                return State(adda,addb,addc,addd)
             else:
                 raise IndexError('Addition of systems requires their '
                                 'shape to match but the system shapes '
@@ -1297,16 +1320,32 @@ def tzeros_reduce(A,B,C,D):
 # Pertranspose the system, do the same to get the o'ble part of the c'ble part
 # Then iterate over all row/cols of B and C to get SISO TFs via c(sI-A)b+d
 
-def ss2tf(G):
-    if not isinstance(G,ss):
-        raise TypeError('The argument is not a state space '
-                        'representation but a \"{0}\" object.\n'
-                        'Hence, I\'ll pretend that it is your '
-                        'fault.'.format(type(G).__name__))
-    A,B,C,D = G.a,G.b,G.c,G.d
-    if np.shape(A) == 0:
-        raise ValueError 
-    n = A.shape[0]
+def statetotransfer(G):
+    if isinstance(ss_or_numden,tuple):
+        G = State(*ss_or_numden)
+        A,B,C,D = G.a,G.b,G.c,G.d
+        n = A.shape[0]
+        m , p = G.NumberOfInputs , G.NumberOfOutputs
+    elif isinstance(tf_or_numden,Transfer):
+        return tf_or_numden
+    else:
+        try:
+            G = tf_or_numden
+            if G._isgain:
+                if G.SamplingSet == 'R':
+                    return G.d, None
+                else:
+                    return G.d, None , G.SamplingPeriod
+
+            A,B,C,D = G.a,G.b,G.c,G.d
+            n = A.shape[0]
+            m , p = G.NumberOfInputs , G.NumberOfOutputs
+        except AttributeError: 
+            raise TypeError('I\'ve checked the argument for being a' 
+                   ' Transfer, a State,\nor a tuple for (num,den) but'
+                   ' none of them turned out to be the\ncase. Hence'
+                   ' I don\'t know how to convert this to a State object.')    
+    
 
     if not iscontrollable(A,B):
         T,rco = ctrb(A,B)[1:]
