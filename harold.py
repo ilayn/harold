@@ -190,19 +190,17 @@ class Transfer:
 
         # Submit the numerator entry to the validator. 
         num,num_SMflag = self.validatepolymatrix(num)
-            
         # Now we have both the normalized version of the numerator
         # and the detected {SISO,MIMO} flag.
 
         if num_SMflag == 'S':
-            self._num = np.atleast_2d(num)
+            self._num = np.atleast_2d(np.array(num,dtype='float'))
             self._m = 1
             self._p = 1
         elif num_SMflag == 'M':
             self._num = num
             self._p = len(self._num[0]) # should be validated already.
             self._m = len(self._num)
-
 
         if den is None:
             self._isgain = True
@@ -235,7 +233,7 @@ class Transfer:
             init_vars_den_shape = (self._p,self._m)
             
 
-
+        
         # Now check if the num and den sizes match otherwise reject
         if not (self._p,self._m) == init_vars_den_shape:
             raise IndexError('I have a {0}x{1} shaped numerator and a '
@@ -249,10 +247,25 @@ class Transfer:
                             )
 
 
-        
         self._shape = (self._p,self._m)
         if self._shape == (1,1):
             self._isSISO = True
+
+
+        # Final regularization for SISO 
+        if self._isSISO:
+            self._num = np.atleast_2d(np.array(self._num,dtype='float'))
+            self._den = np.atleast_2d(np.array(self._den,dtype='float'))
+
+        # Final SISO static gain check
+        if (
+              self._isSISO 
+                and 
+              (self._num.size,self._den.size) == (1,1)
+           ):
+            self._isgain = True
+            self._num /= self._den
+            self._den = np.array([[1.]])
 
         self.SamplingPeriod = dt
         
@@ -2469,7 +2482,15 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
         rank of the matrix D
 
     """
-    
+    try:
+        D = np.atleast_2d(np.array(D,dtype='float'))
+    except TypeError:
+        raise TypeError('Incompatible argument, use either list of lists'
+                        'or native numpy arrays for svd.')
+    except ValueError:
+        raise ValueError('The argument cannot be cast as an array with'
+                        '"float" entries')
+            
     p,m = D.shape
     u,s,v = np.linalg.svd(D,full_matrices=True)
     diags = np.zeros((p,m))# Reallocate the s matrix of u,s,v
@@ -2487,7 +2508,7 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
 #TODO : type checking for both.
 
 def ssconcat(G):
-    if not isinstance(G,ss):
+    if not isinstance(G,State):
         raise TypeError('ssconcat() works on state representations, '
         'but I found \"{0}\" object instead.'.format(type(G).__name__))
     H = np.vstack((np.hstack((G.a,G.b)),np.hstack((G.c,G.d))))
@@ -2529,20 +2550,6 @@ def blkdiag(*args):
 def eyecolumn(width,nth=0):
     return np.eye(width)[[nth]].T
 
-def redheffer(Amatrix,Bmatrix,A22shape,B11shape):
-    """
-    pass
-    """    
-    
-#    if not A22shape[::-1] == B11shape:
-#        raise ValueError('The shape of (2,2) block of the first matrix '
-#                         'must be compatible\nwith the (1,1) block of '
-#                         'the second matrix such that A22*B11 and '
-#                         'B11*A22 are well-defined.')
-#                         
-#    ap , am = A22shape
-#    
-    
 
 # %% Polynomial ops    
 def haroldlcm(*args):
