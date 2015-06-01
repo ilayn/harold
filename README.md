@@ -1,4 +1,4 @@
-# harold
+# harold [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg?style=plastic)](https://github.com/ilayn/harold/blob/master/LICENSE)
 A systems and controls toolbox for Python3. MIT licensed. See `LICENSE.md` file for details.
 
 ## Brief Intro
