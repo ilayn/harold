@@ -39,7 +39,7 @@ import scipy as sp
 from tabulate import tabulate
 from copy import deepcopy
 from scipy.signal import deconvolve
-from itertools import zip_longest
+from itertools import zip_longest,chain
 import collections
 
 # %% Urgent TODOS
@@ -186,86 +186,9 @@ class Transfer:
         self._PrewarpFrequency = 0.
         self._SamplingPeriod = False
 
+        [self._num,self._den],self._isSISO,self._isgain = \
+                                        self.validate_arguments(num,den)
 
-
-        # Submit the numerator entry to the validator. 
-        num,num_SMflag = self.validatepolymatrix(num)
-        # Now we have both the normalized version of the numerator
-        # and the detected {SISO,MIMO} flag.
-
-        if num_SMflag == 'S':
-            self._num = np.atleast_2d(np.array(num,dtype='float'))
-            self._m = 1
-            self._p = 1
-        elif num_SMflag == 'M':
-            self._num = num
-            self._p = len(self._num[0]) # should be validated already.
-            self._m = len(self._num)
-
-        if den is None:
-            self._isgain = True
-
-
-        if not self._isgain:
-            # Submit the denominator
-            den,den_SMflag = self.validatepolymatrix(den,name='Denominator')
-            
-            # We have two options in case of a SISO flag, either indeed 
-            # SISO or it is a MIMO TF with a common denominator
-    
-            if den_SMflag == 'S':
-                # if a single entry is given for MIMO (set by num size)
-                if max(self._m,self._p) > 1:
-                    self._den = [[np.array(den)]*self._m for n in range(self._p)]
-                    init_vars_den_shape = (self._p,self._m)
-                else:
-                    self._den = np.atleast_2d(den)
-                    init_vars_den_shape = (1,1)
-            else:
-                self._den = den
-                init_vars_den_shape = (len(self._den[0]),len(self._den))
-        else:
-            den = np.ones((self._p,self._m)).tolist()
-            self._den = []
-            for den_row in den:
-                    self._den += [[np.array(x) for x in den_row]]
-
-            init_vars_den_shape = (self._p,self._m)
-            
-
-        
-        # Now check if the num and den sizes match otherwise reject
-        if not (self._p,self._m) == init_vars_den_shape:
-            raise IndexError('I have a {0}x{1} shaped numerator and a '
-                            '{2}x{3} shaped \ndenominator. Hence I can '
-                            'not initialize this transfer \nfunction. '
-                            'I secretly blame you for this.'.format(
-                                        self._p,
-                                        self._m,
-                                        *init_vars_den_shape
-                                )
-                            )
-
-
-        self._shape = (self._p,self._m)
-        if self._shape == (1,1):
-            self._isSISO = True
-
-
-        # Final regularization for SISO 
-        if self._isSISO:
-            self._num = np.atleast_2d(np.array(self._num,dtype='float'))
-            self._den = np.atleast_2d(np.array(self._den,dtype='float'))
-
-        # Final SISO static gain check
-        if (
-              self._isSISO 
-                and 
-              (self._num.size,self._den.size) == (1,1)
-           ):
-            self._isgain = True
-            self._num /= self._den
-            self._den = np.array([[1.]])
 
         self.SamplingPeriod = dt
         
@@ -621,112 +544,365 @@ class Transfer:
                                 ))
         return desc_text
         
-#    def __str__(self):
-#        return ''#rootprinter(self.poles)
 
-    def validatepolymatrix(self,arg,*,name='Numerator'):
+    @staticmethod
+    def validate_arguments(num,den):
         """
         
-        An internal command to validate whether given arguments to an
-        ss instance are valid and compatible. I am sure I'll get comments
-        on the religious Python way etc. That's not possible here because
-        we are trying to support a syntax that is not a native datatype. 
-    
-        The intention is too funky to try/except hoops. Still I'm leaving 
-        some room for being schooled. So if you can make a proper case
-        I'm all ears. But I will ignore any sentence that only(!) argues 
-        "Pythonic way".
+        A helper function to validate whether given arguments to an
+        Transfer instance are valid and compatible for instantiation. 
+
+        Since there are many cases that might lead to a valid Transfer
+        instance, Pythonic \"try,except\" machinery is not very helpful
+        to check every possibility and equally challenging to branch 
+        off. A few examples of such issues that needs to be addressed 
+        is static gain, single entry for a MIMO system with common 
+        denominators and so on.
         
-        It also checks if the lists are 2D numpy.array'able entries.
-        Otherwise it will explode somewhere further deep, leaving no 
-        clue why the error happened. So better fail at the start.
+        Thus, this function provides a front-end to the laborious size 
+        and type checking which would make the Transfer object itself
+        seemingly compatible with duck-typing while keeping the nasty 
+        branching implementation internal.
+
+        The resulting output is compatible with the main harold 
+        Transfer class convention such that
         
+          - If the recognized context is MIMO the entries are list
+            of lists with numpy arrays being the polynomial coefficient
+            entries of the inner lists. 
+          - If the recognized context is SISO the entries are numpy
+            arrays with any list structure is stripped off. 
+
         """
-    
-        # Imagine a 1x2 tf. The possible entries for num, den
-        # that needs support are
-        # num = [[np.array([1,2,3]),np.array([4,5,6])]] # Sane/horrible
-        # num = [[[1,2,3],[4,5,6]]] # Sane/acceptable --> convert
-            
-    
         
-    
-    
-        if isinstance(arg,(int,float)):# Excludes complex!
-            return np.array(arg),'S'
-        elif isinstance(arg,list):
-            # Either 
-            #        1. a simple unnested list --> SISO
-            #        2. a list of lists to be np.array'd --> MIMO
-    
-            #------------
-            # 1. Check whether all(!) elements are simple numbers
-            if all([isinstance(x,(int,float)) for x in arg]):
-                return np.array(arg),'S'
-            #------------    
-            # 2.Check first whether all(!) elements are also lists
-            elif all([isinstance(x,list) for x in arg]):
-                # Get the number of items in each list    
-                m = [len(arg[ind]) for ind in range(len(arg))]
-                # Check if the number of elements are consistent
-                if max(m) == min(m):
+        # A list for storing the regularized entries for num and den
+        returned_numden_list = [[],[]]
+
+        # Text shortcut for the error messages
+        entrytext = ('numerator','denominator')
+        
+        # Booleans for Nones
+        None_flags = [False,False]
+        
+        # Booleans for Nones
+        Gain_flags = [False,False]
+        
+        # A boolean list that holds the recognized MIMO/SISO context 
+        # for the numerator and denominator respectively.
+        # True --> MIMO, False --> SISO
+        MIMO_flags = [False,False]
+        
+        
+        for numden_index,numden in enumerate((num,den)):
+        # Get the SISO/MIMO context for num and den.
+
+            # If obviously static gain, don't bother with the rest
+            if numden is None:
+                None_flags[numden_index] = True
+                continue
+
+            # MIMO first            
+            if isinstance(numden,list):
+
+                # OK, it is a list then is it a list of lists? 
+                if all([isinstance(x,list) for x in numden]):
+                    
+                    # It is a list of lists so the context is MIMO
+                    MIMO_flags[numden_index] = True
+                    
+                    # Now try to regularize the entries to numpy arrays
+                    # or complain explicitly
+
+                    # Column number of each row
+                    m = [len(numden[ind]) for ind in range(len(numden))]
+                    # Row number
+                    p = len(numden)
+
+                    # Check if the number of elements are consistent
+                    if max(m) == min(m):
+                        
+                        # Try to numpy-array the elements for each row
+                        try:
+                            returned_numden_list[numden_index] = [
+                                 [
+                                   np.atleast_2d(np.array(x,dtype='float')) 
+                                   for x in y
+                                 ] 
+                              for y in numden
+                            ]
+                        except:
+                            raise ValueError(# something was not float
+                            'Something is not \"float\" inside the MIMO '
+                            '{0} list of lists.'
+                            ''.format(entrytext[numden_index]))
+                            
+                    else:
+                        raise IndexError( 
+                        'MIMO {0} lists have inconsistent\n'
+                        'number of entries, I\'ve found {1} element(s) '
+                        'in one row and {2} in another row'
+                        ''.format(entrytext[numden_index]),max(m),min(m))
+                        
+                # We found the list and it wasn't a list of lists.
+                # Then it should be a regular list to be np.array'd
+                elif all([isinstance(x,(int,float)) for x in numden]):
                     try:
-                        arg =  list(map(lambda x: list(map(
-                            lambda y: np.asarray(y,dtype='float'),x)),arg))
-                        return arg,'M'
+                        returned_numden_list[numden_index] = np.atleast_2d(
+                                            np.array(numden,dtype='float')
+                                            )
                     except:
-                        raise ValueError(# something was not floating 
-                        'Something is not real scalar inside the MIMO '
-                        '{0} list of lists.'.format(name))
+                        raise ValueError(# something was not float
+                            'Something is not \"float\" inside the '
+                            '{0} list.'
+                            ''.format(entrytext[numden_index]))
+
+
+            # Now we are sure that there is no dynamic MIMO entry.
+            # The remaining possibility is a np.array as a static 
+            # gain for being MIMO. The rest is SISO.
+            # Disclaimer: We hope that the data type is 'float' 
+            # Life is too short to check everything.
+
+            elif isinstance(numden,type(np.array([0.]))):
+                if min(numden.shape) > 1:
+                    returned_numden_list[numden_index] = [
+                        [np.array(x,dtype='float') for x in y] 
+                        for y in numden.tolist()
+                        ]
+                    MIMO_flags[numden_index] = True
+                    Gain_flags[numden_index] = True
                 else:
-                    raise IndexError(# element numbers of lists didn't match 
-                    'MIMO {0} lists have inconsistent\n'
-                    'number of entries, I\'ve found {1} '
-                    'in one and {2} in another row'.format(name,max(m),min(m)))
-            #------------  
+                    returned_numden_list[numden_index] = np.atleast_2d(numden)
+
+            # OK, finally check whether and int or float is given
+            # as an entry of a SISO Transfer. 
+            elif isinstance(numden,(int,float)):
+                returned_numden_list[numden_index] = np.atleast_2d(float(numden))
+                Gain_flags[numden_index] = True
+                
+            # Neither list of lists, nor lists nor int,floats
+            # Reject and complain 
             else:
-                raise TypeError(# 
-                '{0} starts with a list so I went in '
-                'to find either \nreal scalars or more lists, but I found'
-                ' other things that I won\'t mention.'.format(name))                
-    
-        elif (isinstance(arg,type(np.array([0.]))) # A numpy array
-                    and
-              arg.dtype in (float,int) # with numerical real data type
-                    and
-              arg.size > 0 # with at least one entry
-             ):
-    
-            # If it is a 1D array, it classifies as a SISO entry. Because 
-            # for MIMO intentions we need a LoL.
-            # If it is a 2D array nxm with n,m>1 then it is a static gain
-            # matrix and MIMO is assumed for now. 
-        
-            if arg.ndim > 1 and min(arg.shape) > 1:# e.g. np.eye(5)
-
-                arg = np.array(arg,dtype='float') # get rid of ints
-                arg_list = []
-                for arg_row in arg:
-                        arg_list += [[np.array(x) for x in arg_row]]
-                return arg_list,'M'
+                raise TypeError(
+                '{0} must either be a list of lists (MIMO)\n'
+                'or a an unnested list (SISO). Numpy arrays, or, scalars' 
+                ' inside unnested lists such as\n [3] are also '
+                'accepted as SISO. See the \"Transfer\" docstring.'
+                ''.format(entrytext[numden_index]))
 
 
-            elif arg.ndim == 1 and arg.size > 1:# e.g. np.array([1,2,3])
-                arg = np.array(arg,dtype='float') # get rid of ints
-                return np.atleast_2d(arg),'S'
+        # =============================
+        # End of the num, den for loop
+        # =============================
 
-            else: # e.g. np.array(5)
-                return np.atleast_2d(float(arg)),'S'
+
+        # Now we have regularized and also derived the context for 
+        # both numerator and the denominator. Finally a decision 
+        # can be made about the intention of the user. 
+
+
+        # If both turned out to be MIMO!
+        if all(MIMO_flags):
+
+            # Since MIMO is flagged in both, we expect to have 
+            # list of lists in both entries. 
+            num_shape = (
+                            len(returned_numden_list[0][0]),
+                            len(returned_numden_list[0])
+                        )
+
+            den_shape = (
+                            len(returned_numden_list[1][0]),
+                            len(returned_numden_list[1])
+                        )
+
+            if num_shape == den_shape:
+                shape = num_shape
+            else:
+                raise IndexError('I have a {0}x{1} shaped numerator and a '
+                            '{2}x{3} shaped \ndenominator. Hence I can '
+                            'not initialize this transfer \nfunction. '
+                            'I secretly blame you for this.'
+                            ''.format(*num_shape+den_shape)
+                            )
+                            
+            # if all survived up to here, perform the causality check:
+            # zip the num and den entries together and check their array 
+            # sizes and get the coordinates
+
+
+            noncausal_entries = sum([# sum(...,[]) is for flattening
+                        [
+                            (row,col) for col,z in enumerate(zip(x,y)) 
+                                                    if z[0].size>z[1].size
+                        ]
+                    for row,(x,y) in enumerate(zip(*returned_numden_list))
+                ],[])            
+
+            if not noncausal_entries == []:
+                entry_str = ['Row {0}, Col {1}'.format(x[0],x[1]) for x in 
+                                                            noncausal_entries]
+                                            
+                raise ValueError('The following entries of numerator and '
+                                 'denominator lead to noncausal transfers'
+                                 '\n{0}'.format('\n'.join(entry_str)))
+            
+
+
+        # If any of them turned out to be MIMO (ambiguous case)
+        elif any(MIMO_flags): 
+            # Possiblities are 
+            #  1- MIMO num, SISO den
+            #  2- MIMO num, None den (gain matrix)
+            #  3- SISO num, MIMO den
+            #  4- None num, MIMO den
+
+            # Get the MIMO flagged entry, 0-num,1-den
+            MIMO_flagged = returned_numden_list[MIMO_flags.index(True)]
+            
+            # Case 3,4
+            if MIMO_flags.index(True):
+                # numerator None? 
+                if None_flags[0]:
+                    # Then create a compatible sized ones matrix and 
+                    # convert it to a MIMO list of lists.
+
+                    # Ones matrix converted to list of lists
+                    num_ones = np.ones(
+                                (len(MIMO_flagged),len(MIMO_flagged[0]))
+                                ).tolist()
+                    
+                    
+                    # Now make all entries 2D numpy arrays
+                    # Since Num is None we can directly start adding
+                    for row in num_ones:
+                        returned_numden_list[0] += [
+                                [np.atleast_2d(float(x)) for x in row]
+                                ]
+
+                # Numerator is SISO
+                else:
+                    # We have to check noncausal entries                     
+                    # flatten den list of lists and compare the size 
+                    num_deg = haroldtrimleftzeros(returned_numden_list[0]).size
+                    flattened_den = sum(returned_numden_list[1],[])
+                    noncausal_entries = [flattened_den[x].size < num_deg 
+                                          for x in range(len(flattened_den))]
+                    
+                    try:
+                        nc_entry = noncausal_entries.index(True)
+                        raise ValueError('Given common numerator has '
+                                         'a higher degree than some of '
+                                         'the denominator entries hence '
+                                         'defines noncausal transfer '
+                                         'entries which is not allowed.')
+                    except:
+                        pass
+                    
+                    den_shape = (
+                                    len(returned_numden_list[1][0]),
+                                    len(returned_numden_list[1])
+                                )                    
+
+                    returned_numden_list[0] = [
+                        [returned_numden_list[0] for x in range(den_shape[1])]
+                        for y in range(den_shape[0])
+                    ]
+
+            # Case 1,2                
+            else:
+                # denominator None? 
+                if None_flags[1]:
+                    # This means num can only be a static gain matrix
+                    flattened_num = sum(returned_numden_list[0],[])
+                    noncausal_entries = [flattened_num[x].size < 2 
+                                          for x in range(len(flattened_num))]
+
+                    try:
+                        nc_entry = noncausal_entries.index(False)
+                        raise ValueError('Since the denominator is not '
+                                         'given, the numerator can only '
+                                         'be a gain matrix such that '
+                                         'when completed with a ones '
+                                         'matrix as a denominator, there '
+                                         'is no noncausal entries.')
+                    except:
+                        pass
+
+                    
+
+                    # Then create a compatible sized ones matrix and 
+                    # convert it to a MIMO list of lists.
+                    num_shape = (
+                                    len(returned_numden_list[0][0]),
+                                    len(returned_numden_list[0])
+                                )
+
+
+
+                    # Ones matrix converted to list of lists
+                    den_ones = np.ones(num_shape).tolist()
+                    
+                    
+                    # Now make all entries 2D numpy arrays
+                    # Since Num is None we can directly start adding
+                    for row in den_ones:
+                        returned_numden_list[1] += [
+                                [np.atleast_2d(float(x)) for x in row]
+                                ]
+
+                # Denominator is SISO
+                else:
+                    # We have to check noncausal entries                     
+                    # flatten den list of lists and compare the size 
+                    den_deg = haroldtrimleftzeros(returned_numden_list[0]).size
+                    flattened_num = sum(returned_numden_list[0],[])
+                    noncausal_entries = [flattened_num[x].size < den_deg 
+                                          for x in range(len(flattened_num))]
+                    
+                    try:
+                        nc_entry = noncausal_entries.index(True)
+                        raise ValueError('Given common denominator has '
+                                         'a lower degree than some of '
+                                         'the numerator entries hence '
+                                         'defines noncausal transfer '
+                                         'entries which is not allowed.')
+                    except:
+                        pass
+                    
+                    num_shape = (
+                                    len(returned_numden_list[0][0]),
+                                    len(returned_numden_list[0])
+                                )                    
+
+                    returned_numden_list[1] = [
+                        [returned_numden_list[1] for x in range(num_shape[1])]
+                        for y in range(num_shape[0])
+                    ]
+
+                    
+        # Finally if both turned out be SISO !
         else:
-            raise TypeError(# Neither list,np.array nor scalar, reject.
-            '{0} must either be a list of lists (MIMO)\n'
-            'or a an unnested list (SISO). Numpy arrays or scalars' 
-            'inside one-level lists such as\n[1.0] are also '
-            'accepted. See the \"tf\" docstring'.format(name))
+            if any(None_flags):
+                if None_flags[0]:
+                    returned_numden_list[0] = np.atleast_2d([1.0])
+                else:
+                    returned_numden_list[1] = np.atleast_2d([1.0])
 
+            if returned_numden_list[0].size > returned_numden_list[1].size:
+                raise ValueError('Noncausal transfer functions are not '
+                                'allowed.')
+            
+            
+        return returned_numden_list , not any(MIMO_flags) , any(Gain_flags)
 
+                
+
+#=======================================
+#=======================================
 # End of Transfer Class
-
+#=======================================
+#=======================================
        
 class State:
     """
@@ -1453,15 +1629,21 @@ def statetotransfer(G):
 
     #FIXME : Resulting TFs are not minimal per se. simplify them
 
-def transfertostate(tf_or_numden):
+def transfertostate(*tf_or_numden):
     # mildly check if we have a transfer,state, or (num,den)
-    if isinstance(tf_or_numden,tuple):
-        G = Transfer(*tf_or_numden)
-        num = G.num
-        den = G.den
-        m,p = G.NumberOfInputs,dummy_G.NumberOfOutputs
-    elif isinstance(tf_or_numden,ss):
+    if len(tf_or_numden) > 1:
+        num , den = tf_or_numden[:2]
+        # Strictly check if list of lists --> MIMO otherwise SISO 
+        # TODO: write a generic num, den verifier for the user!!
+        if isinstance(num,list) and all([isinstance(x,list) for x in num]):
+            m , p = len(num[0]) , len(num)
+        else:
+            m , p = num.shape
+        
+        G = collections.namedtuple()
+    elif isinstance(tf_or_numden,State):
         return tf_or_numden
+
     else:
         try:
             G = tf_or_numden
@@ -1470,7 +1652,7 @@ def transfertostate(tf_or_numden):
             m,p = G.NumberOfInputs,G.NumberOfOutputs
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
-                   ' Transfer, a State,\nor a tuple for (num,den) but'
+                   ' Transfer, a State,\nor a pair for (num,den) but'
                    ' none of them turned out to be the\ncase. Hence'
                    ' I don\'t know how to convert this to a State object.')
 
