@@ -1,4 +1,6 @@
 # harold [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg?style=plastic)](https://github.com/ilayn/harold/blob/master/LICENSE)
+
+[![Join the chat at https://gitter.im/ilayn/harold](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A systems and controls toolbox for Python3. MIT licensed. See `LICENSE.md` file for details.
 
 ## Brief Intro
