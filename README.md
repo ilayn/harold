@@ -1,21 +1,7 @@
-# harold [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg?style=plastic)](https://github.com/ilayn/harold/blob/master/LICENSE)
+# harold [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg?style=plastic)](https://github.com/ilayn/harold/blob/master/LICENSE) [![Join the chat at https://gitter.im/ilayn/harold](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![Join the chat at https://gitter.im/ilayn/harold](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A systems and controls toolbox for Python3. MIT licensed. See `LICENSE.md` file for details.
 
-## Brief Intro
-
-This is harold, a Python3 toolbox. I'm currently implementing a subset of the features of the control toolboxes that are found on matlab, mathematica, sage, octave, scilab and whoknowswhatelsekidsareusingthesedays. Though the main purpose of this attempt was to scratch my own itches and teach myself Python with a running project example, it grew out of its flower pot and I squeezed enough adrenalin to let it go run in the wild (a running flower?!). 
-
-There is already a pseudo-matured control toolbox which is led by Richard Murray et al. ([click for the Github page](https://github.com/python-control/python-control) ) and it can perform already most of the essential tasks. Hence, if you want to have something that resembles the basics of matlab control toolbox give it a try. The reason why I didn't fork that and started from scratch is a-few-fold:
-
-  1. I couldn't install [Slycot](https://github.com/jgoppert/Slycot) (actually drove me nuts) on Windows. Besides, if this is going to be a true open-source project, it is my belief that the nuts and bolts should be accessible. Fortran code is both only readable to some  members of an esoteric cult and has strange license issues, see [SLICOT homepage](http://slicot.org/). Even worse matlab has its own code given in the unexplicable and encrypted `.p` file format. 
-  2. python-control emulates the matlab syntax and usage (for a good reason considering the matlab users) which is something I really wish to leave behind completely. Just to name a few, argument hopping thanks to `nargin,nargout` stuff, inconsistent (sometimes just stupid) error handling, weird amalgam of structs and cells usage... 
-  3. I wish to implement (or at least try) the production-quality code in pure python so that the SLICOT routines buried under layers of Klingon language is avoided for the interested experts who would like to replace a function with their own. 
-  4. I am too opinionated about the way control toolboxes are setup. 
-
-
-By the way, if you are interested in robust control you would probably appreciate the  [Skogestad-Python](https://github.com/alchemyst/Skogestad-Python) project. 
 
 ## Features
 
@@ -33,11 +19,26 @@ All the functions are written with MIMO intentions at the outset which is inevit
   `tabulate.tabulate`,`copy.deepcopy`,`itertools.zip_longest`,`collections`
 
 
+## Brief Intro
+
+This is harold, a Python3 toolbox. I'm currently implementing a subset of the features of the control toolboxes that are found on matlab, mathematica, sage, octave, scilab and whoknowswhatelsekidsareusingthesedays. Though the main purpose of this attempt was to scratch my own itches and teach myself Python with a running project example, it grew out of its flower pot and I squeezed enough adrenalin to let it go run in the wild (a running flower?!). 
+
+There is already a almost-matured control toolbox which is led by Richard Murray et al. ([click for the Github page](https://github.com/python-control/python-control) ) and it can perform already most of the essential tasks. Hence, if you want to have something that resembles the basics of matlab control toolbox give it a try. The reason why I didn't fork that and started from scratch is a-few-fold:
+
+  1. I couldn't install [Slycot](https://github.com/jgoppert/Slycot) (actually drove me nuts) on Windows. Besides, if this is going to be a true open-source project, it is my belief that the nuts and bolts should be accessible if compared to the Fortran code which is only readable to some  members of an esoteric cult and comes with strange license issues, see [SLICOT homepage](http://slicot.org/). Even worse matlab wraps that Fortran code either as a `mex` file or given in the unexplicable and encrypted `.p` file format. 
+  2. python-control emulates the matlab syntax and usage (for a good reason considering the matlab users) which is something I really wish to leave behind completely. Over the years I truly hated that syntax but that's just me. Just to name a few, argument hopping thanks to `nargin,nargout` stuff, inconsistent (sometimes just stupid) error handling, weird amalgam of structs and cells usage... 
+  3. I wish to implement (or at least try) the production-quality code in pure python so that the SLICOT routines buried under layers of Klingon language is avoided for the interested experts who would like to replace a function with their own. 
+  4. I am too opinionated about the way control toolboxes are setup. 
+
+
+By the way, if you are interested in robust control you would probably appreciate the  [Skogestad-Python](https://github.com/alchemyst/Skogestad-Python) project. 
+
+
 ## Current Status
 
-- Burning issues are the documentation and enabling the `nosetest` framework.
+- Burning issues are the documentation and enabling the `nosetest` framework and also I'm mostly talking to myself hence this needs to go on PyPI.
 
-Until I learn how to use Python project structure, nosetesting and other Git related issues, this will be the baseline page. When I manage to figure those out. It will appear on PyPI. There is a rough TODO list given at the top of `harold.py` file for the interested.
+When I finally manage to figure the test environment, project structure and so on, it will appear on PyPI. There is a rough TODO list given at the top of `harold.py` file for the interested.
 
 
 ### Contact
