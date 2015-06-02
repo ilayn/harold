@@ -744,7 +744,9 @@ class Transfer:
                                                             noncausal_entries]
                                             
                 raise ValueError('The following entries of numerator and '
-                                 'denominator lead to noncausal transfers'
+                                 'denominator lead\nto noncausal transfers'
+                                 '. Though I appreaciate the sophistication'
+                                 '\nI don\'t touch descriptor stuff yet.'
                                  '\n{0}'.format('\n'.join(entry_str)))
             
 
@@ -817,18 +819,20 @@ class Transfer:
                     flattened_num = sum(returned_numden_list[0],[])
                     noncausal_entries = [flattened_num[x].size < 2 
                                           for x in range(len(flattened_num))]
-
+                                         
+                    nc_entry = -1
                     try:
                         nc_entry = noncausal_entries.index(False)
+                    except:
+                        Gain_flags = [True,True]
+
+                    if nc_entry > -1:
                         raise ValueError('Since the denominator is not '
                                          'given, the numerator can only '
                                          'be a gain matrix such that '
                                          'when completed with a ones '
                                          'matrix as a denominator, there '
                                          'is no noncausal entries.')
-                    except:
-                        pass
-
                     
 
                     # Then create a compatible sized ones matrix and 
@@ -888,13 +892,14 @@ class Transfer:
                     returned_numden_list[0] = np.atleast_2d([1.0])
                 else:
                     returned_numden_list[1] = np.atleast_2d([1.0])
+                    Gain_flags = [True,True]
 
             if returned_numden_list[0].size > returned_numden_list[1].size:
                 raise ValueError('Noncausal transfer functions are not '
                                 'allowed.')
             
             
-        return returned_numden_list , not any(MIMO_flags) , any(Gain_flags)
+        return returned_numden_list , not any(MIMO_flags) , all(Gain_flags)
 
                 
 
@@ -1627,7 +1632,7 @@ def statetotransfer(G):
     else:
         return num_list, den_list , G.SamplingPeriod
 
-    #FIXME : Resulting TFs are not minimal per se. simplify them
+    #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
 def transfertostate(*tf_or_numden):
     # mildly check if we have a transfer,state, or (num,den)
