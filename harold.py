@@ -186,12 +186,13 @@ class Transfer:
         self._PrewarpFrequency = 0.
         self._SamplingPeriod = False
 
-        [self._num,self._den],self._isSISO,self._isgain = \
+        self._num,self._den,self._shape,self._isgain = \
                                         self.validate_arguments(num,den)
-
-
+        self._p,self._m = self._shape
+        if self._shape == (1,1):
+            self._isSISO = True
         self.SamplingPeriod = dt
-        
+
         self._recalc()
 
     @property
@@ -273,40 +274,36 @@ class Transfer:
 
     @num.setter
     def num(self, value):
-        if validatepolymatrix(value) in (1,2):
-            self._num = np.array(value)
-            self._recalc()
-        elif (len(value[0]),len(value)) == (self._m,self._p):
-            self._num = value
-            self._recalc()
-        else:
+
+        user_num,_,user_shape = validate_arguments(value,self._den)[:3]
+
+        if not user_shape == self._shape:
             raise IndexError('Once created, the shape of the transfer '
                             'function \ncannot be changed. I have '
                             'received a numerator with shape {0}x{1} \nbut '
-                            'the system has {2}x{3}.'.format(
-                                len(value[0]),len(value),self._m,self._p
-                                )
-                            )
+                            'the system has {2}x{3}.'
+                            ''.format(*user_shape+self._shape)
+                            )        
+        else:
+            self._num = user_num
+            self._recalc()
+
             
     @den.setter
     def den(self, value):
-        if (validatepolymatrix(value,name='Denominator') in (1,2)
-                                          and (self._m,self._p) == (1,1)):
 
-            self._den = np.array(value)
-            self._recalc()
-        elif (len(value[0]),len(value)) == (self._m,self._p):
-            self._den = value
-            self._recalc()
+        user_den,user_shape = validate_arguments(self._num,value)[1:3]
+
+        if not user_shape == self._shape:
+            raise IndexError('Once created, the shape of the transfer '
+                            'function \ncannot be changed. I have '
+                            'received a denominator with shape {0}x{1} \nbut '
+                            'the system has {2}x{3}.'
+                            ''.format(*user_shape+self._shape)
+                            )        
         else:
-            raise IndexError(
-                    'Once created, the shape of the transfer '
-                    'function \ncannot be changed. I have '
-                    'received a denominator with shape {0}x{1} \nbut '
-                    'the system has {2}x{3}.'.format(
-                        len(value[0]),len(value),self._m,self._p
-                        )
-                    )
+            self._den = user_den
+            self._recalc()
 
 
     @DiscretizedWith.setter
@@ -362,16 +359,15 @@ class Transfer:
     def _recalc(self):
 
         if self._isgain:
-            self.poles = []
-            self.zeros = []
+            self.poles = np.array([])
+            self.zeros = np.array([])
         else:
             if self._isSISO:
                 self.poles = np.linalg.eigvals(haroldcompanion(self._den))
-                zeros_matrix = haroldcompanion(self._num)
-                if not zeros_matrix.size == 0:
-                    self.zeros = np.linalg.eigvals(zeros_matrix)
-                else:
+                if self._num.size == 1:
                     self.zeros = np.array([])
+                else:
+                    self.zeros = np.linalg.eigvals(haroldcompanion(self._num))
             else:
                 # Create a dummy statespace and check the zeros there
                 zzz = transfertostate(self._num,self._den)
@@ -573,7 +569,75 @@ class Transfer:
           - If the recognized context is SISO the entries are numpy
             arrays with any list structure is stripped off. 
 
+        Parameters
+        ----------
+        num , den : The polynomial coefficient containers. Etiher of them
+                    can be (not both) None to assume that the context will
+                    be derived from the other for static gains. Otherwise
+                    both are expected to be one of 
+                    
+                    np.array, int , float , list , 
+                    list of lists of lists or numpy arrays. 
+            
+                    For MIMO context, element numbers and causality
+                    checks are performed such that numerator list of 
+                    list has internal arrays that have less than or 
+                    equal to the internal arrays of the respective 
+                    denominator entries. 
+                    
+                    For SISO context, causality check is performed 
+                    between numerator and denominator arrays.
+                    
+            
+        Returns
+        -------
+    
+        num, den : {(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)
+                   {(1,s),(1,r)} 2D numpy arrays (SISO)
+                   
+                   m,p integers are the shape of the MIMO system
+                   r,s integers are the degree of the SISO num,den
+            
+            
+        MIMO_flag : boolean
+                    Returns True if the system is recognized as MIMO and 
+                    False otherwise
+
+        Gain_flag: 
+                    Returns True if the system is recognized as a static 
+                    gain False otherwise (for both SISO and MIMO)
+
         """
+
+
+        def get_shape_from_arg(arg):
+            """
+            A static helper method to shorten the repeated if-else branch
+            to get the shape of the system 
+            
+            The functionality is to check the type of the argument and 
+            accordingly either count the rows/columns of a list of lists
+            or get the shape of the numpy array depending on the the 
+            arguments type. 
+            
+            Parameters
+            ----------
+            arg : {List of lists of numpy.array,numpy.array}
+                  The argument should be compatible with a Transfer() 
+                  numerator or denominator/
+            
+            Returns
+            ----------
+            shape : tuple
+                    Returns the identified system shape from the SISO/MIMO 
+            
+            """
+            if isinstance(arg,list):
+                shape = (len(arg),len(arg[0]))
+            else:
+                shape = value.shape
+            return shape
+
         
         # A list for storing the regularized entries for num and den
         returned_numden_list = [[],[]]
@@ -599,9 +663,10 @@ class Transfer:
             # If obviously static gain, don't bother with the rest
             if numden is None:
                 None_flags[numden_index] = True
+                Gain_flags[numden_index] = True
                 continue
 
-            # MIMO first            
+            # Start with MIMO possibilities first
             if isinstance(numden,list):
 
                 # OK, it is a list then is it a list of lists? 
@@ -613,15 +678,15 @@ class Transfer:
                     # Now try to regularize the entries to numpy arrays
                     # or complain explicitly
 
-                    # Column number of each row
+                    # number of columns in each row (m is a list)
                     m = [len(numden[ind]) for ind in range(len(numden))]
-                    # Row number
+                    # number of rows (p is an integer)
                     p = len(numden)
 
                     # Check if the number of elements are consistent
                     if max(m) == min(m):
                         
-                        # Try to numpy-array the elements for each row
+                        # Try to numpy-array the elements inside each row
                         try:
                             returned_numden_list[numden_index] = [
                                  [
@@ -632,7 +697,7 @@ class Transfer:
                             ]
                         except:
                             raise ValueError(# something was not float
-                            'Something is not \"float\" inside the MIMO '
+                            'Something is not a \"float\" inside the MIMO '
                             '{0} list of lists.'
                             ''.format(entrytext[numden_index]))
                             
@@ -650,9 +715,11 @@ class Transfer:
                         returned_numden_list[numden_index] = np.atleast_2d(
                                             np.array(numden,dtype='float')
                                             )
+                        if numden_index == 1:
+                            Gain_flags[1] = True
                     except:
                         raise ValueError(# something was not float
-                            'Something is not \"float\" inside the '
+                            'Something is not a \"float\" inside the '
                             '{0} list.'
                             ''.format(entrytext[numden_index]))
 
@@ -898,8 +965,29 @@ class Transfer:
                 raise ValueError('Noncausal transfer functions are not '
                                 'allowed.')
             
+
+        [num , den] = returned_numden_list
+        
+        shape = get_shape_from_arg(num)
+        
+        
+
+        # TODO : Gain_flags are not robust, remove them and make the
+        # check below be decisive
+
+        # Final gateway for the static gain
+        if isinstance(den,list):
+            # Check the max number of elements in each entry
+            max_deg_of_den = max([x.size for x in sum(den,[])])
+
+            # If less than two, then den is a gain matrix.
+            Gain_flag = True if max_deg_of_den == 1 else False
+        else:
+            Gain_flag = True if den.size == 1 else False
             
-        return returned_numden_list , not any(MIMO_flags) , all(Gain_flags)
+
+        return num , den , shape , Gain_flag
+        
 
                 
 
@@ -1306,7 +1394,7 @@ def validateabcdmatrix(a,b,c,d):
     Otherwise it will explode somewhere further deep, leaving no 
     clue why the error happened. So better fail at type checking.
     
-    See also the docstring of "validatepolymatrix()"
+
     
     """
     # Start type checking
@@ -1388,124 +1476,6 @@ def validateabcdmatrix(a,b,c,d):
                         )
     return a,b,c,d
             
-    
-
-
-# %% Transmission zeros of a state space system
-
-"""
-
-TODO Though the descriptor code also works up-to-production, I truncated 
-to explicit systems. I better ask around if anybody needs them (though 
-the answer to such question is always a yes).
-
-TODO: I've tested with random systems both in Matlab and Python
-Seemingly there is no problem. But it needs optimization. Also
-zero dynamics systems will fail here. Find out why it is curiously 
-much faster than matlab.
-"""
-
-def tzeros(A,B,C,D):
-    """
-
-    Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
-
-    This is a straightforward implementation of the algorithm of Misra, 
-    van Dooren, Varga 1994 but skipping the descriptor matrix which in 
-    turn becomes Emami-Naeini,van Dooren 1979. I don't know if anyone 
-    actually uses descriptor systems in practice so I removed the 
-    descriptor parts to reduce the clutter. Hence, it is possible to 
-    directly row/column compress the matrices without caring about the 
-    upper Hessenbergness of E matrix. 
-
-
-    """    
-    
-    n,_ = np.shape(A)
-    p,m = np.shape(D)
-    r = np.linalg.matrix_rank(D)
-    if n < 1:
-        z = np.zeros((0,1))
-        
-    if (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
-        z = tzeros_final_compress(A,B,C,D,n,p,m)
-        return z
-    else:# Reduction needed
-        if r == p:
-            Ar,Br,Cr,Dr = (A,B,C,D)
-        else:
-            Ar,Br,Cr,Dr = tzeros_reduce(A,B,C,D)
-
-        # Are we done ? 
-        if p!=m: # Square and full rank. Done! Otherwise:
-            Arc,Brc,Crc,Drc = tzeros_reduce(Ar.T,Cr.T,Br.T,Dr.T)
-        else:
-            Arc,Brc,Crc,Drc = (Ar,Br,Cr,Dr)
-        
-        n,_ = np.shape(Arc)
-        p,m = np.shape(Drc)
-        if n!=0:# Are there any state left to compute zeros for? 
-            z = tzeros_final_compress(Arc,Brc,Crc,Drc,n,p,m)
-        else:# No zeros --> Empty array
-            z = np.zeros((0,1))
-        return z
-        
-def tzeros_final_compress(A,B,C,D,n,p,m):
-    """
-    Internal command for finding the Schur form of a full rank and 
-    row/column compressed C,D pair. 
-    
-    TODO: Clean up the numerical noise and switch to Householder 
-    """     
-
-    _,_,v = np.linalg.svd(np.hstack((D,C)),full_matrices=True)
-    T = np.hstack((A,B)).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
-    S = blkdiag(
-            np.eye(n),
-            np.zeros((p,m))
-            ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
-    a,b,_,_ = sp.linalg.qz(S[:n,:n],T[:n,:n],output='complex')
-    z = np.diag(b)/np.diag(a)
-    # TODO : Occasionally z will include 10^15-10^16 entries instead of 
-    # infinite zeros. Decide on a reasonable bound to discard.
-    return z
-    
-def tzeros_reduce(A,B,C,D):
-    while True:
-        p,m = np.shape(D)
-        n,_ = np.shape(A)
-        t=0
-        u,s,v = haroldsvd(D)
-        u = np.real(u)
-        Dt = s.dot(v)
-        for i in np.arange(p,0,-1):
-            if np.all(Dt[i-1,]==0):
-                t = t+1;
-                continue
-            else:
-                break
-        if t == 0:
-            Ar=A;Br=B;Cr=C;Dr=D;
-            break
-        Ct = u.T.dot(C)
-        Ct = Ct[-t:,]
-        mm = np.linalg.matrix_rank(Ct)
-        vc = np.linalg.svd(Ct,full_matrices=True)[2]
-        T = np.roll(vc.T,-mm,axis=1)
-        Sysmat = blkdiag(T,u).T.dot(
-            np.vstack((
-                np.hstack((A,B)),np.hstack((C,D))
-            )).dot(blkdiag(T,np.eye(m)))
-            )
-        Sysmat = np.delete(Sysmat,np.s_[-t:],0)
-        Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
-        A = Sysmat[:n-mm,:n-mm]
-        B = Sysmat[:n-mm,n-mm:]
-        C = Sysmat[n-mm:,:n-mm]
-        D = Sysmat[n-mm:,n-mm:]
-        if A.size==0:
-            break
-    return A,B,C,D
 
 # %% State <--> Transfer conversion
 
@@ -1638,23 +1608,17 @@ def transfertostate(*tf_or_numden):
     # mildly check if we have a transfer,state, or (num,den)
     if len(tf_or_numden) > 1:
         num , den = tf_or_numden[:2]
-        # Strictly check if list of lists --> MIMO otherwise SISO 
-        # TODO: write a generic num, den verifier for the user!!
-        if isinstance(num,list) and all([isinstance(x,list) for x in num]):
-            m , p = len(num[0]) , len(num)
-        else:
-            m , p = num.shape
+        num,den,(p,m),it_is_gain = Transfer.validate_arguments(num,den)
         
-        G = collections.namedtuple()
     elif isinstance(tf_or_numden,State):
         return tf_or_numden
-
     else:
         try:
             G = tf_or_numden
             num = G.num
             den = G.den
             m,p = G.NumberOfInputs,G.NumberOfOutputs
+            it_is_gain = G._isgain
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
                    ' Transfer, a State,\nor a pair for (num,den) but'
@@ -1662,11 +1626,8 @@ def transfertostate(*tf_or_numden):
                    ' I don\'t know how to convert this to a State object.')
 
 
-    it_is_a_gain = G._isgain
-
-
     # Check if it is just a gain
-    if it_is_a_gain:
+    if it_is_gain:
         # TODO: Finish State._isgain object property
         empty_size = max(m,p)
         A = np.empty((empty_size,empty_size))
@@ -1719,12 +1680,13 @@ def transfertostate(*tf_or_numden):
                 # 3.  s+1 / s+1             Full cancellation
                 # 4.  3   /  2              Just gains
 
+
                 datanum = haroldtrimleftzeros(num[x][y])
                 dataden = haroldtrimleftzeros(den[x][y])
-                nn , nd = len(datanum) , len(dataden)
+                nn , nd = datanum.size , dataden.size
 
                 if nd == 1: # Case 4 : nn should also be 1.
-                    D[x,y] = datanum/dataden
+                    D[x,y] = datanum.flatten()/dataden.flatten()
                     num[x][y] = np.array([0.])
 
                 elif nd > nn: # Case 2 : D[x,y] is trivially zero
@@ -1748,16 +1710,16 @@ def transfertostate(*tf_or_numden):
 #            for y in range(m):
 
                 # Make the denominator entries monic
-                if den[x][y][0] != 1.:
-                    if np.abs(den[x][y][0])<1e-5:
+                if den[x][y][0,0] != 1.:
+                    if np.abs(den[x][y][0,0])<1e-5:
                         print(
                           'tf2ss Warning:\n The leading coefficient '
                           'of the ({0},{1}) denominator entry is too '
                           'small (<1e-5). Expect some nonsense in the '
                           'state space matrices.'.format(x,y),end='\n')
                           
-                    num[x][y] = np.array([1/den[x][y][0]])*num[x][y]
-                    den[x][y] = np.array([1/den[x][y][0]])*den[x][y]
+                    num[x][y] = np.array([1/den[x][y][0,0]])*num[x][y]
+                    den[x][y] = np.array([1/den[x][y][0,0]])*den[x][y]
 
         # OK first check if the denominator is common in all entries
         if all([np.array_equal(den[x][y],den[0][0])
@@ -1810,7 +1772,7 @@ def transfertostate(*tf_or_numden):
                 lcm,mults = haroldlcm(*coldens[x])
                 for y in range(p):
                     den[y][x] = lcm
-                    num[y][x] = haroldpolymul(num[y][x],mults[y],
+                    num[y][x] = haroldpolymul(num[y][x].flatten(),mults[y],
                                                         trimzeros=False)
 
             coldegrees = [x.size-1 for x in den[0]]
@@ -1838,12 +1800,131 @@ def transfertostate(*tf_or_numden):
                 A, B, C = A.T, C.T, B.T
             
     try:# if the arg was a tf object
-        if G.SamplingSet == 'R':
+        is_ct = tf_or_numden.SamplingSet is 'R'
+        if is_ct:
             return A,B,C,D
         else:
             return A,B,C,D,G.SamplingPeriod
     except AttributeError:# the arg was num,den
-        return A,B,C,D
+        return A,B,C,D    
+
+
+# %% Transmission zeros of a state space system
+
+"""
+
+TODO Though the descriptor code also works up-to-production, I truncated 
+to explicit systems. I better ask around if anybody needs them (though 
+the answer to such question is always a yes).
+
+TODO: I've tested with random systems both in Matlab and Python
+Seemingly there is no problem. But it needs optimization. Also
+zero dynamics systems will fail here. Find out why it is curiously 
+much faster than matlab.
+"""
+
+def tzeros(A,B,C,D):
+    """
+
+    Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
+
+    This is a straightforward implementation of the algorithm of Misra, 
+    van Dooren, Varga 1994 but skipping the descriptor matrix which in 
+    turn becomes Emami-Naeini,van Dooren 1979. I don't know if anyone 
+    actually uses descriptor systems in practice so I removed the 
+    descriptor parts to reduce the clutter. Hence, it is possible to 
+    directly row/column compress the matrices without caring about the 
+    upper Hessenbergness of E matrix. 
+
+
+    """    
+    
+    n,_ = np.shape(A)
+    p,m = np.shape(D)
+    r = np.linalg.matrix_rank(D)
+    if n < 1:
+        z = np.zeros((0,1))
+        
+    if (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
+        z = tzeros_final_compress(A,B,C,D,n,p,m)
+        return z
+    else:# Reduction needed
+        if r == p:
+            Ar,Br,Cr,Dr = (A,B,C,D)
+        else:
+            Ar,Br,Cr,Dr = tzeros_reduce(A,B,C,D)
+
+        # Are we done ? 
+        if p!=m: # Square and full rank. Done! Otherwise:
+            Arc,Brc,Crc,Drc = tzeros_reduce(Ar.T,Cr.T,Br.T,Dr.T)
+        else:
+            Arc,Brc,Crc,Drc = (Ar,Br,Cr,Dr)
+        
+        n,_ = np.shape(Arc)
+        p,m = np.shape(Drc)
+        if n!=0:# Are there any state left to compute zeros for? 
+            z = tzeros_final_compress(Arc,Brc,Crc,Drc,n,p,m)
+        else:# No zeros --> Empty array
+            z = np.zeros((0,1))
+        return z
+        
+def tzeros_final_compress(A,B,C,D,n,p,m):
+    """
+    Internal command for finding the Schur form of a full rank and 
+    row/column compressed C,D pair. 
+    
+    TODO: Clean up the numerical noise and switch to Householder 
+    """     
+
+    _,_,v = np.linalg.svd(np.hstack((D,C)),full_matrices=True)
+    T = np.hstack((A,B)).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
+    S = blkdiag(
+            np.eye(n),
+            np.zeros((p,m))
+            ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
+    a,b,_,_ = sp.linalg.qz(S[:n,:n],T[:n,:n],output='complex')
+    z = np.diag(b)/np.diag(a)
+    # TODO : Occasionally z will include 10^15-10^16 entries instead of 
+    # infinite zeros. Decide on a reasonable bound to discard.
+    return z
+    
+def tzeros_reduce(A,B,C,D):
+    while True:
+        p,m = np.shape(D)
+        n,_ = np.shape(A)
+        t=0
+        u,s,v = haroldsvd(D)
+        u = np.real(u)
+        Dt = s.dot(v)
+        for i in np.arange(p,0,-1):
+            if np.all(Dt[i-1,]==0):
+                t = t+1;
+                continue
+            else:
+                break
+        if t == 0:
+            Ar=A;Br=B;Cr=C;Dr=D;
+            break
+        Ct = u.T.dot(C)
+        Ct = Ct[-t:,]
+        mm = np.linalg.matrix_rank(Ct)
+        vc = np.linalg.svd(Ct,full_matrices=True)[2]
+        T = np.roll(vc.T,-mm,axis=1)
+        Sysmat = blkdiag(T,u).T.dot(
+            np.vstack((
+                np.hstack((A,B)),np.hstack((C,D))
+            )).dot(blkdiag(T,np.eye(m)))
+            )
+        Sysmat = np.delete(Sysmat,np.s_[-t:],0)
+        Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
+        A = Sysmat[:n-mm,:n-mm]
+        B = Sysmat[:n-mm,n-mm:]
+        C = Sysmat[n-mm:,:n-mm]
+        D = Sysmat[n-mm:,n-mm:]
+        if A.size==0:
+            break
+    return A,B,C,D
+
 
 # %% Continous - Discrete Conversions
 
