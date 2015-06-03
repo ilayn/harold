@@ -192,7 +192,7 @@ class Transfer:
         if self._shape == (1,1):
             self._isSISO = True
         self.SamplingPeriod = dt
-
+        
         self._recalc()
 
     @property
@@ -542,7 +542,7 @@ class Transfer:
         
 
     @staticmethod
-    def validate_arguments(num,den):
+    def validate_arguments(num,den,verbose=False):
         """
         
         A helper function to validate whether given arguments to an
@@ -635,7 +635,7 @@ class Transfer:
             if isinstance(arg,list):
                 shape = (len(arg),len(arg[0]))
             else:
-                shape = value.shape
+                shape = (1,1)
             return shape
 
         
@@ -659,19 +659,23 @@ class Transfer:
         
         for numden_index,numden in enumerate((num,den)):
         # Get the SISO/MIMO context for num and den.
-
+            if verbose: 
+                print('='*40)
+                print('Handling {0}'.format(entrytext[numden_index]))
+                print('='*40)
             # If obviously static gain, don't bother with the rest
             if numden is None:
+                if verbose: print('I found None')
                 None_flags[numden_index] = True
                 Gain_flags[numden_index] = True
                 continue
 
             # Start with MIMO possibilities first
             if isinstance(numden,list):
-
+                if verbose: print('I found a list')
                 # OK, it is a list then is it a list of lists? 
                 if all([isinstance(x,list) for x in numden]):
-                    
+                    if verbose: print('I found a list that has only lists')
                     # It is a list of lists so the context is MIMO
                     MIMO_flags[numden_index] = True
                     
@@ -685,7 +689,9 @@ class Transfer:
 
                     # Check if the number of elements are consistent
                     if max(m) == min(m):
-                        
+                        if verbose: 
+                            print('Every row has consistent '
+                                    'number of elements')
                         # Try to numpy-array the elements inside each row
                         try:
                             returned_numden_list[numden_index] = [
@@ -711,6 +717,7 @@ class Transfer:
                 # We found the list and it wasn't a list of lists.
                 # Then it should be a regular list to be np.array'd
                 elif all([isinstance(x,(int,float)) for x in numden]):
+                    if verbose: print('I found a list that has only scalars')
                     try:
                         returned_numden_list[numden_index] = np.atleast_2d(
                                             np.array(numden,dtype='float')
@@ -731,7 +738,9 @@ class Transfer:
             # Life is too short to check everything.
 
             elif isinstance(numden,type(np.array([0.]))):
+                if verbose: print('I found a numpy array')
                 if min(numden.shape) > 1:
+                    if verbose: print('The array has multiple elements')
                     returned_numden_list[numden_index] = [
                         [np.array(x,dtype='float') for x in y] 
                         for y in numden.tolist()
@@ -744,6 +753,7 @@ class Transfer:
             # OK, finally check whether and int or float is given
             # as an entry of a SISO Transfer. 
             elif isinstance(numden,(int,float)):
+                if verbose: print('I found only a float')
                 returned_numden_list[numden_index] = np.atleast_2d(float(numden))
                 Gain_flags[numden_index] = True
                 
@@ -767,10 +777,14 @@ class Transfer:
         # both numerator and the denominator. Finally a decision 
         # can be made about the intention of the user. 
 
-
+        if verbose: 
+            print('='*50)
+            print('Handling raw entries are done.\nNow checking'
+                  ' the SISO/MIMO context and regularization.')
+            print('='*50)
         # If both turned out to be MIMO!
         if all(MIMO_flags):
-
+            if verbose: print('both mimo flags are true')
             # Since MIMO is flagged in both, we expect to have 
             # list of lists in both entries. 
             num_shape = (
@@ -819,7 +833,8 @@ class Transfer:
 
 
         # If any of them turned out to be MIMO (ambiguous case)
-        elif any(MIMO_flags): 
+        elif any(MIMO_flags):
+            if verbose: print('one of the mimo flags are true')
             # Possiblities are 
             #  1- MIMO num, SISO den
             #  2- MIMO num, None den (gain matrix)
@@ -831,8 +846,10 @@ class Transfer:
             
             # Case 3,4
             if MIMO_flags.index(True):
+                if verbose: print('den is mimo, num is something else')
                 # numerator None? 
                 if None_flags[0]:
+                    if verbose: print('num is None')
                     # Then create a compatible sized ones matrix and 
                     # convert it to a MIMO list of lists.
 
@@ -851,22 +868,22 @@ class Transfer:
 
                 # Numerator is SISO
                 else:
+                    if verbose: print('den is mimo, num is siso')
                     # We have to check noncausal entries                     
                     # flatten den list of lists and compare the size 
                     num_deg = haroldtrimleftzeros(returned_numden_list[0]).size
+
                     flattened_den = sum(returned_numden_list[1],[])
+
                     noncausal_entries = [flattened_den[x].size < num_deg 
                                           for x in range(len(flattened_den))]
-                    
-                    try:
-                        nc_entry = noncausal_entries.index(True)
+
+                    if True in noncausal_entries:
                         raise ValueError('Given common numerator has '
                                          'a higher degree than some of '
                                          'the denominator entries hence '
                                          'defines noncausal transfer '
                                          'entries which is not allowed.')
-                    except:
-                        pass
                     
                     den_shape = (
                                     len(returned_numden_list[1][0]),
@@ -880,6 +897,7 @@ class Transfer:
 
             # Case 1,2                
             else:
+                if verbose: print('num is mimo, den is something else')
                 # denominator None? 
                 if None_flags[1]:
                     # This means num can only be a static gain matrix
@@ -924,22 +942,23 @@ class Transfer:
 
                 # Denominator is SISO
                 else:
+                    if verbose: print('den is siso')
                     # We have to check noncausal entries                     
                     # flatten den list of lists and compare the size 
-                    den_deg = haroldtrimleftzeros(returned_numden_list[0]).size
+                    den_deg = haroldtrimleftzeros(returned_numden_list[1]).size
+                    
                     flattened_num = sum(returned_numden_list[0],[])
-                    noncausal_entries = [flattened_num[x].size < den_deg 
+                    
+                    noncausal_entries = [flattened_num[x].size > den_deg 
                                           for x in range(len(flattened_num))]
                     
-                    try:
-                        nc_entry = noncausal_entries.index(True)
+                    if True in noncausal_entries:
                         raise ValueError('Given common denominator has '
                                          'a lower degree than some of '
                                          'the numerator entries hence '
                                          'defines noncausal transfer '
                                          'entries which is not allowed.')
-                    except:
-                        pass
+
                     
                     num_shape = (
                                     len(returned_numden_list[0][0]),
@@ -954,10 +973,14 @@ class Transfer:
                     
         # Finally if both turned out be SISO !
         else:
+            if verbose: print('both are siso')
             if any(None_flags):
+                if verbose: print('some are none')
                 if None_flags[0]:
+                    if verbose: print('num is None')
                     returned_numden_list[0] = np.atleast_2d([1.0])
                 else:
+                    if verbose: print('den is None')
                     returned_numden_list[1] = np.atleast_2d([1.0])
                     Gain_flags = [True,True]
 
@@ -1680,13 +1703,13 @@ def transfertostate(*tf_or_numden):
                 # 3.  s+1 / s+1             Full cancellation
                 # 4.  3   /  2              Just gains
 
-
-                datanum = haroldtrimleftzeros(num[x][y])
-                dataden = haroldtrimleftzeros(den[x][y])
+                
+                datanum = haroldtrimleftzeros(num[x][y].flatten())
+                dataden = haroldtrimleftzeros(den[x][y].flatten())
                 nn , nd = datanum.size , dataden.size
-
+                
                 if nd == 1: # Case 4 : nn should also be 1.
-                    D[x,y] = datanum.flatten()/dataden.flatten()
+                    D[x,y] = datanum/dataden
                     num[x][y] = np.array([0.])
 
                 elif nd > nn: # Case 2 : D[x,y] is trivially zero
@@ -1705,7 +1728,6 @@ def transfertostate(*tf_or_numden):
                     else:
                         D[x,y] = NumOrEmpty
                         num[x][y] = datanum
-
 #        for x in range(p):
 #            for y in range(m):
 
