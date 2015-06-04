@@ -1068,11 +1068,7 @@ class State:
     
     """
 
-    @classmethod
-    def gain(cls,d,dt=False):
-        return cls(None, None, None,d,dt)
-    
-    def __init__(self,a,b,c,d,dt=False):
+    def __init__(self,a,b=None,c=None,d=None,dt=False):
 
         self._SamplingPeriod = False
         self._DiscretizedWith = None
@@ -1081,25 +1077,16 @@ class State:
         self._isSISO = False
         self._isgain = False
         
+
+        *abcd , self._shape , self._isgain = self.validate_arguments(a,b,c,d)
+
+        self._a , self._b , self._c , self._d = abcd
+        self._p , self._m = self._shape
         
-        if a == None and b == None and c == None:
-            self._isgain = True
-            self._a , self._b , self._c , self._d = a,b,c,d
-            (self._m , self._p) = self._d.shape
-            
-        else:
-            a,b,c,d = validateabcdmatrix(a,b,c,d)
-            self._a , self._b , self._c , self._d = a,b,c,d
-            self._m = self._b.shape[1]
-            self._p = self._c.shape[0]
-
-
-        self._shape = (self._p,self._m)
         if self._shape == (1,1):
             self._isSISO = True
 
         self.SamplingPeriod = dt
-
         self._recalc()
 
 
@@ -1406,98 +1393,123 @@ class State:
         return desc_text
 
 
-
-def validateabcdmatrix(a,b,c,d):
-    """
-    
-    An internal command to validate whether given arguments to an
-    ss instance are valid and compatible.
-    
-    It also checks if the lists are 2D numpy.array'able entries.
-    Otherwise it will explode somewhere further deep, leaving no 
-    clue why the error happened. So better fail at type checking.
-    
-
-    
-    """
-    # Start type checking
-    for y,x in enumerate((a,b,c,d)):
+    @staticmethod
+    def validate_arguments(a,b,c,d):
+        """
         
-        # Check for obvious choices        
+        An internal command to validate whether given arguments to a
+        State() instance are valid and compatible.
         
-        if not isinstance(x,(int,float,list,type(np.array([0.])))):
-            raise TypeError('{0} matrix should be, regardless of the shape,'
-                            ' an int, float, list or,\n'
-                            'much better, a properly typed 2D Numpy '
-                            'array. Instead I found a {1} object.'.format(
-                                ['A','B','C','D'][y] ,
-                                type(x).__name__
-                                )
-                            )
+        It also checks if the lists are 2D numpy.array'able entries.
+        
+        """
+        
+        # A list for storing the regularized entries for a,b,c,d (mutable)
+        returned_abcd_list = [[],[],[],[]]
 
-        if isinstance(x,list):
-            if not (
+        # Text shortcut for the error messages
+        entrytext = ('A','B','C','D')
+        
+        # Booleans for Nones
+        None_flags = [False,False,False,False]
+        
+        Gain_flag = False
+        
+        # Compared to the Transfer() inputs, State() can have relatively
+        #saner inputs which is one of the following types, hence the var
+        possible_types = (int,float,list,type(np.array([0.0])))
 
-                (
-                 all([isinstance(z,list) for z in x]) 
-                 and
-                 all([all([isinstance(w,(int,float))for  w in z]) for z in x])
-                )
-                     
-                or 
-                     
-                all([isinstance(y,(int,float)) for y in x])
-            ):
-                raise TypeError('{0} starts with a list so I went in '
-                'to find either all \nreal scalars or 1D lists with '
-                ' real scalar entries, but I '
-                'found other things.'.format(['A','B','C','D'][y]))
+        # Start regularizing the input regardless of the intention
+        for abcd_index , abcd in enumerate((a,b,c,d)):
+
+            # User supplied it? if no then don't bother further parsing.
+            if abcd is None:
+                returned_abcd_list[abcd_index] = np.array([])
+                None_flags[abcd_index] = True
+                continue
             
-            # Also count the elements in each list of lists
-            if all([isinstance(z,list) for z in x]):
-                m = [len(x[ind]) for ind in range(len(x))]
-                if max(m)!=min(m):
-                    raise IndexError('Rows for {0} matrix have '
-                                    'inconsistent number of elements.\n'
-                                    'I found {1} in one and {2} in '
-                                    'another row'.format(
-                                            ['A','B','C','D'][y],
-                                            max(m),
-                                            min(m)
-                                            )
+
+            # Check for obvious choices
+            
+            if not isinstance(abcd,possible_types):
+                raise TypeError('{0} matrix should be, regardless of the shape,'
+                                ' an int, float, list or,\n'
+                                'much better, a properly typed 2D Numpy '
+                                'array. Instead I found a {1} object.'.format(
+                                    entrytext[abcd_index] ,
+                                    type(abcd).__name__
                                     )
+                                )
 
-    # Looks OK so far. Start Numpy 2D arrays and shape checking
-    a,b,c,d = map(np.atleast_2d,(a,b,c,d))
-    #  Here check everything is compatible
-    if not a.shape == a.T.shape:
-        raise ValueError('A matrix must be a square matrix '
-                        'but I got {0}'.format(a.shape))
-    
-    if b.shape[0]!=a.shape[0]:
-        raise ValueError('B matrix must have the same number of '
-                        'rows with A matrix. I need {:d} but '
-                        'got {:d}.'.format(
-                        a.shape[0], b.shape[0])
-                        )
+            else:
+                # Row/column consistency is checked by numpy 
+                try:
+                    returned_abcd_list[abcd_index] = np.atleast_2d(
+                                                np.array(abcd,dtype='float')
+                                                )
+                except ValueError:
+                    raise ValueError('The {0} matrix argument couldn\'t '
+                                     'be converted to a 2D array of real'
+                                     ' numbers.'
+                                     ''.format(entrytext[abcd_index])
+                                     )
 
-    if c.shape[1]!=a.shape[1]:
-        raise ValueError('C matrix must have the same number of '
-                        'columns with A matrix.\nI need {:d} '
-                        'but got {:d}.'.format(
-                        a.shape[1], c.shape[1])
-                        )
-    
-    if d.shape != (c.shape[0],b.shape[1]):
-        raise ValueError('D matrix must have the same number of rows/'
-                        'columns \nwith C/B matrices. I need the shape '
-                        '({0[0]:d},{0[1]:d}) but got ({1[0]:d},'
-                        '{1[1]:d}).'.format(
-                                        (c.shape[0],b.shape[1]),
-                                         d.shape
-                                        )
-                        )
-    return a,b,c,d
+
+        
+        # If State() has a single nonzero argument then this is a gain
+        # so flip the list and make d nonzero let the rest empty matrix. 
+        if all(None_flags[1:]):
+            returned_abcd_list = list(reversed(returned_abcd_list))
+            Gain_flag = True
+
+            
+
+
+
+        [a , b , c , d] = returned_abcd_list
+
+        if not Gain_flag:
+            #  Here check everything is compatible unless we have a 
+            # static gain
+        
+            if not a.shape == a.T.shape:
+                raise ValueError('A matrix must be a square matrix '
+                                'but I got {0}'.format(a.shape))
+            
+            if b.shape[0]!=a.shape[0]:
+                raise ValueError('B matrix must have the same number of '
+                                'rows with A matrix. I need {:d} but '
+                                'got {:d}.'.format(
+                                a.shape[0], b.shape[0])
+                                )
+        
+            if c.shape[1]!=a.shape[1]:
+                raise ValueError('C matrix must have the same number of '
+                                'columns with A matrix.\nI need {:d} '
+                                'but got {:d}.'.format(
+                                a.shape[1], c.shape[1])
+                                )
+
+
+            user_shape = (c.shape[0],b.shape[1])    
+            # To save the user from the incredibly boring d matrix typing
+            # when d = 0, check if d is given
+            if None_flags[3] is True:
+                d = np.zeros(user_shape)
+            
+            if d.shape != (user_shape):
+                raise ValueError('D matrix must have the same number of'
+                                 'rows/columns \nwith C/B matrices. I '
+                                 'need the shape ({0[0]:d},{0[1]:d}) '
+                                 'but got ({1[0]:d},{1[1]:d}).'.format(
+                                                (c.shape[0],b.shape[1]),
+                                                 d.shape
+                                                )
+                                )
+        if Gain_flag:
+            return a,b,c,d,d.shape,Gain_flag
+        else:
+            return a,b,c,d,user_shape,Gain_flag
             
 
 # %% State <--> Transfer conversion
