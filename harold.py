@@ -37,49 +37,10 @@ THE SOFTWARE.
 import numpy as np
 import scipy as sp
 from tabulate import tabulate
-from copy import deepcopy
 from scipy.signal import deconvolve
-from itertools import zip_longest,chain
-import collections
-
-# %% Urgent TODOS
-"""
-   
-- Documentation (Need a lot of time for this)
-
-- __repr__ of ss and tf are too rough, clean up
-
-- Fix the bokeh business, figure out why it doesn't play well with IPython
-
-- Stop using dB and switch to log10 ala Åström and Murray. They have a 
-    point.
-
-- Write the c2d, d2c and d2d properly. (almost done)
-
-- mat file saving (if matlab plays nice,loading too. But not much hope)
-
-- Convert ctrb to obsv to staircase and canceldist form. And rename!
-
-- Switch to r_[] and c_[] notation for proper readability instead of 
-    hstack, vstack if possible.
-
-
-==== (ABORTED) =====
-
-- Implement the resampling to the slowest Sampling Period of systems for 
-    LTI arithmetic. TF MIMO arithmetics requires resampling if dt of 
-    systems are different. Allow for resampling and convert to the slowest. 
-
-      Too complicated for now 
-
-
-- ZeroPoleGain Class
-
-      I don't see why this should be included or things that can't be done
-      with Transfer(). 
-
-
-"""
+from itertools import zip_longest
+#import collections
+#from copy import deepcopy
 
 # %% Module Definitions
 
@@ -1119,6 +1080,9 @@ class State:
 
     @property
     def shape(self): return self._shape
+        
+    @property
+    def matrices(self): return self._a,self._b,self._c,self._d 
 
     @property
     def DiscretizedWith(self): 
@@ -1163,7 +1127,7 @@ class State:
             
     @a.setter
     def a(self,value):
-        value,*_ =validateabcdmatrix(
+        value,*_ = self.validate_arguments(
             value,
             np.zeros_like(self._b),
             np.zeros_like(self._c),
@@ -1174,7 +1138,7 @@ class State:
 
     @b.setter
     def b(self,value):
-        _,value,*_ =validateabcdmatrix(
+        _,value,*_ = self.validate_arguments(
             np.zeros_like(self._a),
             value,
             np.zeros_like(self._c),
@@ -1185,7 +1149,7 @@ class State:
             
     @c.setter
     def c(self,value):
-        *_,value,_ =validateabcdmatrix(
+        *_,value,_ = self.validate_arguments(
             np.zeros_like(self._a),
             np.zeros_like(self._b),
             value,
@@ -1196,7 +1160,7 @@ class State:
 
     @d.setter
     def d(self,value):
-        *_,value =validateabcdmatrix(
+        *_,value = self.validate_arguments(
             np.zeros_like(self._a),
             np.zeros_like(self._b),
             np.zeros_like(self._c),
@@ -1394,7 +1358,7 @@ class State:
 
 
     @staticmethod
-    def validate_arguments(a,b,c,d):
+    def validate_arguments(a,b,c,d,verbose=False):
         """
         
         An internal command to validate whether given arguments to a
@@ -1421,9 +1385,13 @@ class State:
 
         # Start regularizing the input regardless of the intention
         for abcd_index , abcd in enumerate((a,b,c,d)):
-
+            if verbose: 
+                print('='*40)
+                print ('Handling {0}'.format(entrytext[abcd_index]))
+                print('='*40)
             # User supplied it? if no then don't bother further parsing.
             if abcd is None:
+                if verbose: print('{0} is None'.format(entrytext[abcd_index]))
                 returned_abcd_list[abcd_index] = np.array([])
                 None_flags[abcd_index] = True
                 continue
@@ -1444,6 +1412,10 @@ class State:
             else:
                 # Row/column consistency is checked by numpy 
                 try:
+                    if verbose: 
+                        print('Trying to np.array {0}'
+                                      ''.format(entrytext[abcd_index]))
+                                      
                     returned_abcd_list[abcd_index] = np.atleast_2d(
                                                 np.array(abcd,dtype='float')
                                                 )
@@ -1459,19 +1431,16 @@ class State:
         # If State() has a single nonzero argument then this is a gain
         # so flip the list and make d nonzero let the rest empty matrix. 
         if all(None_flags[1:]):
+            if verbose: print('I decided that this is a gain')
             returned_abcd_list = list(reversed(returned_abcd_list))
             Gain_flag = True
 
-            
-
-
-
         [a , b , c , d] = returned_abcd_list
-
+        
         if not Gain_flag:
             #  Here check everything is compatible unless we have a 
             # static gain
-        
+            if verbose: print('All seems OK. Moving to shape mismatch check')
             if not a.shape == a.T.shape:
                 raise ValueError('A matrix must be a square matrix '
                                 'but I got {0}'.format(a.shape))
@@ -1506,10 +1475,11 @@ class State:
                                                  d.shape
                                                 )
                                 )
-        if Gain_flag:
-            return a,b,c,d,d.shape,Gain_flag
-        else:
             return a,b,c,d,user_shape,Gain_flag
+        else:
+            return a,b,c,d,d.shape,Gain_flag
+
+
             
 
 # %% State <--> Transfer conversion
@@ -1519,33 +1489,27 @@ class State:
 # Pertranspose the system, do the same to get the o'ble part of the c'ble part
 # Then iterate over all row/cols of B and C to get SISO TFs via c(sI-A)b+d
 
-def statetotransfer(G):
-    if isinstance(ss_or_numden,tuple):
-        G = State(*ss_or_numden)
-        A,B,C,D = G.a,G.b,G.c,G.d
-        n = A.shape[0]
-        m , p = G.NumberOfInputs , G.NumberOfOutputs
-    elif isinstance(tf_or_numden,Transfer):
-        return tf_or_numden
+def statetotransfer(*state_or_abcd):
+    # mildly check if we have a transfer,state, or (num,den)
+    if len(G_or_abcd) > 1:
+        A,B,C,D,(p,m),it_is_gain = State.validate_arguments(state_or_abcd[:4])
+    elif isinstance(state_or_abcd,Transfer):
+        return state_or_abcd
     else:
         try:
-            G = tf_or_numden
-            if G._isgain:
-                if G.SamplingSet == 'R':
-                    return G.d, None
-                else:
-                    return G.d, None , G.SamplingPeriod
-
-            A,B,C,D = G.a,G.b,G.c,G.d
-            n = A.shape[0]
-            m , p = G.NumberOfInputs , G.NumberOfOutputs
+            A,B,C,D = state_or_abcd
+            m,p = G.NumberOfInputs,G.NumberOfOutputs
+            it_is_gain = G._isgain
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
-                   ' Transfer, a State,\nor a tuple for (num,den) but'
+                   ' Transfer, a State,\nor for (a,b,c,d) but'
                    ' none of them turned out to be the\ncase. Hence'
-                   ' I don\'t know how to convert this to a State object.')    
-    
+                   ' I don\'t know how to convert this to a Transfer '
+                   'object.') 
 
+    if it_is_gain:
+        return Transfer(D)
+    
     if not iscontrollable(A,B):
         T,rco = ctrb(A,B)[1:]
         A = T.T.dot(A.dot(T))[:rco,:rco]
