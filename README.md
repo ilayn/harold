@@ -38,9 +38,9 @@ By the way, if you are interested in robust control you would probably appreciat
 
 - Burning issues are the documentation and enabling the `nosetest` framework and also I'm mostly talking to myself hence this needs to go on PyPI.
 
-When I finally manage to figure the test environment, project structure and so on, it will appear on PyPI. There is a rough TODO list given at the top of `harold.py` file for the interested.
+When I finally manage to figure the test environment, project structure and so on, it will appear on PyPI. There are also some issues opened as implementation reminders that can be followed for new features or bug-riddance. 
 
 
 ### Contact
 
-If something caught your eye or you have a burning question, send one to `harold.of.python@gmail.com`
+You have a question feel free to shoot one to `harold.of.python@gmail.com`
