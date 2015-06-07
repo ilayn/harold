@@ -352,67 +352,98 @@ class Transfer:
         return Transfer(newnum,self._den,self._SamplingPeriod)
 
     def __add__(self,other):
+        # Addition to a Transfer object is possible via four types
+        # 1. Another shape matching State()
+        # 2. Another shape matching Transfer()
+        # 3. Integer or float that is multiplied with a proper "ones" matrix
+        # 4. A shape matching numpy array
+    
+        # Notice that in case 3 it is a ones matrix not an identity!!
+        # (Given a 1x3 system + 5) adds [[5,5,5]]. 
 
-        # SISO or MIMO switch
-        if self._isSISO:
+        if isinstance(other,(Transfer,State)):
+        # Trivial Rejections:
+        # ===================
+        # Reject 'ct + dt' or 'dt + dt' with different sampling periods
+        #
+        # A future addition would be converting everything to the slowest
+        # sampling system but that requires pretty comprehensive change.
 
+            if not self._SamplingPeriod == other._SamplingPeriod:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot\nadd these systems. '
+                                'If you still want to add them as if '
+                                'they are\ncompatible, carry the data '
+                                'to a compatible system model and then '
+                                'add.'
+                                )
 
-        # Handle the constant matrices, ints, floats, ss and tfs
-            if isinstance(other,(int,float)):
-                newnum = haroldpolyadd(other*self._den,self._num)
-                return Transfer(newnum,self._den,self._SamplingPeriod)
+        # Reject if the size don't match
+            if not self._shape == other.shape:
+                raise IndexError('Addition of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                self._shape,
+                                                other.shape)
+                                )
 
-            elif isinstance(other,(State,Transfer)):
-                if not other.shape == (1,1):
-                    raise TypeError('The shapes of the systems '
-                            'are not compatible for addition: '
-                            '{0} vs. SISO.'.format(other.shape))
-
-                elif isinstance(other,State): return State(
-                    *transfertostate(self._num,self._den),
-                    dt=self._SamplingPeriod) + other
-                    
-                elif isinstance(other,Transfer):
+        # ===================
+            if isinstance(other,Transfer):
+                # First get the static gain case out of the way.
+                if self._isgain and other._isgain:
+                        return Transfer(self._num + other.num, 
+                                             dt = self._SamplingPeriod)
+            
+                # Now, we are sure that there are no possibility other than
+                # list of lists or np.arrays hence concatenation should be OK. 
+    
+                if self._isSISO:
                     lcm,mults = haroldlcm(self._den,other.den)
                     newnum = haroldpolyadd(
                         np.convolve(self._num.flatten(),mults[0]),
-                        np.convolve(other.num.flatten(),mults[1])
-                            )
-
+                        np.convolve(other.num.flatten(),mults[1]))
                     return Transfer(newnum,lcm)
+                else:
+                    # Create empty num and den holders.
+                    newnum = [[]*self._m for n in range(self._p)] 
+                    newden = [[]*self._m for n in range(self._p)]
+                    # Same as SISO but over all rows/cols
+                    for row in range(self._p):
+                        for col in range(self._m):
+                            lcm,mults = haroldlcm(self._den[row][col],
+                                                  other.den[row][col])
+                            newnum[row][col] = np.atleast_2d(haroldpolyadd(
+                                np.convolve(self._num.flatten(),mults[0]),
+                                np.convolve(other.num.flatten(),mults[1])))
+
+                            newden[row][col] = lcm
+                            
+                    return Transfer(newnum,newden,dt=self._SamplingPeriod)
+
             else:
-                raise TypeError('I don\'t know how to add a '
-                                '{0} to a transfer function '
-                                '(yet).'.format(type(other).__name__))
+                return other + transfertostate(self)
+    
+        # Last chance for matrices, convert to static gain matrices and add
+        elif isinstance(other,(int,float)):
+            return Transfer(other * np.ones_like(self._shape),
+                             dt = self._SamplingPeriod) + self
+
+        elif isinstance(other,type(np.array([0.]))):
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return self + float(other)
+            
+            if self._shape == other.shape:
+                return self + Transfer(other,dt= self._SamplingPeriod)
+            else:
+                raise IndexError('Addition of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))  
         else:
-            if isinstance(other,(int,float)):
-                # ss addition is much easier
-                tempsys = State(*transfertostate(self._num,self._den))
-                tempsys.d += np.ones_like(tempsys.d)
-                return Transfer(*(statetotransfer(tempsys),
-                                  self._SamplingPeriod)
-                                )
-
-
-            elif isinstance(other,(State,Transfer)):
-                if not other.shape == self._shape:
-                    raise TypeError('The shapes of the systems '
-                                'are not sdfcompatible for addition: '
-                                '{0} vs. {1}.'.format(
-                                                    other.shape,
-                                                    self._shape
-                                                    )
-                                                )
-                #shapes match
-                tempsys_self = State(*transfertostate(self._num,self._den),
-                                      dt = self._SamplingPeriod)
-                
-                return Transfer(tempsys_self + other)
-            else:
-                raise TypeError('I don\'t know how to add a '
-                                '{0} to a transfer function '
-                                '(yet).'.format(type(other).__name__))
-
+            raise TypeError('I don\'t know how to add a '
+                            '{0} to a state representation '
+                            '(yet).'.format(type(other).__name__))
 
 
     def __radd__(self,other): return self + other
@@ -1332,7 +1363,7 @@ class State:
                 addd = self._d + other.d
                 return State(adda,addb,addc,addd)
 
-        elif isinstance(other,Transfer):
+            else:
                 return self + transfertostate(other)
 
         # Last chance for matrices, convert to static gain matrices and add
@@ -1361,10 +1392,11 @@ class State:
                             '{0} to a state representation '
                             '(yet).'.format(type(other).__name__))
     
-    def __radd__(self,other):
-        return self + other
+    def __radd__(self,other): return self + other
 
-
+    def __sub__(self,other):  return self + (-other)
+        
+    def __rsub__(self,other): return -self + other
 
     def __mul__(self,other):
         # Multiplication with a State object is possible via four types
