@@ -342,22 +342,25 @@ class Transfer:
     # =================================
 
     def __neg__(self):
-        newnum = deepcopy(self._num)
+        newnum = self._num
         if not self._isSISO:
             for i in range(self._p):
                 for j in range(self._m):
                     newnum[i][j] *= -1.0
         else:
             newnum = -newnum
-        return tf(newnum,self._den,self._SamplingPeriod)
+        return Transfer(newnum,self._den,self._SamplingPeriod)
 
     def __add__(self,other):
+
         # SISO or MIMO switch
         if self._isSISO:
+
+
         # Handle the constant matrices, ints, floats, ss and tfs
             if isinstance(other,(int,float)):
                 newnum = haroldpolyadd(other*self._den,self._num)
-                return tf(newnum,self._den,self._SamplingPeriod)
+                return Transfer(newnum,self._den,self._SamplingPeriod)
 
             elif isinstance(other,(State,Transfer)):
                 if not other.shape == (1,1):
@@ -369,7 +372,7 @@ class Transfer:
                     *transfertostate(self._num,self._den),
                     dt=self._SamplingPeriod) + other
                     
-                elif isinstance(other,tf):
+                elif isinstance(other,Transfer):
                     lcm,mults = haroldlcm(self._den,other.den)
                     newnum = haroldpolyadd(
                         np.convolve(self._num.flatten(),mults[0]),
@@ -524,9 +527,9 @@ class Transfer:
         The resulting output is compatible with the main harold 
         Transfer class convention such that
         
-          - If the recognized context is MIMO the entries are list
-            of lists with numpy arrays being the polynomial coefficient
-            entries of the inner lists. 
+          - If the recognized context is MIMO the resulting outputs are
+            list of lists with numpy arrays being the polynomial 
+            coefficient entries. 
           - If the recognized context is SISO the entries are numpy
             arrays with any list structure is stripped off. 
 
@@ -1254,54 +1257,105 @@ class State:
 
     def __neg__(self):
         if self._isgain:
-            return State.gain(-self._d, self._SamplingPeriod)
+            return State(-self._d, dt=self._SamplingPeriod)
         else:
-            newC = deepcopy(self._c)
-            newC = -1.*newC
-            return State(self._a, self._b, newC, self._d, self._SamplingPeriod)
-
-
+            newC = -1. * self._c
+            return State(self._a,self._b, newC, self._d,self._SamplingPeriod)
 
 
     def __add__(self,other):
-        if isinstance(other,ss):
-            if self._shape == other.shape:
+        # Addition to a State object is possible via four types
+        # 1. Another shape matching State()
+        # 2. Another shape matching Transfer()
+        # 3. Integer or float that is multiplied with a proper "ones" matrix
+        # 4. A shape matching numpy array
+    
+        # Notice that in case 3 it is a ones matrix not an identity!!
+        # (Given a 1x3 system + 5) adds [[5,5,5]] to D matrix. 
+
+
+
+        if isinstance(other,(Transfer,State)):
+        # Trivial Rejections:
+        # ===================
+        # Reject 'ct + dt' or 'dt + dt' with different sampling periods
+        #
+        # A future addition would be converting everything to the slowest
+        # sampling system but that requires pretty comprehensive change.
+
+            if not self._SamplingPeriod == other._SamplingPeriod:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot\nadd these systems. '
+                                'If you still want to add them as if '
+                                'they are\ncompatible, carry the data '
+                                'to a compatible system model and then '
+                                'add.'
+                                )
+
+        # Reject if the size don't match
+            if not self._shape == other.shape:
+                raise IndexError('Addition of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                self._shape,
+                                                other.shape)
+                                )
+
+        # ===================
+
+                                
+            if isinstance(other,State):
+
+                # First get the static gain case out of the way.
+                if self._isgain:
+                    if other._isgain:
+                        return State(self.d + other.d, 
+                                             dt = self._SamplingPeriod)
+                    else:
+                        return State(other.a,
+                                     other.b,
+                                     other.c,
+                                     self.d + other.d, 
+                                     dt = self._SamplingPeriod
+                                     )
+                else:
+                    if other._isgain: # And self is not? Swap, come again
+                        return other + self
+            
+            
+                # Now, we are sure that there are no empty arrays in the 
+                # system matrices hence concatenation should be OK. 
+
                 adda = blkdiag(self._a,other.a)
                 addb = np.vstack((self._b,other.b))
                 addc = np.hstack((self._c,other.c))
                 addd = self._d + other.d
                 return State(adda,addb,addc,addd)
-            else:
-                raise IndexError('Addition of systems requires their '
-                                'shape to match but the system shapes '
-                                'I got are {0} vs. {1}'.format(
-                                                self._shape,
-                                                other.shape)
-                                )
-        if isinstance(other,tf):
-            if self._shape == other.shape:
-                return self + ss(*tf2ss(other))
-            else:
-                raise IndexError('Addition of systems requires their '
-                                'shape to match but the system shapes '
-                                'I got are {0} vs. {1}'.format(
-                                                self._shape,
-                                                other.shape)
-                                )
-        # Last chance                                
-        if isinstance(other,(int,float)):
-            addd = self._d + other*np.ones_like(self._d)
-            return ss(self._a,self._b,self._c,addd)
+
+        elif isinstance(other,Transfer):
+                return self + transfertostate(other)
+
+        # Last chance for matrices, convert to static gain matrices and add
+        elif isinstance(other,(int,float)):
+            return State(np.ones_like(self._shape),
+                             dt = self._SamplingPeriod) + self
+
+        elif isinstance(other,type(np.array([0.]))):
+            raise IndexError('Addition of systems requires their '
+                            'shape to match but the system shapes '
+                            'I got are {0} vs. {1}'.format(
+                                            self._shape,
+                                            other.shape)
+                            )  
         else:
             raise TypeError('I don\'t know how to add a '
                             '{0} to a state representation '
                             '(yet).'.format(type(other).__name__))
-
-
-
     
     def __radd__(self,other):
         return self + other
+
+
 
     def __mul__(self,other):
         pass
@@ -1353,7 +1407,8 @@ class State:
                                                 'Poles(imag)',
                                                 'Zeros(real)',
                                                 'Zeros(imag)'])
-#        desc_text += '\n\n'+str('End of object description %s') % __class__.__qualname__
+#        desc_text += '\n\n'+str('End of object description') 
+#                                                % __class__.__qualname__
         return desc_text
 
 
@@ -1491,13 +1546,13 @@ class State:
 
 def statetotransfer(*state_or_abcd):
     # mildly check if we have a transfer,state, or (num,den)
-    if len(G_or_abcd) > 1:
+    if len(state_or_abcd) > 1:
         A,B,C,D,(p,m),it_is_gain = State.validate_arguments(state_or_abcd[:4])
-    elif isinstance(state_or_abcd,Transfer):
+    elif isinstance(state_or_abcd[0],Transfer):
         return state_or_abcd
     else:
         try:
-            A,B,C,D = state_or_abcd
+            A,B,C,D = state_or_abcd.matrices
             m,p = G.NumberOfInputs,G.NumberOfOutputs
             it_is_gain = G._isgain
         except AttributeError: 
@@ -2340,7 +2395,6 @@ def kalmandecomposition(G):
 
         
 # %% Linear algebra ops
-
 def staircase(A,B,C,compute_T=False,form='c',invert=False):
     """
     The staircase form is used very often to assess system properties. 
@@ -3204,5 +3258,5 @@ def haroldpolydiv(dividend,divisor):
                                  )
     
     return h_factor , h_remainder
-    
+
 # %% Plotting - Frequency Domain
