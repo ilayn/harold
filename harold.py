@@ -1341,12 +1341,21 @@ class State:
                              dt = self._SamplingPeriod) + self
 
         elif isinstance(other,type(np.array([0.]))):
-            raise IndexError('Addition of systems requires their '
-                            'shape to match but the system shapes '
-                            'I got are {0} vs. {1}'.format(
-                                            self._shape,
-                                            other.shape)
-                            )  
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return self + float(other)
+            
+            if self._shape == other.shape:
+                return State(self._a,
+                             self._b,
+                             self._c,
+                             self._d + other,
+                             dt= self._SamplingPeriod)
+            else:
+                raise IndexError('Addition of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))  
         else:
             raise TypeError('I don\'t know how to add a '
                             '{0} to a state representation '
@@ -1358,11 +1367,129 @@ class State:
 
 
     def __mul__(self,other):
-        pass
+        # Multiplication with a State object is possible via four types
+        # 1. Another shape matching State()
+        # 2. Another shape matching Transfer()
+        # 3. Integer or float 
+        # 4. A shape matching numpy array
+    
+
+
+        if isinstance(other,(Transfer,State)):
+        # Trivial Rejections:
+        # ===================
+        # Reject 'ct + dt' or 'dt + dt' with different sampling periods
+        #
+        # A future addition would be converting everything to the slowest
+        # sampling system but that requires pretty comprehensive change.
+
+            if not self._SamplingPeriod == other._SamplingPeriod:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot\nmultiply these systems. '
+                                'If you still want to multiply them as'
+                                'if they are\ncompatible, carry the data '
+                                'to a compatible system model and then '
+                                'multiply.'
+                                )
+
+        # Reject if the size don't match
+            if not self._shape[1] == other.shape[0]:
+                raise IndexError('Multiplication of systems requires '
+                                 'their shape to match but the system '
+                                 'shapes I got are {0} vs. {1}'.format(
+                                                self._shape,
+                                                other.shape))
+        # ===================
+                                
+            if isinstance(other,State):
+
+                # First get the static gain case out of the way.
+                if self._isgain:
+                    if other._isgain:
+                        return State(self.d.dot(other.d), 
+                                             dt = self._SamplingPeriod)
+                    else:
+                        return State(other.a,
+                                     other.b,
+                                     self.d.dot(other.c),
+                                     self.d.dot(other.d), 
+                                     dt = self._SamplingPeriod
+                                     )
+                else:
+                    if other._isgain: # And self is not? Swap, come again
+                        return State(self.a,
+                                     self.b.dot(other.d),
+                                     self.c,
+                                     self.d.dot(other.d), 
+                                     dt = self._SamplingPeriod
+                                     )
+
+
+                # Now, we are sure that there are no empty arrays in the 
+                # system matrices hence concatenation should be OK. 
+
+                multa = blkdiag(self._a,other.a)
+                multa[self._a.shape[1]:,:other.a.shape[0]] = self._b.dot(
+                                                                    other.c)
+                multb = np.vstack((self._b.dot(other.d),other.b))
+                multc = np.hstack((self._c,self._d.dot(other.c)))
+                multd = self._d.dot(other.d)
+                return State(multa,multb,multc,multd,dt=self._SamplingPeriod)
+
+        elif isinstance(other,Transfer):
+                return self * transfertostate(other)
+        elif isinstance(other,(int,float)):
+            return self * State(np.atleast_2d(other),dt = self._SamplingPeriod)
+        # Last chance for matrices, convert to static gain matrices and mult
+        elif isinstance(other,type(np.array([0.]))):
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return self * State(
+                            np.atleast_2d(other),dt = self._SamplingPeriod)
+            
+            if self._shape[1] == other.shape[0]:
+                return self * State(other,dt= self._SamplingPeriod)
+            else:
+                raise IndexError('Multiplication of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))  
+        else:
+            raise TypeError('I don\'t know how to multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__name__))
+
 
     def __rmul__(self,other):
-        pass
-    
+        # Notice that if other is a State or Transfer, it will be handled 
+        # by other's __mul__() method. Hence we only take care of the 
+        # right multiplication of the scalars and arrays. Otherwise 
+        # rejection is executed
+        if isinstance(other,(int,float)):
+            if self._isgain:
+                return State(self.d * other, dt = self._SamplingPeriod)
+            else:
+                return State(self._a,
+                             self._b,
+                             self._c * other,
+                             self._d * other, 
+                             dt = self._SamplingPeriod
+                             )
+        elif isinstance(other,type(np.array([0.]))):
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return float(other) * self
+            elif self._shape[0] == other.shape[1]:
+                return State(other,dt= self._SamplingPeriod) * self
+            else:
+                raise IndexError('Multiplication of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))
+        else:
+            raise TypeError('I don\'t know how to multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__name__))
 
     # ================================================================
     # __getitem__ to provide input-output selection of an ss
