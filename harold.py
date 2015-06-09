@@ -453,32 +453,147 @@ class Transfer:
     def __rsub__(self,other): return -self + other
 
     def __mul__(self,other):
-        # SISO or MIMO switch
-        if self._isSISO:
-        # Handle the constant matrices, ints, floats, ss and tfs
-            if isinstance(other,(int,float)):
-                return Transfer(other*self._num,self._den,self._SamplingPeriod)
+        # Multiplication with a Transfer object is possible via four types
+        # 1. Another shape matching State()
+        # 2. Another shape matching Transfer()
+        # 3. Integer or float 
+        # 4. A shape matching numpy array
+    
 
-            if isinstance(other,(State,Transfer)):
-                if not other.shape == (1,1):
-                    raise TypeError('The shapes of the systems '
-                            'are not compatible for multiplication: '
-                            '{0} vs. SISO.'.format(other.shape))
+        if isinstance(other,(Transfer,State)):
+        # Trivial Rejections:
+        # ===================
+        # Reject 'ct + dt' or 'dt + dt' with different sampling periods
+        #
+        # A future addition would be converting everything to the slowest
+        # sampling system but that requires pretty comprehensive change.
 
-                if isinstance(other,State): 
-                    return other * State(*transfertostate(self)) 
+            if not self._SamplingPeriod == other._SamplingPeriod:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot\nmultiply these systems. '
+                                'If you still want to multiply them as'
+                                'if they are\ncompatible, carry the data '
+                                'to a compatible system model and then '
+                                'multiply.'
+                                )
+
+        # Reject if the size don't match
+            if not self._shape[1] == other.shape[0]:
+                raise IndexError('Multiplication of systems requires '
+                                 'their shape to match but the system '
+                                 'shapes I got are {0} vs. {1}'.format(
+                                                self._shape,
+                                                other.shape))
+        # ===================
+                                
+            if isinstance(other,Transfer):
+
+                # First get the static gain case out of the way.
+                if self._isgain and other._isgain:
+                        return State(self.num.dot(other.num), 
+                                             dt = self._SamplingPeriod)
+
+                if self._isSISO:
+                    return Transfer(
+                            haroldpolymul(self._num,other.num),
+                            haroldpolymul(self._den,other.den),
+                            dt = self._SamplingPeriod)
                 else:
-                    newnum = np.convolve(self._num,other.num)
-                    newden = np.convolve(self._den,other.den)
-                    return Transfer(newnum,newden)
+                    # Bah.. Here we go!
+                    # Same as SISO but over all rows/cols:
+                    # Also if the result would be a SISO extra steps 
+                    # such as stripping off the list of lists
+                    
+                    # So we have a (p x k) and (k x m) shapes hence 
+                    # the temporary size variables
+                    t_p = self._p
+                    t_k = self._m
+                    t_m = other.shape[1]
+                
+                
+                    newnum = [[None]*t_m for n in range(t_p)] 
+                    newden = [[None]*t_m for n in range(t_p)]
+                    
+                    # Here we have again a looping fun:
+                    # What we do is to rely on the Transfer() 
+                    # __add__ method for the SISO case recursively. 
+                    
+                    # Suppose we have a multiplication of a 1x5 Transfer
+                    # multiplied with a 5x1 Transfer
+                    
+                    #                [1]
+                    #  [a b c d e] * [2]
+                    #                [3]
+                    #                [4]  
+                    #                [5]
+                    
+                    # What we do here is to form each a1,b2,...e5
+                    # and convert each of them to a temporary Transfer
+                    # object and then add --> a1 + b2 + c3 + d4 + e5
+                    # such that possible common poles don't get spurious
+                    # multiplicities. 
+                    
+                    # Recursion part is the fact that we are already 
+                    # inside a Transfer() method but forming temporary
+                    # Transfer()objects within. Fingers crossed...
+                    
+                    for row in range(t_p):
+                        for col in range(t_m):
+                            # Zero out the temporary Transfer()
+                            t_G = Transfer(0,1)
+                            
+                            # for all elements in row/col multiplication
+                            for elem in range(t_k):
 
+                                t_num = haroldpolymul(self._num[t_p][t_k],
+                                                      other.num[t_k][t_m])
+
+                                t_den = haroldpolymul(self._den[t_p][t_k],
+                                                      other.den[t_k][t_m])
+                                
+                                t_G += Transfer(t_num,t_den)
+                                
+                            # Add the resulting arrays to the containers.
+                            newnum[t_p][t_m] = t_G.num
+                            newden[t_p][t_m] = t_G.den
+                            
+                            
+                    # If the resulting shape is SISO, strip off the lists
+                    if (t_p,t_m) == (1,1):
+                        newnum = newnum[0][0]
+                        newden = newden[0][0]
+
+
+                    # Finally return the result. 
+                    return Transfer(newnum,newden,dt=self._SamplingPeriod)
+
+            elif isinstance(other,State):
+                    return transfertostate(self) * other
+                    
+        elif isinstance(other,(int,float)):
+            return self * Transfer(np.atleast_2d(other),
+                                   dt = self._SamplingPeriod)
+                
+                
+        # Last chance for matrices, convert to static gain matrices and mult
+        elif isinstance(other,type(np.array([0.]))):
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return self * Transfer(
+                            np.atleast_2d(other),dt = self._SamplingPeriod)
+            
+            if self._shape[1] == other.shape[0]:
+                return self * Transfer(other,dt= self._SamplingPeriod)
             else:
-                raise TypeError('I don\'t know how to multiply a '
-                                '{0} with a transfer function '
-                                '(yet).'.format(type(other).__name__))
+                raise IndexError('Multiplication of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))  
         else:
-            raise NotImplementedError('MIMO algebra is being implemented.')
-
+            raise TypeError('I don\'t know how to multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__name__))        
+        
 
     def __rmul__(self,other): return self * other
 
@@ -734,7 +849,7 @@ class Transfer:
 
             elif isinstance(numden,type(np.array([0.]))):
                 if verbose: print('I found a numpy array')
-                if min(numden.shape) > 1:
+                if numden.ndim > 1 and min(numden.shape) > 1:
                     if verbose: print('The array has multiple elements')
                     returned_numden_list[numden_index] = [
                         [np.array(x,dtype='float') for x in y] 
