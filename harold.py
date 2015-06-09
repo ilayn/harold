@@ -331,7 +331,7 @@ class Transfer:
                     self.zeros = np.linalg.eigvals(haroldcompanion(self._num))
             else:
                 # Create a dummy statespace and check the zeros there
-                zzz = transfertostate(self._num,self._den)
+                zzz = transfertostate(self._num,self._den,output='matrices')
                 self.zeros = tzeros(*zzz)
                 self.poles = np.linalg.eigvals(zzz[0])
 
@@ -809,16 +809,27 @@ class Transfer:
                 # OK, it is a list then is it a list of lists? 
                 if all([isinstance(x,list) for x in numden]):
                     if verbose: print('I found a list that has only lists')
+
+                    # number of columns in each row (m is a list)
+                    m = [len(numden[ind]) for ind in range(len(numden))]
+                    # number of rows (p is an integer)
+                    p = len(numden)
+                    if len(m) == 1 and m[0] == 1 and p == 1:
+                        if verbose:
+                            print('The list of lists actually contains '
+                                  'a single element\nStripped off '
+                                  'the lists and converted '
+                                  'to a numpy array.')
+                        returned_numden_list[numden_index] = np.atleast_2d(
+                                                numden[0]).astype(float)
+                        continue
+
                     # It is a list of lists so the context is MIMO
                     MIMO_flags[numden_index] = True
                     
                     # Now try to regularize the entries to numpy arrays
                     # or complain explicitly
 
-                    # number of columns in each row (m is a list)
-                    m = [len(numden[ind]) for ind in range(len(numden))]
-                    # number of rows (p is an integer)
-                    p = len(numden)
 
                     # Check if the number of elements are consistent
                     if max(m) == min(m):
@@ -905,7 +916,6 @@ class Transfer:
         # End of the num, den for loop
         # =============================
 
-
         # Now we have regularized and also derived the context for 
         # both numerator and the denominator. Finally a decision 
         # can be made about the intention of the user. 
@@ -921,13 +931,13 @@ class Transfer:
             # Since MIMO is flagged in both, we expect to have 
             # list of lists in both entries. 
             num_shape = (
-                            len(returned_numden_list[0][0]),
-                            len(returned_numden_list[0])
+                            len(returned_numden_list[0]),
+                            len(returned_numden_list[0][0])
                         )
 
             den_shape = (
-                            len(returned_numden_list[1][0]),
-                            len(returned_numden_list[1])
+                            len(returned_numden_list[1]),
+                            len(returned_numden_list[1][0])
                         )
 
             if num_shape == den_shape:
@@ -1019,8 +1029,8 @@ class Transfer:
                                          'entries which is not allowed.')
                     
                     den_shape = (
-                                    len(returned_numden_list[1][0]),
-                                    len(returned_numden_list[1])
+                                    len(returned_numden_list[1]),
+                                    len(returned_numden_list[1][0])
                                 )                    
 
                     returned_numden_list[0] = [
@@ -1075,7 +1085,7 @@ class Transfer:
 
                 # Denominator is SISO
                 else:
-                    if verbose: print('den is siso')
+                    if verbose: print('num is mimo, den is siso')
                     # We have to check noncausal entries                     
                     # flatten den list of lists and compare the size 
                     den_deg = haroldtrimleftzeros(returned_numden_list[1]).size
@@ -1094,8 +1104,8 @@ class Transfer:
 
                     
                     num_shape = (
-                                    len(returned_numden_list[0][0]),
-                                    len(returned_numden_list[0])
+                                    len(returned_numden_list[0]),
+                                    len(returned_numden_list[0][0])
                                 )                    
 
                     returned_numden_list[1] = [
@@ -1144,8 +1154,6 @@ class Transfer:
 
         return num , den , shape , Gain_flag
         
-
-                
 
 #=======================================
 #=======================================
@@ -1831,7 +1839,11 @@ class State:
         else:
             return a,b,c,d,d.shape,Gain_flag
 
-
+#=======================================
+#=======================================
+# End of State Class
+#=======================================
+#=======================================
             
 
 # %% State <--> Transfer conversion
@@ -1955,17 +1967,20 @@ def statetotransfer(*state_or_abcd):
 
     #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
-def transfertostate(*tf_or_numden):
+def transfertostate(*tf_or_numden,output='system'):
+    if not output in ('system','matrices'):
+        raise ValueError('The output can either be "system" or "matrices".\n'
+                         'I don\'t know any option as "{0}"'.format(output))
+        
     # mildly check if we have a transfer,state, or (num,den)
     if len(tf_or_numden) > 1:
         num , den = tf_or_numden[:2]
         num,den,(p,m),it_is_gain = Transfer.validate_arguments(num,den)
-        
     elif isinstance(tf_or_numden,State):
         return tf_or_numden
     else:
         try:
-            G = tf_or_numden
+            G = tf_or_numden[0]
             num = G.num
             den = G.den
             m,p = G.NumberOfInputs,G.NumberOfOutputs
@@ -1979,7 +1994,6 @@ def transfertostate(*tf_or_numden):
 
     # Check if it is just a gain
     if it_is_gain:
-        # TODO: Finish State._isgain object property
         empty_size = max(m,p)
         A = np.empty((empty_size,empty_size))
         B = np.empty((empty_size,m))
@@ -2015,7 +2029,6 @@ def transfertostate(*tf_or_numden):
                 C = np.array(datanum[-1:0:-1],ndmin=2)
                 
             D = np.array([[NumOrEmpty]])
-
 
     else:# MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
 
@@ -2148,15 +2161,19 @@ def transfertostate(*tf_or_numden):
             
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
-            
+      
     try:# if the arg was a tf object
-        is_ct = tf_or_numden.SamplingSet is 'R'
+        is_ct = tf_or_numden[0].SamplingSet is 'R'
         if is_ct:
-            return A,B,C,D
+            return (A,B,C,D) if output=='matrices' else State(A,B,C,D)
         else:
-            return A,B,C,D,G.SamplingPeriod
+            return (A,B,C,D) if output=='matrices' else State(A,B,C,D,
+                                                            G.SamplingPeriod)
     except AttributeError:# the arg was num,den
-        return A,B,C,D    
+        return (A,B,C,D) if output=='matrices' else State(A,B,C,D)
+
+
+
 
 
 # %% Transmission zeros of a state space system
@@ -2174,6 +2191,7 @@ much faster than matlab.
 """
 
 def tzeros(A,B,C,D):
+    # TODO : Bad coding below, revisit !!!
     """
 
     Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
@@ -2239,7 +2257,7 @@ def tzeros_final_compress(A,B,C,D,n,p,m):
     return z
     
 def tzeros_reduce(A,B,C,D):
-    while True:
+    for x in range(A.shape[0]):# At most!
         p,m = np.shape(D)
         n,_ = np.shape(A)
         t=0
