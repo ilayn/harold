@@ -36,7 +36,7 @@ Burning issues are the documentation and enabling the `nosetest` framework and a
 ## Useful Links
 
 
- 1- There is already a almost-matured control toolbox which is led by Richard Murray et al. ([click for the Github page](https://github.com/python-control/python-control) ) and it can perform already most of the essential tasks. Hence, if you want to have something that resembles the basics of matlab control toolbox give it a try. 
+ 1- There is already an almost-matured control toolbox which is led by Richard Murray et al. ([click for the Github page](https://github.com/python-control/python-control) ) and it can perform already most of the essential tasks. Hence, if you want to have something that resembles the basics of matlab control toolbox give it a try. 
 
 `python-control` emulates the matlab syntax and usage (for a good reason considering the matlab users) which is something I really wish to leave behind completely. Over the years I truly hated that syntax but that's just me. Just to name a few, argument hopping thanks to `nargin,nargout` stuff, inconsistent (sometimes just stupid) error handling, weird amalgam of structs and cells usage... 
 
