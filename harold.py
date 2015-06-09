@@ -595,7 +595,30 @@ class Transfer:
                             '(yet).'.format(type(other).__name__))        
         
 
-    def __rmul__(self,other): return self * other
+    def __rmul__(self,other):
+        # Notice that if other is a State or Transfer, it will be handled 
+        # by other's __mul__() method. Hence we only take care of the 
+        # right multiplication of the scalars and arrays. Otherwise 
+        # rejection is executed
+        if isinstance(other,(int,float)):
+                return Transfer(np.ones((self._shape))*other,
+                                dt = self._SamplingPeriod) * self
+        elif isinstance(other,type(np.array([0.]))):
+            # It still might be a scalar inside an array
+            if other.size == 1:
+                return float(other) * self
+            elif self._shape[0] == other.shape[1]:
+                return Transfer(other,dt= self._SamplingPeriod) * self
+            else:
+                raise IndexError('Multiplication of systems requires their '
+                                'shape to match but the system shapes '
+                                'I got are {0} vs. {1}'.format(
+                                                    self._shape,other.shape))
+        else:
+            raise TypeError('I don\'t know how to multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__name__))
+
 
     # ================================================================
     # __getitem__ to provide input-output selection of a tf
