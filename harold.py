@@ -39,7 +39,7 @@ import scipy as sp
 from tabulate import tabulate
 from scipy.signal import deconvolve
 from itertools import zip_longest
-#import collections
+import collections
 #from copy import deepcopy
 
 # %% Module Definitions
@@ -1503,7 +1503,7 @@ class State:
                 # Now, we are sure that there are no empty arrays in the 
                 # system matrices hence concatenation should be OK. 
 
-                adda = blkdiag(self._a,other.a)
+                adda = blockdiag(self._a,other.a)
                 addb = np.vstack((self._b,other.b))
                 addc = np.hstack((self._c,other.c))
                 addd = self._d + other.d
@@ -1514,7 +1514,7 @@ class State:
 
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other,(int,float)):
-            return State(np.ones_like(self._shape),
+            return State(np.ones_like(self.d)*other,
                              dt = self._SamplingPeriod) + self
 
         elif isinstance(other,type(np.array([0.]))):
@@ -1606,7 +1606,7 @@ class State:
                 # Now, we are sure that there are no empty arrays in the 
                 # system matrices hence concatenation should be OK. 
 
-                multa = blkdiag(self._a,other.a)
+                multa = blockdiag(self._a,other.a)
                 multa[self._a.shape[1]:,:other.a.shape[0]] = self._b.dot(
                                                                     other.c)
                 multb = np.vstack((self._b.dot(other.d),other.b))
@@ -1861,15 +1861,15 @@ def statetotransfer(*state_or_abcd):
         return state_or_abcd
     else:
         try:
-            A,B,C,D = state_or_abcd.matrices
+            A,B,C,D = state_or_abcd[0].matrices
             m,p = G.NumberOfInputs,G.NumberOfOutputs
             it_is_gain = G._isgain
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
-                   ' Transfer, a State,\nor for (a,b,c,d) but'
+                   ' Transfer,\na State,or for (a,b,c,d) but'
                    ' none of them turned out to be the\ncase. Hence'
-                   ' I don\'t know how to convert this to a Transfer '
-                   'object.') 
+                   ' I don\'t know how to convert {0} to a Transfer '
+                   'object.'.format(type(state_or_abcd).__name__)) 
 
     if it_is_gain:
         return Transfer(D)
@@ -2019,16 +2019,17 @@ def transfertostate(*tf_or_numden,output='system'):
         else: 
             # Watch out for full cancellation !!
             NumOrEmpty , datanum = haroldpolydiv(num.flatten(),den.flatten())
-
+            
             # If all cancelled datanum is returned empty
             if datanum.size==0:
                 A = None
                 B = None
                 C = None
             else:
-                C = np.array(datanum[-1:0:-1],ndmin=2)
+                C = np.zeros((1,den.shape[1]-1))
+                C[0,:datanum.size] = datanum[::-1]
                 
-            D = np.array([[NumOrEmpty]])
+            D = np.atleast_2d(NumOrEmpty).astype(float)
 
     else:# MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
 
@@ -2069,8 +2070,6 @@ def transfertostate(*tf_or_numden,output='system'):
                     else:
                         D[x,y] = NumOrEmpty
                         num[x][y] = datanum
-#        for x in range(p):
-#            for y in range(m):
 
                 # Make the denominator entries monic
                 if den[x][y][0,0] != 1.:
@@ -2103,8 +2102,8 @@ def transfertostate(*tf_or_numden,output='system'):
             t1 , t2 = A , B
 
             for x in range(m-1):
-                A = blkdiag(A,t1)
-                B = blkdiag(B,t2)
+                A = blockdiag(A,t1)
+                B = blockdiag(B,t2)
             n = A.shape[0]
             C = np.zeros((p,n))
             k = 0
@@ -2148,8 +2147,8 @@ def transfertostate(*tf_or_numden,output='system'):
                 Atemp = haroldcompanion(den[0][x])
                 Btemp = np.zeros((Atemp.shape[0],1))
                 Btemp[-1] = 1.
-                A = blkdiag(A,Atemp)
-                B = blkdiag(B,Btemp)
+                A = blockdiag(A,Atemp)
+                B = blockdiag(B,Btemp)
 
             n = A.shape[0]
             C = np.zeros((p,n))
@@ -2164,6 +2163,10 @@ def transfertostate(*tf_or_numden,output='system'):
       
     try:# if the arg was a tf object
         is_ct = tf_or_numden[0].SamplingSet is 'R'
+        print(A)
+        print(B)
+        print(C)
+        print(D)
         if is_ct:
             return (A,B,C,D) if output=='matrices' else State(A,B,C,D)
         else:
@@ -2246,7 +2249,7 @@ def tzeros_final_compress(A,B,C,D,n,p,m):
 
     _,_,v = np.linalg.svd(np.hstack((D,C)),full_matrices=True)
     T = np.hstack((A,B)).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
-    S = blkdiag(
+    S = blockdiag(
             np.eye(n),
             np.zeros((p,m))
             ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
@@ -2278,10 +2281,10 @@ def tzeros_reduce(A,B,C,D):
         mm = np.linalg.matrix_rank(Ct)
         vc = np.linalg.svd(Ct,full_matrices=True)[2]
         T = np.roll(vc.T,-mm,axis=1)
-        Sysmat = blkdiag(T,u).T.dot(
+        Sysmat = blockdiag(T,u).T.dot(
             np.vstack((
                 np.hstack((A,B)),np.hstack((C,D))
-            )).dot(blkdiag(T,np.eye(m)))
+            )).dot(blockdiag(T,np.eye(m)))
             )
         Sysmat = np.delete(Sysmat,np.s_[-t:],0)
         Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
@@ -2673,7 +2676,7 @@ def iscontrollable(G,B=None):
         else:
             return False
             
-    elif isinstance(G,(ss,tf)):
+    elif isinstance(G,(State,Transfer)):
         if ctrb(G)[2]==G.a.shape[0]:
             return True
         else:
@@ -2686,7 +2689,7 @@ def isobservable(G,C=None):
         else:
             return False
             
-    elif isinstance(G,(ss,tf)):
+    elif isinstance(G,(State,Transfer)):
         if obsv(G)[2]==G.a.shape[1]:
             return True
         else:
@@ -2783,8 +2786,6 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
                          'observer-Hessenberg form.')
     if form == 'o':
         A , B , C = A.T , C.T , B.T
-        
-
     
     n = A.shape[0]
     ub , sb , vb , m0 = haroldsvd(B,also_rank=True)
@@ -2800,7 +2801,6 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
     # After these, start the regular case
     if n > m0:# If it is not a square system with full rank B
 
-
         A0 = ub.T.dot(A.dot(ub))
 #        print(A0)
 
@@ -2811,7 +2811,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
         cble_block_indices = np.append(cble_block_indices,m0)
 
         if compute_T:
-            P = blkdiag(np.eye(n-ub.T.shape[0]),ub.T)
+            P = blockdiag(np.eye(n-ub.T.shape[0]),ub.T)
 
         # Since we deal with submatrices, we need to increase the
         # default tolerance to reasonably high values that are 
@@ -2840,12 +2840,12 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
             if 0 < m < h3.shape[0]:
                 cble_block_indices = np.append(cble_block_indices,m)
                 if compute_T:
-                    P = blkdiag(np.eye(n-uh3.shape[1]),uh3.T).dot(P)
+                    P = blockdiag(np.eye(n-uh3.shape[1]),uh3.T).dot(P)
                 A0[ROI_start:,ROI_start:] = np.r_[
                                     np.c_[h1,h2],
                                     np.c_[sh3.dot(vh3),uh3.T.dot(h4)]
                                     ]
-                A0 = A0.dot(blkdiag(np.eye(n-uh3.shape[1]),uh3))
+                A0 = A0.dot(blockdiag(np.eye(n-uh3.shape[1]),uh3))
                 # Clean up
                 A0[abs(A0) < tol_from_A ] = 0.
                 C0[abs(C0) < tol_from_A ] = 0.                
@@ -2880,7 +2880,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
         else:
             return A,B,C,cble_block_indices
 
-def canceldist(F,G):
+def canceldistance(F,G):
     """
     Given matrices F,G, computes the upper and lower bounds of 
     the perturbation needed to render the pencil [F-pI | G]
@@ -2955,7 +2955,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
      cancellations but the distance is less than the tolerance, 
      distance wins and the respective mode is removed. 
     
-    Uses canceldist(), and staircase() for the aforementioned checks. 
+    Uses canceldistance(), and staircase() for the aforementioned checks. 
     
     Parameters
     ----------
@@ -2963,7 +2963,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
         System matrices to be checked for minimality
     mu_tol: float (default 1-e6)
         The sensitivity threshold for the cancellation to be compared 
-        with the first default output of canceldist() function.
+        with the first default output of canceldistance() function.
 
     Returns
     -------
@@ -2984,8 +2984,8 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
             A , B , C = [(np.empty((1,0)))]*3
             break
         
-        kc = canceldist(A,B)[0]
-        ko = canceldist(A.T,C.T)[0]
+        kc = canceldistance(A,B)[0]
+        ko = canceldistance(A.T,C.T)[0]
         
         if min(kc,ko) > mu_tol: # no cancellation
             keep_looking= False
@@ -3026,7 +3026,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
                         run_out_of_states = True
                         break
                     else:
-                        kc_mod = canceldist(Ac_mod,Bc_mod)[0]
+                        kc_mod = canceldistance(Ac_mod,Bc_mod)[0]
 
                 kc = kc_mod
                 # Fake an iterable to fool the sum below
@@ -3047,7 +3047,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
                         run_out_of_states = True
                         break
                     else:
-                        ko_mod = canceldist(Ao_mod,Bo_mod)[0]
+                        ko_mod = canceldistance(Ao_mod,Bo_mod)[0]
 
                 
                 ko = ko_mod
@@ -3161,7 +3161,7 @@ def matrixslice(M,M11shape):
     
 # I don't understand how this is not implemented already
 #TODO : type checking.
-def blkdiag(*args):
+def blockdiag(*args):
     # Get the size info of the args
     try:
         diags = tuple([m.shape for m in args if m.size > 0])
@@ -3229,10 +3229,10 @@ def haroldlcm(*args):
     poppedargs = tuple([x for x in args if x.size>1])
     # Get the index number of the ones that are popped
     poppedindex = tuple([ind for ind,x in enumerate(args) if x.size==1])
-    a = blkdiag(*tuple(map(haroldcompanion,poppedargs))) # Companion A
+    a = blockdiag(*tuple(map(haroldcompanion,poppedargs))) # Companion A
     b = np.concatenate(tuple(map(lambda x: eyecolumn(x-1,-1),
                                  [z.size for z in poppedargs])))# Companion B
-    c = blkdiag(*tuple(map(lambda x: eyecolumn(x-1,0).T,
+    c = blockdiag(*tuple(map(lambda x: eyecolumn(x-1,0).T,
                                  [z.size for z in poppedargs])))
     n = a.shape[0]
 
@@ -3252,7 +3252,7 @@ def haroldlcm(*args):
     if i-1==n:# Relatively coprime
         temp2 =  np.linalg.inv(temp[:,:-1])# Every col until the last
     else:
-        temp2 = blkdiag(np.linalg.inv(temp[:i-1,:i-1]),np.eye(n+1-i))
+        temp2 = blockdiag(np.linalg.inv(temp[:i-1,:i-1]),np.eye(n+1-i))
     
 
     lcmpoly= temp2.dot(-temp)[:i-1,-1]
@@ -3293,7 +3293,7 @@ def haroldlcm(*args):
     Middle three lines take the respective element of b vector and multiplies
     the column of list of lists. Hence we actually obtain
     
-                adj(sI-A_lcm) * blkdiag(B_lcm)
+                adj(sI-A_lcm) * blockdiag(B_lcm)
     
     The resulting row entries are added to each other to get adj(sI-A)*B_lcm
     Finally, since we now have a single column we can treat polynomial
@@ -3575,3 +3575,4 @@ def haroldpolydiv(dividend,divisor):
     return h_factor , h_remainder
 
 # %% Plotting - Frequency Domain
+# def frequencyresponse(sys_or_tuple):
