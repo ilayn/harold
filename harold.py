@@ -176,6 +176,9 @@ class Transfer:
 
     @property
     def shape(self): return self._shape
+        
+    @property
+    def polynomials(self): return self._num,self._den
 
     @property
     def DiscretizedWith(self): 
@@ -648,7 +651,8 @@ class Transfer:
             desc_text = 'Continous-Time Transfer function with:\n'
         else:
             desc_text = ('Discrete-Time Transfer function with: '
-                  'sampling time: {0:.3f} \n'.format(float(self.SamplingPeriod)))
+                  'sampling time: {0:.3f} \n'.format(
+                                      float(self.SamplingPeriod)))
 
         desc_text += (' {0} input(s) and {1} output(s)\n'.format(
                                                     self.NumberOfInputs,
@@ -898,7 +902,7 @@ class Transfer:
             # as an entry of a SISO Transfer. 
             elif isinstance(numden,(int,float)):
                 if verbose: print('I found only a float')
-                returned_numden_list[numden_index] = np.atleast_2d(float(numden))
+                returned_numden_list[numden_index]=np.atleast_2d(float(numden))
                 Gain_flags[numden_index] = True
                 
             # Neither list of lists, nor lists nor int,floats
@@ -1853,7 +1857,10 @@ class State:
 # Pertranspose the system, do the same to get the o'ble part of the c'ble part
 # Then iterate over all row/cols of B and C to get SISO TFs via c(sI-A)b+d
 
-def statetotransfer(*state_or_abcd):
+def statetotransfer(*state_or_abcd,output='system'):
+    if not output in ('system','matrices'):
+        raise ValueError('The output can either be "system" or "matrices".\n'
+                         'I don\'t know any option as "{0}"'.format(output))    
     # mildly check if we have a transfer,state, or (num,den)
     if len(state_or_abcd) > 1:
         A,B,C,D,(p,m),it_is_gain = State.validate_arguments(state_or_abcd[:4])
@@ -1874,27 +1881,12 @@ def statetotransfer(*state_or_abcd):
     if it_is_gain:
         return Transfer(D)
     
-    if not iscontrollable(A,B):
-        T,rco = ctrb(A,B)[1:]
-        A = T.T.dot(A.dot(T))[:rco,:rco]
-        B = T.T.dot(B)[:rco,:]
-        C = C.dot(T)[:,:rco]
+    A,B,C = minimalrealization(A,B,C)
 
     if A.size == 0:
         return D,np.ones_like(D)
     
     n = A.shape[0]
-
-
-
-    if not isobservable(G):
-        S,rob = obsv(A,C)[1:]
-#            _,_,S = np.linalg.svd(Cob)
-        A = (S.T).dot(A.dot(S))[:rob,:rob]
-        B = (S.T).dot(B)[:rob,:]
-        C = C.dot(S)[:,:rob]
-    if A.size == 0:
-        return D,np.ones_like(D)
 
     p,m = C.shape[0],B.shape[1]
     n = np.shape(A)[0]
@@ -1960,17 +1952,25 @@ def statetotransfer(*state_or_abcd):
         num_list = num_list[0][0]
         den_list = den_list[0][0]
 
-    if G.SamplingSet == 'R':
-        return num_list, den_list
-    else:
-        return num_list, den_list , G.SamplingPeriod
+    try:# if the arg was a tf object
+        is_ct = state_or_abcd[0].SamplingSet is 'R'
+        if is_ct:
+            return (num_list,den_list) if output=='polynomials' else Transfer(
+                                                        num_list,den_list)
+        else:
+            return (num_list,den_list) if output=='polynomials' else Transfer(
+                                        num_list,den_list,G.SamplingPeriod)
+    except AttributeError:# the arg was num,den
+        return (A,B,C,D) if output=='polynomials' else Transfer(num_list,
+                                                                    den_list)
+
 
     #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
 def transfertostate(*tf_or_numden,output='system'):
-    if not output in ('system','matrices'):
-        raise ValueError('The output can either be "system" or "matrices".\n'
-                         'I don\'t know any option as "{0}"'.format(output))
+    if not output in ('system','polynomials'):
+        raise ValueError('The output can either be "system" or "polynomials".'
+                         '\nI don\'t know any option as "{0}"'.format(output))
         
     # mildly check if we have a transfer,state, or (num,den)
     if len(tf_or_numden) > 1:
@@ -2163,10 +2163,6 @@ def transfertostate(*tf_or_numden,output='system'):
       
     try:# if the arg was a tf object
         is_ct = tf_or_numden[0].SamplingSet is 'R'
-        print(A)
-        print(B)
-        print(C)
-        print(D)
         if is_ct:
             return (A,B,C,D) if output=='matrices' else State(A,B,C,D)
         else:
