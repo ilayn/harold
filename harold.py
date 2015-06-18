@@ -498,8 +498,10 @@ class Transfer:
 
                 if self._isSISO:
                     return Transfer(
-                            haroldpolymul(self._num,other.num),
-                            haroldpolymul(self._den,other.den),
+                            haroldpolymul(self._num.flatten(),
+                                          other.num.flatten()),
+                            haroldpolymul(self._den.flatten(),
+                                          other.den.flatten()),
                             dt = self._SamplingPeriod)
                 else:
                     # Bah.. Here we go!
@@ -604,6 +606,9 @@ class Transfer:
         # right multiplication of the scalars and arrays. Otherwise 
         # rejection is executed
         if isinstance(other,(int,float)):
+            if self._isSISO:
+                return Transfer(other,dt = self._SamplingPeriod) * self
+            else:                    
                 return Transfer(np.ones((self._shape))*other,
                                 dt = self._SamplingPeriod) * self
         elif isinstance(other,type(np.array([0.]))):
