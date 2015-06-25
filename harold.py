@@ -515,7 +515,6 @@ class Transfer:
                     t_k = self._m
                     t_m = other.shape[1]
                 
-                
                     newnum = [[None]*t_m for n in range(t_p)] 
                     newden = [[None]*t_m for n in range(t_p)]
                     
@@ -550,19 +549,17 @@ class Transfer:
                             # for all elements in row/col multiplication
                             for elem in range(t_k):
 
-                                t_num = haroldpolymul(self._num[t_p][t_k],
-                                                      other.num[t_k][t_m])
+                                t_num = haroldpolymul(self._num[row][elem],
+                                                      other.num[elem][col])
 
-                                t_den = haroldpolymul(self._den[t_p][t_k],
-                                                      other.den[t_k][t_m])
+                                t_den = haroldpolymul(self._den[row][elem],
+                                                      other.den[elem][col])
                                 
                                 t_G += Transfer(t_num,t_den)
-                                
                             # Add the resulting arrays to the containers.
-                            newnum[t_p][t_m] = t_G.num
-                            newden[t_p][t_m] = t_G.den
-                            
-                            
+                            newnum[row][col] = t_G.num
+                            newden[row][col] = t_G.den
+
                     # If the resulting shape is SISO, strip off the lists
                     if (t_p,t_m) == (1,1):
                         newnum = newnum[0][0]
@@ -1863,7 +1860,7 @@ class State:
 # Then iterate over all row/cols of B and C to get SISO TFs via c(sI-A)b+d
 
 def statetotransfer(*state_or_abcd,output='system'):
-    if not output in ('system','matrices'):
+    if not output in ('system','polynomials'):
         raise ValueError('The output can either be "system" or "matrices".\n'
                          'I don\'t know any option as "{0}"'.format(output))    
     # mildly check if we have a transfer,state, or (num,den)
@@ -1973,7 +1970,7 @@ def statetotransfer(*state_or_abcd,output='system'):
     #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
 def transfertostate(*tf_or_numden,output='system'):
-    if not output in ('system','polynomials'):
+    if not output in ('system','matrices'):
         raise ValueError('The output can either be "system" or "polynomials".'
                          '\nI don\'t know any option as "{0}"'.format(output))
         
@@ -2068,8 +2065,8 @@ def transfertostate(*tf_or_numden,output='system'):
                     # Case 3: If all cancelled datanum is returned empty
                     if datanum.size==0:
                         D[x,y] = NumOrEmpty
-                        num[x][y] = np.array([0.])
-                        den[x][y] = np.array([1.])
+                        num[x][y] = np.atleast_2d([[0.]])
+                        den[x][y] = np.atleast_2d([[1.]])
                         
                     # Case 1: Proper case
                     else:
@@ -2139,8 +2136,14 @@ def transfertostate(*tf_or_numden,output='system'):
                 lcm,mults = haroldlcm(*coldens[x])
                 for y in range(p):
                     den[y][x] = lcm
-                    num[y][x] = haroldpolymul(num[y][x].flatten(),mults[y],
-                                                        trimzeros=False)
+                    num[y][x] = np.atleast_2d(
+                                    haroldpolymul(
+                                        num[y][x].flatten(),mults[y],
+                                        trimzeros=False
+                                    )
+                                )
+                    # if completely zero, then trim to single entry
+                    num[y][x] = np.atleast_2d(haroldtrimleftzeros(num[y][x]))
 
             coldegrees = [x.size-1 for x in den[0]]
 
@@ -3349,7 +3352,9 @@ def haroldgcd(*args):
     be given as numpy.array([1,0,5])
     
     Returns a numpy array holding the polynomial coefficients
-    of GCD. 
+    of GCD. The GCD does not cancel scalars but only monic roots.
+    In other words, the GCD of polynomials 2 and 2s+4 is computed
+    as 1. 
     
     Example: 
     
@@ -3377,43 +3382,68 @@ def haroldgcd(*args):
     if not all([isinstance(x,type(np.array([0]))) for x in args]):
         raise TypeError('Some arguments are not numpy arrays for GCD')
 
-    
-    lefttrimmed_args = list(map(haroldtrimleftzeros,args))
-    deglist = np.array([len(x) for x in lefttrimmed_args])
-    maxdeg = max(deglist)
-    maxdegindex = next(
-        ind for ind,x in enumerate(lefttrimmed_args) if len(x)==maxdeg
-        )
+    not_1d_err_msg = ('GCD computations require explicit 1D '
+                     'numpy arrays or\n2D but having one of '
+                     'the dimensions being 1 e.g., (n,1) or (1,n)\narrays.')
     try:
-        secondmaxdeg = max(deglist[deglist<maxdeg])
-    except ValueError:# all degrees are the same?
-        if not all(deglist-maxdeg):
-            secondmaxdeg = maxdeg
-        else:
-            raise TypeError("Something is wrong with the array"
-                            "lengths in GCD.")
+        regular_args = [haroldtrimleftzeros(
+                            np.atleast_1d(np.squeeze(x)).astype(float)
+                            ) for x in args]
+    except:
+        raise ValueError(not_1d_err_msg)
+    
+    try:
+        dimension_list = [x.ndim for x in regular_args]
+    except AttributeError:
+        raise ValueError(not_1d_err_msg)
+
+    # do we have 2d elements? 
+    if max(dimension_list) > 1:
+        raise ValueError(not_1d_err_msg)
         
-            
-    n,p,m = maxdeg-1,secondmaxdeg-1,len(args)-1
+    degree_list = np.array([x.size - 1 for x in regular_args])
+    max_degree = np.max(degree_list)
+    max_degree_index = np.argmax(degree_list)
     
-    S = np.c_[
-            np.array([lefttrimmed_args.pop(maxdegindex)]*p),
-            np.zeros((p,p-1))
-            ]
+    try:
+        # There are polynomials of lesser degree
+        second_max_degree = np.max(degree_list[degree_list<max_degree])
+    except ValueError:
+        # all degrees are the same 
+        second_max_degree = max_degree
+
+
+    n , p , h = max_degree , second_max_degree , len(regular_args) - 1
+
+    # If a single item is passed then return it back
+    if h == 0:
+        return regular_args[0]
     
+    if n == 0:
+        return np.array([1])
+
+    if n > 0 and p==0:
+        return regular_args.pop(max_degree_index)
+
+        
+    # pop out the max degree polynomial and zero pad 
+    # such that we have n+m columns
+    S = np.array([np.hstack((
+            regular_args.pop(max_degree_index),
+            np.zeros((1,p-1)).squeeze()
+            ))]*p)
+    
+    # Shift rows to the left
     for rows in range(S.shape[0]):
         S[rows] = np.roll(S[rows],rows)
 
-    for poly in lefttrimmed_args:
-
-        temp = np.c_[
-                 np.array([poly]*n),
-                 np.zeros((n,n+p-len(poly)))
-                 ]
-        for rows in range(temp.shape[0]):
-            temp[rows] = np.roll(temp[rows],rows)
-
-        S = np.r_[S,temp]
+    # do the same to the remaining ones inside the regular_args
+    
+    for item in regular_args:
+        _ = np.array([np.hstack((item,[0]*(n+p-item.size)))]*(n+p-item.size+1))
+        for rows in range(_.shape[0]):
+            _[rows] = np.roll(_[rows],rows)
+        S = np.r_[S,_]
 
     rank_of_sylmat = np.linalg.matrix_rank(S)
     
@@ -3497,7 +3527,7 @@ def haroldtrimleftzeros(somearray):
         except StopIteration:
             return np.array(somearray[::])
     else:
-        return np.array([])
+        return np.array([0.])
         
         
 def haroldpoly(rootlist):
@@ -3551,13 +3581,24 @@ def haroldpolymul(*args,trimzeros=True):
     
     
     """
+    # Make sure we have 1D arrays for convolution
+
+            
+    
     if trimzeros:
         trimmedargs = tuple(map(haroldtrimleftzeros,args))
     else:
         trimmedargs = args
+        
     p = trimmedargs[0]
+
     for x in trimmedargs[1:]:
-        p = np.convolve(p,x)
+        try:
+            p = np.convolve(p,x)
+        except ValueError:
+            p = np.convolve(p.flatten(),x.flatten())
+
+
     return p
     
 def haroldpolydiv(dividend,divisor):
