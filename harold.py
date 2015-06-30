@@ -1871,8 +1871,8 @@ def statetotransfer(*state_or_abcd,output='system'):
     else:
         try:
             A,B,C,D = state_or_abcd[0].matrices
-            m,p = G.NumberOfInputs,G.NumberOfOutputs
-            it_is_gain = G._isgain
+            p,m = state_or_abcd[0].shape
+            it_is_gain = state_or_abcd[0]._isgain
         except AttributeError: 
             raise TypeError('I\'ve checked the argument for being a' 
                    ' Transfer,\na State,or for (a,b,c,d) but'
@@ -2198,7 +2198,6 @@ much faster than matlab.
 """
 
 def tzeros(A,B,C,D):
-    # TODO : Bad coding below, revisit !!!
     """
 
     Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
@@ -2213,90 +2212,89 @@ def tzeros(A,B,C,D):
 
 
     """    
-    
-    n,_ = np.shape(A)
-    p,m = np.shape(D)
+    n , (p , m) = np.shape(A)[0] , np.shape(D)
     r = np.linalg.matrix_rank(D)
-    if n < 1:
-        z = np.zeros((0,1))
+#    if n < 1:
+#        z = np.zeros((0,1))
         
     if (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
-        z = tzeros_final_compress(A,B,C,D,n,p,m)
+        z = _tzeros_final_compress(A,B,C,D,n,p,m)
         return z
     else:# Reduction needed
         if r == p:
             Ar,Br,Cr,Dr = (A,B,C,D)
         else:
-            Ar,Br,Cr,Dr = tzeros_reduce(A,B,C,D)
+            Ar,Br,Cr,Dr = _tzeros_reduce(A,B,C,D)
 
         # Are we done ? 
-        if p!=m: # Square and full rank. Done! Otherwise:
-            Arc,Brc,Crc,Drc = tzeros_reduce(Ar.T,Cr.T,Br.T,Dr.T)
+        # We either have full zero [C D] rows 
+        # or square D then we are. 
+        # otherwise pertranspose the system
+        n , (p , m) = np.shape(Ar)[0] , np.shape(Dr)
+
+        if np.count_nonzero(np.c_[Cr,Dr])==0 or p != m:
+            Arc,Crc,Brc,Drc = _tzeros_reduce(Ar.T,Cr.T,Br.T,Dr.T)
+            Arc,Crc,Brc,Drc = Arc.T,Crc.T,Brc.T,Drc.T
         else:
             Arc,Brc,Crc,Drc = (Ar,Br,Cr,Dr)
-        
-        n,_ = np.shape(Arc)
-        p,m = np.shape(Drc)
+
+        n , (p , m) = np.shape(Arc)[0] , np.shape(Drc)
+
         if n!=0:# Are there any state left to compute zeros for? 
-            z = tzeros_final_compress(Arc,Brc,Crc,Drc,n,p,m)
+            z = _tzeros_final_compress(Arc,Brc,Crc,Drc,n,p,m)
         else:# No zeros --> Empty array
             z = np.zeros((0,1))
         return z
         
-def tzeros_final_compress(A,B,C,D,n,p,m):
+def _tzeros_final_compress(A,B,C,D,n,p,m):
     """
     Internal command for finding the Schur form of a full rank and 
     row/column compressed C,D pair. 
     
     TODO: Clean up the numerical noise and switch to Householder 
+
+    TODO : Occasionally z will include 10^15-10^16 entries instead of 
+    infinite zeros. Decide on a reasonable bound to discard.
     """     
 
-    _,_,v = np.linalg.svd(np.hstack((D,C)),full_matrices=True)
+    v = haroldsvd(np.hstack((D,C)))[-1]
     T = np.hstack((A,B)).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
     S = blockdiag(
             np.eye(n),
             np.zeros((p,m))
             ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
-    a,b,_,_ = sp.linalg.qz(S[:n,:n],T[:n,:n],output='complex')
+    a,b = sp.linalg.qz(S[:n,:n],T[:n,:n],output='complex')[:2]
     z = np.diag(b)/np.diag(a)
-    # TODO : Occasionally z will include 10^15-10^16 entries instead of 
-    # infinite zeros. Decide on a reasonable bound to discard.
+
     return z
     
-def tzeros_reduce(A,B,C,D):
+def _tzeros_reduce(A,B,C,D):
+    """
+    Basic deflation loop until we get a full row rank feedthrough matrix. 
+    
+    """
     for x in range(A.shape[0]):# At most!
-        p,m = np.shape(D)
-        n,_ = np.shape(A)
-        t=0
-        u,s,v = haroldsvd(D)
-        u = np.real(u)
+#        print('Ye',A)
+        n , (p , m) = np.shape(A)[0] , np.shape(D)
+        u,s,v,r = haroldsvd(D,also_rank=True)
+
         Dt = s.dot(v)
-        for i in np.arange(p,0,-1):
-            if np.all(Dt[i-1,]==0):
-                t = t+1;
-                continue
-            else:
-                break
-        if t == 0:
-            Ar=A;Br=B;Cr=C;Dr=D;
-            break
         Ct = u.T.dot(C)
-        Ct = Ct[-t:,]
-        mm = np.linalg.matrix_rank(Ct)
-        vc = np.linalg.svd(Ct,full_matrices=True)[2]
+        Ct = Ct[r-p:,]
+
+        vc , mm = haroldsvd(Ct,also_rank=True)[2:]
+
         T = np.roll(vc.T,-mm,axis=1)
         Sysmat = blockdiag(T,u).T.dot(
             np.vstack((
                 np.hstack((A,B)),np.hstack((C,D))
             )).dot(blockdiag(T,np.eye(m)))
             )
-        Sysmat = np.delete(Sysmat,np.s_[-t:],0)
+        Sysmat = np.delete(Sysmat,np.s_[r-p:],0)
         Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
-        A = Sysmat[:n-mm,:n-mm]
-        B = Sysmat[:n-mm,n-mm:]
-        C = Sysmat[n-mm:,:n-mm]
-        D = Sysmat[n-mm:,n-mm:]
-        if A.size==0:
+        A,B,C,D = matrixslice(Sysmat,(n-mm,n-mm))
+
+        if A.size==0 or np.count_nonzero(np.c_[C,D])==0:
             break
     return A,B,C,D
 
@@ -3581,10 +3579,9 @@ def haroldpolymul(*args,trimzeros=True):
     
     
     """
-    # Make sure we have 1D arrays for convolution
+    # TODO: Make sure we have 1D arrays for convolution
+    # numpy convolve is too picky.
 
-            
-    
     if trimzeros:
         trimmedargs = tuple(map(haroldtrimleftzeros,args))
     else:
@@ -3617,4 +3614,52 @@ def haroldpolydiv(dividend,divisor):
     return h_factor , h_remainder
 
 # %% Plotting - Frequency Domain
-# def frequencyresponse(sys_or_tuple):
+
+def frequency_response(G):
+    """
+    Computes the frequency response matrix of a State() or Transfer()
+    object. Transfer matrices are converted to state representations
+    before the computations. The system representations are always 
+    checked for minimality and, if any, unobservable/uncontrollable 
+    modes are removed.
+    
+    It uses the rank-1 update algorithm described in their paper:
+    Misra, Patel SIMAX Vol.9(2), 1988
+    
+    """
+#    if freq_unit not in ('Hz','rad/s'):
+#        raise ValueError('I can only handle "Hz" and "rad/s" as '
+#                         'frequency units.')
+     
+    if G._isSISO:
+        a , b , c = minimalrealization(G.a,G.b,G.c)
+        a , b , c = staircase(a,b,c,invert=True,form='o')[:-1]
+#        a , b , c = G.a,G.b,G.c
+        n = a.shape[0]
+        num_of_freq = 1000
+        w = np.logspace(-4,4,num_of_freq)
+        freq_resp_array = np.empty_like(w,dtype='complex')
+        iw_I = np.diag([1j]*n)
+
+        for ind , freq in enumerate(w):
+
+            u_orig = sp.linalg.lu(
+                            freq * iw_I - a,
+                            overwrite_a=True,
+                            check_finite=False,
+                            permute_l=False)[2]
+
+            u_mod = sp.linalg.lu(
+                            np.hstack(((freq * iw_I - a)[:,:-1],b)),
+                            overwrite_a=True,
+                            check_finite=False,
+                            permute_l=False)[2]
+            
+            freq_resp_array[ind] = u_mod[n-1,n-1] / u_orig[n-1,n-1] * c[0,-1]
+        
+        freq_resp_array += G.d[0,0] * np.ones_like(freq_resp_array)
+    else:
+        raise NotImplementedError('MIMO frequency responses are on its way')
+    
+    return freq_resp_array , w
+
