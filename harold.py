@@ -40,11 +40,11 @@ from tabulate import tabulate
 from scipy.signal import deconvolve
 from itertools import zip_longest
 import collections
-#from copy import deepcopy
+
 
 # %% Module Definitions
 
-KnownDiscretizationMethods = ('bilinear',
+_KnownDiscretizationMethods = ('bilinear',
                               'tustin',
                               'zoh',
                               'forward difference',
@@ -272,7 +272,7 @@ class Transfer:
 
     @DiscretizedWith.setter
     def DiscretizedWith(self,value):
-        if value in KnownDiscretizationMethods:
+        if value in _KnownDiscretizationMethods:
             if self.SamplingSet == 'R':
                 raise ValueError('This model is not discretized yet '
                                 'hence you cannot define a method for'
@@ -1376,7 +1376,7 @@ class State:
 
     @DiscretizedWith.setter
     def DiscretizedWith(self,value):
-        if value in KnownDiscretizationMethods:
+        if value in _KnownDiscretizationMethods:
             if self.SamplingSet == 'R':
                 raise ValueError('This model is not discretized yet '
                                 'hence you cannot define a method for'
@@ -2214,8 +2214,6 @@ def tzeros(A,B,C,D):
     """    
     n , (p , m) = np.shape(A)[0] , np.shape(D)
     r = np.linalg.matrix_rank(D)
-#    if n < 1:
-#        z = np.zeros((0,1))
         
     if (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
         z = _tzeros_final_compress(A,B,C,D,n,p,m)
@@ -2225,11 +2223,7 @@ def tzeros(A,B,C,D):
             Ar,Br,Cr,Dr = (A,B,C,D)
         else:
             Ar,Br,Cr,Dr = _tzeros_reduce(A,B,C,D)
-
-        # Are we done ? 
-        # We either have full zero [C D] rows 
-        # or square D then we are. 
-        # otherwise pertranspose the system
+        
         n , (p , m) = np.shape(Ar)[0] , np.shape(Dr)
 
         if np.count_nonzero(np.c_[Cr,Dr])==0 or p != m:
@@ -2240,11 +2234,43 @@ def tzeros(A,B,C,D):
 
         n , (p , m) = np.shape(Arc)[0] , np.shape(Drc)
 
-        if n!=0:# Are there any state left to compute zeros for? 
+        if n!=0:
             z = _tzeros_final_compress(Arc,Brc,Crc,Drc,n,p,m)
-        else:# No zeros --> Empty array
+        else:
             z = np.zeros((0,1))
         return z
+
+def _tzeros_reduce(A,B,C,D):
+    """
+    Basic deflation loop until we get a full row rank feedthrough matrix. 
+    """
+    for x in range(A.shape[0]):# At most!
+        n , (p , m) = np.shape(A)[0] , np.shape(D)
+        u,s,v,r = haroldsvd(D,also_rank=True)
+        # Do we have full rank D already? 
+        if r == D.shape[0]:
+            break
+        
+        Dt = s.dot(v)
+        Ct = u.T.dot(C)[r-p:,]
+
+        vc , mm = haroldsvd(Ct,also_rank=True)[2:]
+        T = np.roll(vc.T,-mm,axis=1)
+        
+        Sysmat = blockdiag(T,u).T.dot(
+            np.vstack((
+                np.hstack((A,B)),np.hstack((C,D))
+            )).dot(blockdiag(T,np.eye(m)))
+            )
+
+        Sysmat = np.delete(Sysmat,np.s_[r-p:],0)
+        Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
+
+        A,B,C,D = matrixslice(Sysmat,(n-mm,n-mm))
+        if A.size==0 or np.count_nonzero(np.c_[C,D])==0:
+            break
+    return A,B,C,D
+
         
 def _tzeros_final_compress(A,B,C,D,n,p,m):
     """
@@ -2267,37 +2293,6 @@ def _tzeros_final_compress(A,B,C,D,n,p,m):
     z = np.diag(b)/np.diag(a)
 
     return z
-    
-def _tzeros_reduce(A,B,C,D):
-    """
-    Basic deflation loop until we get a full row rank feedthrough matrix. 
-    
-    """
-    for x in range(A.shape[0]):# At most!
-#        print('Ye',A)
-        n , (p , m) = np.shape(A)[0] , np.shape(D)
-        u,s,v,r = haroldsvd(D,also_rank=True)
-
-        Dt = s.dot(v)
-        Ct = u.T.dot(C)
-        Ct = Ct[r-p:,]
-
-        vc , mm = haroldsvd(Ct,also_rank=True)[2:]
-
-        T = np.roll(vc.T,-mm,axis=1)
-        Sysmat = blockdiag(T,u).T.dot(
-            np.vstack((
-                np.hstack((A,B)),np.hstack((C,D))
-            )).dot(blockdiag(T,np.eye(m)))
-            )
-        Sysmat = np.delete(Sysmat,np.s_[r-p:],0)
-        Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
-        A,B,C,D = matrixslice(Sysmat,(n-mm,n-mm))
-
-        if A.size==0 or np.count_nonzero(np.c_[C,D])==0:
-            break
-    return A,B,C,D
-
 
 # %% Continous - Discrete Conversions
 
@@ -2496,7 +2491,7 @@ def __discretize(T,dt,method,PrewarpAt,q):
     else:
         raise ValueError('I don\'t know that discretization method. But '
                         'I know {0} methods.'
-                        ''.format(KnownDiscretizationMethods)
+                        ''.format(_KnownDiscretizationMethods)
                         )
                         
     return Ad , Bd , Cd , Dd , dt
@@ -2696,22 +2691,6 @@ def isobservable(G,C=None):
             return True
         else:
             return False
-
-def kalmandecomposition(G):
-    """
-    pass
-    """    
-    
-#    #TODO : Type checking
-#    if iscontrollable(G):
-#        if isobservable(G):
-#            T = np.eye(G.a.shape[0])
-#            Gd = G
-#        else:
-#            pass
-#        # How to copy the whole ss object by just changing the ABCD data? 
-#    return Gd,T
-
 
         
 # %% Linear algebra ops
@@ -2944,7 +2923,7 @@ def canceldistance(F,G):
 
 
 
-def minimalrealization(A,B,C,mu_tol=1e-6):
+def minimalrealization(A,B,C,mu_tol=1e-9):
     """
     Given state matrices A,B,C computes minimal state matrices 
     such that the system is controllable and observable within the
@@ -2988,7 +2967,7 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
         
         kc = canceldistance(A,B)[0]
         ko = canceldistance(A.T,C.T)[0]
-        
+
         if min(kc,ko) > mu_tol: # no cancellation
             keep_looking= False
         else:
@@ -3016,23 +2995,26 @@ def minimalrealization(A,B,C,mu_tol=1e-6):
              We don't regret this. This is sparta.
             """
             
-            if (sum(blocks_c) == n and kc <= mu_tol):
-                Ac_mod , Bc_mod , Cc_mod , kc_mod = Ac,Bc,Cc,kc
-
-                while kc_mod <= mu_tol:# Until cancel dist gets big
-                    Ac_mod,Bc_mod,Cc_mod = (
-                            Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1])
-                            
-                    if Ac_mod.size == 0:
-                        A , B , C = [(np.empty((1,0)))]*3
-                        run_out_of_states = True
-                        break
-                    else:
-                        kc_mod = canceldistance(Ac_mod,Bc_mod)[0]
-
-                kc = kc_mod
-                # Fake an iterable to fool the sum below
-                blocks_c = [sum(blocks_c)-Acm.shape[0]]
+            # If unobservability distance is closer, let it handle first
+            if ko>=kc:
+                if (sum(blocks_c) == n and kc <= mu_tol):
+                    Ac_mod , Bc_mod , Cc_mod , kc_mod = Ac,Bc,Cc,kc
+    
+                    while kc_mod <= mu_tol:# Until cancel dist gets big
+                        Ac_mod,Bc_mod,Cc_mod = (
+                                Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1])
+                                
+                        if Ac_mod.size == 0:
+                            A , B , C = [(np.empty((1,0)))]*3
+                            run_out_of_states = True
+                            break
+                        else:
+                            kc_mod = canceldistance(Ac_mod,Bc_mod)[0]
+                            print('hey',kc_mod)
+    
+                    kc = kc_mod
+                    # Fake an iterable to fool the sum below
+                    blocks_c = [sum(blocks_c)-Ac_mod.shape[0]]
 
 
             # Same with the o'ble modes
@@ -3615,51 +3597,39 @@ def haroldpolydiv(dividend,divisor):
 
 # %% Plotting - Frequency Domain
 
-def frequency_response(G):
+def frequency_response(G,omega=None,high=None,low=None,samples=None,
+                       logspace=None,freq_unit='Hz'):
     """
     Computes the frequency response matrix of a State() or Transfer()
     object. Transfer matrices are converted to state representations
     before the computations. The system representations are always 
     checked for minimality and, if any, unobservable/uncontrollable 
     modes are removed.
-    
-    It uses the rank-1 update algorithm described in their paper:
-    Misra, Patel SIMAX Vol.9(2), 1988
-    
+
     """
-#    if freq_unit not in ('Hz','rad/s'):
-#        raise ValueError('I can only handle "Hz" and "rad/s" as '
-#                         'frequency units.')
-     
+    if freq_unit not in ('Hz','rad/s'):
+        raise ValueError('I can only handle "Hz" and "rad/s" as '
+                         'frequency units.')
+
+
+    num_of_freq = 10000
+    w = np.logspace(-4,4,num_of_freq,dtype='complex')
+    iw = 1j*w.flatten()
+    freq_resp_array = np.empty_like(iw,dtype='complex')
+
+
     if G._isSISO:
-        a , b , c = minimalrealization(G.a,G.b,G.c)
-        a , b , c = staircase(a,b,c,invert=True,form='o')[:-1]
 #        a , b , c = G.a,G.b,G.c
-        n = a.shape[0]
-        num_of_freq = 1000
-        w = np.logspace(-4,4,num_of_freq)
-        freq_resp_array = np.empty_like(w,dtype='complex')
-        iw_I = np.diag([1j]*n)
+#        a , b , c = minimalrealization(G.a,G.b,G.c)
+#        a , b , c = staircase(a,b,c,invert=True,form='o')[:-1]
+        Gtf = statetotransfer(G)
+ 
+        freq_resp_array = (np.polyval(Gtf.num[0],iw) /
+                                np.polyval(Gtf.den[0],iw)
+                                )
 
-        for ind , freq in enumerate(w):
 
-            u_orig = sp.linalg.lu(
-                            freq * iw_I - a,
-                            overwrite_a=True,
-                            check_finite=False,
-                            permute_l=False)[2]
-
-            u_mod = sp.linalg.lu(
-                            np.hstack(((freq * iw_I - a)[:,:-1],b)),
-                            overwrite_a=True,
-                            check_finite=False,
-                            permute_l=False)[2]
-            
-            freq_resp_array[ind] = u_mod[n-1,n-1] / u_orig[n-1,n-1] * c[0,-1]
-        
-        freq_resp_array += G.d[0,0] * np.ones_like(freq_resp_array)
     else:
         raise NotImplementedError('MIMO frequency responses are on its way')
     
     return freq_resp_array , w
-
