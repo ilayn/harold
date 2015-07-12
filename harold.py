@@ -2075,7 +2075,7 @@ def transfertostate(*tf_or_numden,output='system'):
                 if den[x][y][0,0] != 1.:
                     if np.abs(den[x][y][0,0])<1e-5:
                         print(
-                          'tf2ss Warning:\n The leading coefficient '
+                          'transfertostate Warning:\n The leading coefficient '
                           'of the ({0},{1}) denominator entry is too '
                           'small (<1e-5). Expect some nonsense in the '
                           'state space matrices.'.format(x,y),end='\n')
@@ -2295,27 +2295,27 @@ def _tzeros_final_compress(A,B,C,D,n,p,m):
 # %% Continous - Discrete Conversions
 
 def discretize(G,dt,method='tustin',PrewarpAt = 0.,q=None):
-    if not isinstance(G,(tf,ss)):
-        raise TypeError('I can only convert ss or tf objects but I '
+    if not isinstance(G,(Transfer,State)):
+        raise TypeError('I can only convert State or Transfer objects but I '
                         'found a \"{0}\" object.'.format(type(G).__name__)
                         )
     if G.SamplingSet == 'Z':
         raise TypeError('The argument is already modeled as a '
                         'discrete-time system.')
 
-    if isinstance(G,tf):
-        T = ss(*tf2ss(G))
+    if isinstance(G,Transfer):
+        T = transfertostate(G)
     else:
         T = G
 
     args = __discretize(T,dt,method,PrewarpAt,q)
 
-    if isinstance(G,ss):
-        Gd = ss(*args)
+    if isinstance(G,State):
+        Gd = State(*args)
         Gd.DiscretizedWith = method
     else:
-        Gss = ss(*args)
-        Gd = tf(*ss2tf(Gss))
+        Gss = State(*args)
+        Gd = statetotransfer(Gss)
         Gd.DiscretizedWith = method        
 
     if method =='lft':
@@ -2496,7 +2496,7 @@ def __discretize(T,dt,method,PrewarpAt,q):
 
 
 def undiscretize(G,OverrideWith = None):
-    if not isinstance(G,(tf,ss)):
+    if not isinstance(G,(Transfer,State)):
         raise TypeError('The argument is not transfer '
         'function or a state\nspace model.'
             )
@@ -2508,19 +2508,19 @@ def undiscretize(G,OverrideWith = None):
 
     args = __undiscretize(G)
 
-    if isinstance(G,ss):
-        Gc = ss(*args)
+    if isinstance(G,State):
+        Gc = State(*args)
     else:
-        Gss = ss(*args)
-        Gc = tf(*ss2tf(ss(*args)))
+        Gss = State(*args)
+        Gc = statetotransfer(State(Gss))
         
     return Gc
 
 
 def __undiscretize(G):
 
-    if isinstance(G,tf):
-        T = ss(*tf2ss(G))
+    if isinstance(G,Transfer):
+        T = transfertostate(G)
     else:
         T = G
 
@@ -3169,7 +3169,7 @@ def eyecolumn(width,nth=0):
 
 
 # %% Polynomial ops    
-def haroldlcm(*args):
+def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     """
     Takes n-many 1D numpy arrays and computes the numerical 
     least common multiple polynomial. The polynomials are
@@ -3241,86 +3241,81 @@ def haroldlcm(*args):
     # Add monic coefficient and flip
     lcmpoly= np.append(lcmpoly,1)[::-1]
     
-    # TODO: Below is the multipliers of entries to be completed to LCM.
-    # Decide whether this output should be optional or not
-    a_lcm = haroldcompanion(lcmpoly)
-    b_lcm = np.linalg.pinv(C[:c.shape[1],:-1]).dot(b)
-    c_lcm = c.dot(C[:c.shape[1],:-1])
-    
-    # adj(sI-A) formulas with A being a companion matrix
-    # We need an array container so back to list of lists
-    n_lcm = a_lcm.shape[0]
-    # Create a list of lists of lists with zeros
-    adjA = [[[0]*n_lcm for m in range(n_lcm)] for n in range(n_lcm)]
-
-    # looping fun
-    for x in range(n_lcm):
-        # Diagonal terms
-        adjA[x][x][:n_lcm-x] = list(lcmpoly[:n_lcm-x])
-        for y in range(n_lcm):
-            if y<x:  # Upper Triangular terms
-                adjA[y][x][x-y:] = adjA[x][x][:n_lcm-(x-y)]
-            elif y>x:# Lower Triangular terms
-                adjA[y][x][n_lcm-y:n_lcm+1-y+x] = list(-lcmpoly[-x-1:n_lcm+1])
-
-    """
-    Ok, now get C_lcm * adj(sI-A_lcm) * B_lcm
-
-    Since we are dealing with lists we have to fake a matrix multiplication
-    with an evil hack. The reason is that, entries of adj(sI-A_lcm) are 
-    polynomials and numpy doesn't have a container for such stuff hence we
-    store them in Python "list" objects and manually perform elementwise
-    multiplication.
+    if compute_multipliers:
+        a_lcm = haroldcompanion(lcmpoly)
+        b_lcm = np.linalg.pinv(C[:c.shape[1],:-1]).dot(b)
+        c_lcm = c.dot(C[:c.shape[1],:-1])
         
-    Middle three lines take the respective element of b vector and multiplies
-    the column of list of lists. Hence we actually obtain
+        # adj(sI-A) formulas with A being a companion matrix
+        # We need an array container so back to list of lists
+        n_lcm = a_lcm.shape[0]
+        # Create a list of lists of lists with zeros
+        adjA = [[[0]*n_lcm for m in range(n_lcm)] for n in range(n_lcm)]
     
-                adj(sI-A_lcm) * blockdiag(B_lcm)
+        # looping fun
+        for x in range(n_lcm):
+            # Diagonal terms
+            adjA[x][x][:n_lcm-x] = list(lcmpoly[:n_lcm-x])
+            for y in range(n_lcm):
+                if y<x:  # Upper Triangular terms
+                    adjA[y][x][x-y:] = adjA[x][x][:n_lcm-(x-y)]
+                elif y>x:# Lower Triangular terms
+                    adjA[y][x][n_lcm-y:n_lcm+1-y+x] = list(-lcmpoly[-x-1:n_lcm+1])
     
-    The resulting row entries are added to each other to get adj(sI-A)*B_lcm
-    Finally, since we now have a single column we can treat polynomial
-    entries as matrix entries hence multiplied with c matrix properly. 
+        """
+        Ok, now get C_lcm * adj(sI-A_lcm) * B_lcm
     
-    TODO: Good luck polishing this explanation...
-    
-    """
-    mults = c_lcm.dot(
-        np.vstack(
-            tuple(
-                [haroldpolyadd(*w,trimzeros=False) for w in 
-                    tuple(
-                        [
-                          [ 
-                            [b_lcm[y,0]*z for z in adjA[y][x]] 
-                              for y in range(n_lcm)
-                          ] for x in range(n_lcm)
+        Since we are dealing with lists we have to fake a matrix multiplication
+        with an evil hack. The reason is that, entries of adj(sI-A_lcm) are 
+        polynomials and numpy doesn't have a container for such stuff hence we
+        store them in Python "list" objects and manually perform elementwise
+        multiplication.
+            
+        Middle three lines take the respective element of b vector and multiplies
+        the column of list of lists. Hence we actually obtain
+        
+                    adj(sI-A_lcm) * blockdiag(B_lcm)
+        
+        The resulting row entries are added to each other to get adj(sI-A)*B_lcm
+        Finally, since we now have a single column we can treat polynomial
+        entries as matrix entries hence multiplied with c matrix properly. 
+        
+        """
+        mults = c_lcm.dot(
+            np.vstack(
+                tuple(
+                    [haroldpolyadd(*w,trimzeros=False) for w in 
+                        tuple(
+                            [
+                              [ 
+                                [b_lcm[y,0]*z for z in adjA[y][x]] 
+                                  for y in range(n_lcm)
+                              ] for x in range(n_lcm)
+                            ]
+                          )
                         ]
                       )
-                    ]
+                    )
                   )
-                )
-              )
-                  
-    # If any reinsert lcm polynomial for constant polynomials  
-    if not poppedindex==():
-        dummyindex = 0
-        dummymatrix = np.zeros((len(args),lcmpoly.size))
-        for x in range(len(args)):
-            if x in poppedindex:
-                dummymatrix[x,:] = lcmpoly
-                dummyindex +=1
-            else:
-                dummymatrix[x,1:] = mults[x-dummyindex,:]
-        mults = dummymatrix
-                
-    # TODO: make this bound optional
-    # Remove pseudoinverse noise as if there is no tomorrow
-    # If we need those entries, we have bigger problems than this.
-    lcmpoly[abs(lcmpoly)<1e-9] = 0.
-    mults[abs(mults)<1e-9] = 0.
-    mults = [haroldtrimleftzeros(z) for z in mults]
-    return lcmpoly, mults
-
+                      
+        # If any reinsert lcm polynomial for constant polynomials  
+        if not poppedindex==():
+            dummyindex = 0
+            dummymatrix = np.zeros((len(args),lcmpoly.size))
+            for x in range(len(args)):
+                if x in poppedindex:
+                    dummymatrix[x,:] = lcmpoly
+                    dummyindex +=1
+                else:
+                    dummymatrix[x,1:] = mults[x-dummyindex,:]
+            mults = dummymatrix
+                    
+        lcmpoly[ abs(lcmpoly) < cleanup_threshold ] = 0.
+        mults[ abs(mults) < cleanup_threshold ] = 0.
+        mults = [ haroldtrimleftzeros(z) for z in mults ]
+        return lcmpoly, mults
+    else:
+        return lcmpoly
 
 def haroldgcd(*args):
     """
@@ -3713,7 +3708,6 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
                 Gtf = statetotransfer(G)
             for rows in range(p):
                 for cols in range(m):
-                    print(Gtf.num[rows][cols])
                     freq_resp_array[rows,cols,:] = (
                             np.polyval(Gtf.num[rows][cols][0],iw) /
                             np.polyval(Gtf.den[rows][cols][0],iw)
