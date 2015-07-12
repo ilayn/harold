@@ -1313,49 +1313,47 @@ class State:
             
     @a.setter
     def a(self,value):
-        value,*_ = self.validate_arguments(
+        value = self.validate_arguments(
             value,
             np.zeros_like(self._b),
             np.zeros_like(self._c),
             np.zeros_like(self._d)
-            )
+            )[0]
         self._a = value
         self._recalc()
 
     @b.setter
     def b(self,value):
-        _,value,*_ = self.validate_arguments(
+        value = self.validate_arguments(
             np.zeros_like(self._a),
             value,
             np.zeros_like(self._c),
             np.zeros_like(self._d)
-            )
+            )[1]
         self._b = value
         self._recalc()
             
     @c.setter
     def c(self,value):
-        *_,value,_ = self.validate_arguments(
+        value = self.validate_arguments(
             np.zeros_like(self._a),
             np.zeros_like(self._b),
             value,
             np.zeros_like(self._d)
-            )
+            )[2]
         self._c = value
         self._recalc()
 
     @d.setter
     def d(self,value):
-        *_,value = self.validate_arguments(
+        value = self.validate_arguments(
             np.zeros_like(self._a),
             np.zeros_like(self._b),
             np.zeros_like(self._c),
             value
-            )
+            )[3]
         self._d = value
-#        self._recalc() # No need
-
-        
+        self._recalc()
 
     @SamplingPeriod.setter
     def SamplingPeriod(self,value):
@@ -3597,8 +3595,9 @@ def haroldpolydiv(dividend,divisor):
 
 # %% Plotting - Frequency Domain
 
-def frequency_response(G,omega=None,high=None,low=None,samples=None,
-                       logspace=None,freq_unit='Hz'):
+def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
+                       custom_logspace=None,
+                       input_freq_unit='Hz',output_freq_unit='Hz'):
     """
     Computes the frequency response matrix of a State() or Transfer()
     object. Transfer matrices are converted to state representations
@@ -3607,29 +3606,117 @@ def frequency_response(G,omega=None,high=None,low=None,samples=None,
     modes are removed.
 
     """
-    if freq_unit not in ('Hz','rad/s'):
-        raise ValueError('I can only handle "Hz" and "rad/s" as '
-                         'frequency units.')
+    for x in (input_freq_unit,output_freq_unit):
+        if x not in ('Hz','rad/s'):
+            raise ValueError('I can only handle "Hz" and "rad/s" as '
+                             'frequency units. "{0}" is not recognized.'
+                             ''.format(x))
+
+    # We first gather all the information about the system(s)
+    # and regularize depending on whether a single or many systems
+    # many provided
+
+    if isinstance(G,collections.Iterable):
+        pz_list = np.array([],dtype='complex')
+        # If the system is discrete-time, use log(z) for equivalence
+        for x in G:
+            if G.SamplingSet == 'Z':
+                pz_list = np.concatenate([
+                            pz_list,
+                            np.log(np.concatenate([x.poles,x.zeros])) /
+                                                            G.SamplingPeriod
+                            ])
+            else:
+                pz_list = np.concatenate([pz_list,G.poles,G.zeros])
+        
+        nat_freq = np.abs(pz_list)
+        smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)        
+    else:# Single system
+        if G._isgain:
+            samples = 2
+            high = -2
+            low = 2
+        else:
+            pz_list = np.concatenate([G.poles,G.zeros])
+            if G.SamplingSet == 'Z':
+                nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
+                smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)
+            else:
+                nat_freq = np.abs(pz_list)
+                smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)
 
 
-    num_of_freq = 10000
-    w = np.logspace(-4,4,num_of_freq,dtype='complex')
-    iw = 1j*w.flatten()
-    freq_resp_array = np.empty_like(iw,dtype='complex')
+    # The order of hierarchy is as follows:
+    #  - We first check if a custom frequency grid is supplied
+    #  - If None, then we check if a logspace-like option is given
+    #  - If that's also None we check whether custom logspace
+    #       limits are supplied with defaults for missing
+    #           .. high    --> +2 decade from the fastest pole/zero
+    #           .. low     --> -3 decade from the slowest pole/zero
+    #           .. samples --> 1000 points
 
+    # TODO: Implement a better/nonuniform algo for discovering new points 
+    # around  poles and zeros. Right now there is a chance to hit a pole 
+    # or a zero head on. 
+    # matlab coarseness stuff is nice but in practice leads to weirdness
+    # even when granularity = 4.
 
-    if G._isSISO:
-#        a , b , c = G.a,G.b,G.c
-#        a , b , c = minimalrealization(G.a,G.b,G.c)
-#        a , b , c = staircase(a,b,c,invert=True,form='o')[:-1]
-        Gtf = statetotransfer(G)
- 
-        freq_resp_array = (np.polyval(Gtf.num[0],iw) /
-                                np.polyval(Gtf.den[0],iw)
-                                )
-
-
+    if custom_grid is None:
+        if custom_logspace is None:
+            high = np.ceil(np.log10(largest_pz)) + 1 if high is None else high
+            low  = np.floor(np.log10(smallest_pz)) - 1 if low  is None else low
+            samples = 1000 if samples is None else samples
+        else:
+            high , low , samples = custom_logspace
+        w = np.logspace(low,high,samples)
     else:
-        raise NotImplementedError('MIMO frequency responses are on its way')
-    
+        w = np.asarray(custom_grid,dtype='float')
+
+    # Convert to Hz if necessary
+    if not input_freq_unit == 'Hz':
+        w = np.rad2deg(w)
+
+    iw = 1j*w.flatten()
+
+
+    # TODO: This has to be rewritten, currently extremely naive
+    if isinstance(G,collections.Iterable):
+        # First get the shape info for the matrices
+        p , m = 1 , 1 # At least SISO
+        for x in G:
+            p = max(p,G.shape[0])
+            m = max(m.G.shape[1])
+        
+        freq_resp_array = np.empty(len(G),p,m,len(iw),dtype='complex')
+        for ind , x in enumerate(G):
+            if isinstance(x,State):
+                x = statetotransfer(x)
+            for rows in x.shape[0]:
+                for cols in x.shape[1]:
+                    freq_resp_array[ind,rows,cols,:] = (
+                                    np.polyval(x.num[rows][cols][0],iw) /
+                                    np.polyval(x.den[rows][cols][0],iw)
+                                    )
+    else:
+        if G._isSISO:
+            freq_resp_array = np.empty_like(iw,dtype='complex')
+            if isinstance(G,State):
+                Gtf = statetotransfer(G)
+     
+            freq_resp_array = (np.polyval(Gtf.num[0],iw) /
+                               np.polyval(Gtf.den[0],iw)
+                               )
+        else:
+            p , m = G.shape
+            freq_resp_array = np.empty((p,m,len(iw)),dtype='complex')
+            if isinstance(G,State):
+                Gtf = statetotransfer(G)
+            for rows in range(p):
+                for cols in range(m):
+                    print(Gtf.num[rows][cols])
+                    freq_resp_array[rows,cols,:] = (
+                            np.polyval(Gtf.num[rows][cols][0],iw) /
+                            np.polyval(Gtf.den[rows][cols][0],iw)
+                            )
+
     return freq_resp_array , w
