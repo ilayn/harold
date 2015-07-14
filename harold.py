@@ -345,13 +345,14 @@ class Transfer:
     # =================================
 
     def __neg__(self):
-        newnum = self._num
         if not self._isSISO:
+            newnum = [[None]*self._m for n in range(self._p)]
             for i in range(self._p):
                 for j in range(self._m):
-                    newnum[i][j] *= -1.0
+                    newnum[i][j] = -self._num[i][j]
         else:
-            newnum = -newnum
+            newnum = -1*self._num
+            
         return Transfer(newnum,self._den,self._SamplingPeriod)
 
     def __add__(self,other):
@@ -405,30 +406,55 @@ class Transfer:
                     newnum = haroldpolyadd(
                         np.convolve(self._num.flatten(),mults[0]),
                         np.convolve(other.num.flatten(),mults[1]))
-                    return Transfer(newnum,lcm)
+                    if np.count_nonzero(newnum) == 0:
+                        return Transfer(0,1)
+                    else:
+                        return Transfer(newnum,lcm)
+
                 else:
-                    # Create empty num and den holders.
-                    newnum = [[]*self._m for n in range(self._p)] 
-                    newden = [[]*self._m for n in range(self._p)]
+                    # Create empty num and den holders.                        
+                    newnum = [[None]*self._m for n in range(self._p)]
+                    newden = [[None]*self._m for n in range(self._p)]
+                    nonzero_num = np.zeros(self._shape,dtype=bool)
                     # Same as SISO but over all rows/cols
                     for row in range(self._p):
                         for col in range(self._m):
-                            lcm,mults = haroldlcm(self._den[row][col],
-                                                  other.den[row][col])
-                            newnum[row][col] = np.atleast_2d(haroldpolyadd(
-                                np.convolve(self._num.flatten(),mults[0]),
-                                np.convolve(other.num.flatten(),mults[1])))
+                            lcm,mults = haroldlcm(
+                                            self._den[row][col],
+                                            other.den[row][col]
+                                            )
+ 
+                            newnum[row][col] = np.atleast_2d(
+                                    haroldpolyadd(
+                                        np.convolve(
+                                            self._num[row][col].flatten(),
+                                            mults[0]
+                                        ),
+                                        np.convolve(
+                                            other.num[row][col].flatten(),
+                                            mults[1]
+                                        )
+                                    )
+                                )
 
                             newden[row][col] = lcm
-                            
-                    return Transfer(newnum,newden,dt=self._SamplingPeriod)
 
+                        # Test whether we have at least one numerator entry
+                        # that is nonzero. Otherwise return a zero MIMO tf
+                            if np.count_nonzero(newnum[row][col]) != 0:
+                                nonzero_num[row,col] = True
+                            
+                    if any(nonzero_num.ravel()):
+                        return Transfer(newnum,newden,dt=self._SamplingPeriod)
+                    else:
+                        # Numerators all cancelled to zero hence 0-gain MIMO
+                        return Transfer(np.zeros(self._shape).tolist())
             else:
                 return other + transfertostate(self)
     
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other,(int,float)):
-            return Transfer(other * np.ones_like(self._shape),
+            return Transfer((other * np.ones_like(self._shape)).tolist(),
                              dt = self._SamplingPeriod) + self
 
         elif isinstance(other,type(np.array([0.]))):
@@ -636,7 +662,7 @@ class Transfer:
 
     def __setitem__(self,*args):
         raise ValueError('To change the data of a subsystem, set directly\n'
-                        'the relevant num,den or A,B,C,D attributes. '
+                        'the relevant num,den or a,b,c,d properties. '
                         'This might be\nincluded in the future though.')
 
 
@@ -644,8 +670,6 @@ class Transfer:
     # __repr__ and __str__ to provide meaningful info about the system
     # The ascii art of matlab for tf won't be implemented.
     # Either proper image with proper superscripts or numbers.
-    #
-    # TODO: Approximate this to a finished product at least
     # ================================================================
 
     def __repr__(self):
@@ -653,30 +677,33 @@ class Transfer:
             desc_text = 'Continous-Time Transfer function with:\n'
         else:
             desc_text = ('Discrete-Time Transfer function with: '
-                  'sampling time: {0:.3f} \n'.format(
-                                      float(self.SamplingPeriod)))
+                        'sampling time: {0:.3f} \n'.format(
+                                              float(self.SamplingPeriod)
+                                              )
+                                        )
+                        
+        if self._isgain:
+            desc_text += '\nStatic Gain\n' 
+        else:
+            desc_text += ' {0} input(s) and {1} output(s)\n'.format(
+                                                        self.NumberOfInputs,
+                                                        self.NumberOfOutputs
+                                                        )                  
+    
+            pole_zero_table=  zip_longest(np.real(self.poles),np.imag(self.poles),
+                                          np.real(self.zeros),np.imag(self.zeros)
+                                          )
+            
+            desc_text += '\n' + tabulate(pole_zero_table,
+                                         headers=['Poles(real)',
+                                                  'Poles(imag)',
+                                                  'Zeros(real)',
+                                                  'Zeros(imag)']
+                                        )
 
-        desc_text += (' {0} input(s) and {1} output(s)\n'.format(
-                                                    self.NumberOfInputs,
-                                                    self.NumberOfOutputs))                  
-        poles_real_part = np.real(self.poles)
-        poles_imag_part = np.imag(self.poles)
-        zeros_real_part = np.real(self.zeros)
-        zeros_imag_part = np.imag(self.zeros)
-        pole_zero_table=  zip_longest(
-                                                poles_real_part,
-                                                poles_imag_part,
-                                                zeros_real_part,
-                                                zeros_imag_part
-                                                )
-        
-        desc_text += '\n' + tabulate(pole_zero_table,headers=['Poles(real)',
-                                                'Poles(imag)',
-                                                'Zeros(real)',
-                                                'Zeros(imag)'])
-        desc_text += '\n\n'+str('End of {0} object description'.format(
-                                    __class__.__qualname__
-                                ))
+        desc_text += '\n\n'+'End of {0} object description'.format(
+                                                        __class__.__qualname__
+                                                        )
         return desc_text
         
 
