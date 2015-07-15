@@ -754,6 +754,9 @@ class Transfer:
                     For SISO context, causality check is performed 
                     between numerator and denominator arrays.
                     
+        verbose   : boolean switch to print out what this method thinks
+                    about the argument context. 
+                    
             
         Returns
         -------
@@ -765,9 +768,8 @@ class Transfer:
                    r,s integers are the degree of the SISO num,den
             
             
-        MIMO_flag : boolean
-                    Returns True if the system is recognized as MIMO and 
-                    False otherwise
+        shape    : 2-tuple
+                    Returns the recognized shape of the system
 
         Gain_flag: 
                     Returns True if the system is recognized as a static 
@@ -1076,6 +1078,10 @@ class Transfer:
                 if verbose: print('num is mimo, den is something else')
                 # denominator None? 
                 if None_flags[1]:
+                    if verbose: 
+                        print('Numerator is a static gain matrix')
+                        print('Denominator is None')
+                    
                     # This means num can only be a static gain matrix
                     flattened_num = sum(returned_numden_list[0],[])
                     noncausal_entries = [flattened_num[x].size < 2 
@@ -1099,8 +1105,8 @@ class Transfer:
                     # Then create a compatible sized ones matrix and 
                     # convert it to a MIMO list of lists.
                     num_shape = (
-                                    len(returned_numden_list[0][0]),
-                                    len(returned_numden_list[0])
+                                    len(returned_numden_list[0]),
+                                    len(returned_numden_list[0][0])
                                 )
 
 
@@ -1118,7 +1124,7 @@ class Transfer:
 
                 # Denominator is SISO
                 else:
-                    if verbose: print('num is mimo, den is siso')
+                    if verbose: print('Numerator is MIMO, Denominator is SISO')
                     # We have to check noncausal entries                     
                     # flatten den list of lists and compare the size 
                     den_deg = haroldtrimleftzeros(returned_numden_list[1]).size
