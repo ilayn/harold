@@ -38,7 +38,7 @@ import numpy as np
 import scipy as sp
 from tabulate import tabulate
 from scipy.signal import deconvolve
-from itertools import zip_longest
+from itertools import zip_longest,chain
 import collections
 
 
@@ -146,7 +146,6 @@ class Transfer:
         self._DiscretizationMatrix = None
         self._PrewarpFrequency = 0.
         self._SamplingPeriod = False
-
         self._num,self._den,self._shape,self._isgain = \
                                         self.validate_arguments(num,den)
         self._p,self._m = self._shape
@@ -454,7 +453,7 @@ class Transfer:
     
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other,(int,float)):
-            return Transfer((other * np.ones_like(self._shape)).tolist(),
+            return Transfer((other * np.ones(self._shape)).tolist(),
                              dt = self._SamplingPeriod) + self
 
         elif isinstance(other,type(np.array([0.]))):
@@ -962,7 +961,7 @@ class Transfer:
             print('='*50)
         # If both turned out to be MIMO!
         if all(MIMO_flags):
-            if verbose: print('both mimo flags are true')
+            if verbose: print('Both MIMO flags are true')
             # Since MIMO is flagged in both, we expect to have 
             # list of lists in both entries. 
             num_shape = (
@@ -987,17 +986,20 @@ class Transfer:
                             
             # if all survived up to here, perform the causality check:
             # zip the num and den entries together and check their array 
-            # sizes and get the coordinates
+            # sizes and get the coordinates after trimming the zeros if any
 
 
-            noncausal_entries = sum([# sum(...,[]) is for flattening
-                        [
-                            (row,col) for col,z in enumerate(zip(x,y)) 
-                                                    if z[0].size>z[1].size
-                        ]
-                    for row,(x,y) in enumerate(zip(*returned_numden_list))
-                ],[])            
+            den_list = [haroldtrimleftzeros(x) for x in 
+                            chain.from_iterable(returned_numden_list[1])]
+                            
+            num_list = [haroldtrimleftzeros(x) for x in 
+                            chain.from_iterable(returned_numden_list[0])]
+            
+            noncausal_flat_indices = [ind for ind, (x,y) 
+                    in enumerate(zip(num_list,den_list)) if x.size > y.size]
 
+            noncausal_entries = [(x // shape[0], x % shape[1]) for x in 
+                                                    noncausal_flat_indices]
             if not noncausal_entries == []:
                 entry_str = ['Row {0}, Col {1}'.format(x[0],x[1]) for x in 
                                                             noncausal_entries]
@@ -1012,7 +1014,7 @@ class Transfer:
 
         # If any of them turned out to be MIMO (ambiguous case)
         elif any(MIMO_flags):
-            if verbose: print('one of the mimo flags are true')
+            if verbose: print('One of the MIMO flags are true')
             # Possiblities are 
             #  1- MIMO num, SISO den
             #  2- MIMO num, None den (gain matrix)
@@ -1020,14 +1022,18 @@ class Transfer:
             #  4- None num, MIMO den
 
             # Get the MIMO flagged entry, 0-num,1-den
+
+            # TODO: Transfer([0,0,0],[1]) leads to error!!
+
             MIMO_flagged = returned_numden_list[MIMO_flags.index(True)]
             
             # Case 3,4
             if MIMO_flags.index(True):
-                if verbose: print('den is mimo, num is something else')
+                if verbose: print('Denominator is MIMO, Numerator '
+                                    'is something else')
                 # numerator None? 
                 if None_flags[0]:
-                    if verbose: print('num is None')
+                    if verbose: print('Numerator is None')
                     # Then create a compatible sized ones matrix and 
                     # convert it to a MIMO list of lists.
 
@@ -1046,7 +1052,8 @@ class Transfer:
 
                 # Numerator is SISO
                 else:
-                    if verbose: print('den is mimo, num is siso')
+                    if verbose: print('Denominator is MIMO, '
+                                        'Numerator is SISO')
                     # We have to check noncausal entries                     
                     # flatten den list of lists and compare the size 
                     num_deg = haroldtrimleftzeros(returned_numden_list[0]).size
@@ -1075,7 +1082,8 @@ class Transfer:
 
             # Case 1,2                
             else:
-                if verbose: print('num is mimo, den is something else')
+                if verbose: print('Numerator is MIMO, '
+                                    'Denominator is something else')
                 # denominator None? 
                 if None_flags[1]:
                     if verbose: 
@@ -1155,14 +1163,14 @@ class Transfer:
                     
         # Finally if both turned out be SISO !
         else:
-            if verbose: print('both are siso')
+            if verbose: print('Both are SISO')
             if any(None_flags):
-                if verbose: print('some are none')
+                if verbose: print('Something is None')
                 if None_flags[0]:
-                    if verbose: print('num is None')
+                    if verbose: print('Numerator is None')
                     returned_numden_list[0] = np.atleast_2d([1.0])
                 else:
-                    if verbose: print('den is None')
+                    if verbose: print('Denominator is None')
                     returned_numden_list[1] = np.atleast_2d([1.0])
                     Gain_flags = [True,True]
 
@@ -1943,9 +1951,9 @@ def statetotransfer(*state_or_abcd,output='system'):
             zz = tzeros(A,b,c,np.array([[0]]))
 
             # For finding k of a G(s) we compute
-            #        pole poly evaluated at s0
-            # G(s0)*---------------------------
-            #        zero poly evaluated at s0
+            #          pole polynomial evaluated at s0
+            # G(s0) * ---------------------------------
+            #          zero polynomial evaluated at s0
             # s0 : some point that is not a pole or a zero
 
             # Additional *2 are just some tolerances
@@ -2066,13 +2074,13 @@ def transfertostate(*tf_or_numden,output='system'):
 
     else:# MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
 
-        # Extract D matrix
+        # Allocate D matrix
         D = np.zeros((p,m))
 
         for x in range(p):
             for y in range(m):
                 
-                # Possible cases (not minimality only properness !!!): 
+                # Possible cases (not minimality,only properness checked!!!): 
                 # 1.  3s^2+5s+3 / s^2+5s+3  Proper
                 # 2.  s+1 / s^2+5s+3        Strictly proper
                 # 3.  s+1 / s+1             Full cancellation
@@ -2084,6 +2092,10 @@ def transfertostate(*tf_or_numden,output='system'):
                 nn , nd = datanum.size , dataden.size
                 
                 if nd == 1: # Case 4 : nn should also be 1.
+                    print(nn)
+                    print(nd)
+                    print(datanum)
+                    print(dataden)
                     D[x,y] = datanum/dataden
                     num[x][y] = np.array([0.])
 
@@ -2092,9 +2104,8 @@ def transfertostate(*tf_or_numden,output='system'):
 
                 else:
                     NumOrEmpty , datanum = haroldpolydiv(datanum,dataden)
-                    
                     # Case 3: If all cancelled datanum is returned empty
-                    if datanum.size==0:
+                    if np.count_nonzero(datanum) == 0:
                         D[x,y] = NumOrEmpty
                         num[x][y] = np.atleast_2d([[0.]])
                         den[x][y] = np.atleast_2d([[1.]])
@@ -2194,13 +2205,16 @@ def transfertostate(*tf_or_numden,output='system'):
             k = 0
             for y in range(m):
                 for x in range(p):
-                    C[x,k:k+num[x][y].size] = num[x][y][::-1]
+                    if np.count_nonzero(num[x][y]) != 0:
+                        C[x,k:k+num[x][y].size] = num[x][y][::-1]
+                    else:
+                        C[x,k:k+num[x][y].size] = np.array([0])
                 k += coldegrees[y] 
             
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
       
-    try:# if the arg was a tf object
+    try:# if the arg was a Transfer object
         is_ct = tf_or_numden[0].SamplingSet is 'R'
         if is_ct:
             return (A,B,C,D) if output=='matrices' else State(A,B,C,D)
@@ -3524,14 +3538,18 @@ def haroldtrimleftzeros(somearray):
     # We trim the leftmost zero entries modeling the absent high-order terms
     # in an array, i.e., [0,0,2,3,1,0] becomes [2,3,1,0]
 
-    # Kind of normalize for indexing with at_least2d
-    if any(np.array(somearray,dtype='float').flatten()):# if not all zero
+    arg = np.atleast_2d(somearray).astype(float).flatten()
+
+    if arg.ndim>1:
+        raise ValueError('The argument is not 1D array-like hence cannot be'
+                         ' trimmed unambiguously.')
+    
+    if np.count_nonzero(arg) != 0:# if not all zero
         try:
-            n = next(x for x,y in enumerate(np.atleast_2d(somearray)[0]) 
-                        if y != 0.)
-            return np.array(somearray[n::])
+            n = next(x for x,y in enumerate(arg) if y != 0.)
+            return np.array(arg)[n::]
         except StopIteration:
-            return np.array(somearray[::])
+            return np.array(arg[::])
     else:
         return np.array([0.])
         
