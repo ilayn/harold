@@ -58,9 +58,10 @@ def test_Transfer_Instantiations():
     assert_equal(G.shape,(3,2))
     assert G.poles.size==0
     
-    
+    assert_raises(IndexError,Transfer,np.ones((3,2)),[[[1,2],[1,1]]])
 
 def test_Transfer_algebra():
+
     G = Transfer([[1,[1,1]]],[[[1,2,1],[1,1]]])
     H = Transfer([[[1,3]],[1]],[1,2,1])
     F = G*H
@@ -85,6 +86,60 @@ def test_Transfer_algebra():
     for x in range(2):
         npt.assert_array_equal(H.num[0][x],np.array([[0]]))
         npt.assert_array_equal(H.den[0][x],np.array([[1]]))
+        
+    G = Transfer(1,[1,2,3])
+    F = 5 + G
+    npt.assert_almost_equal(F.num,np.array([[5,10,16.]]))
+    npt.assert_almost_equal(F.den,G.den)
+    F = G + 3
+    npt.assert_almost_equal(F.num,np.array([[3,6,10.]]))
+    npt.assert_almost_equal(F.den,G.den)
+
+    F = F * 5
+    npt.assert_almost_equal(F.num,np.array([[15,30,50]]))
+    npt.assert_almost_equal(F.den,G.den)
+    
+    F *= 0.4
+    npt.assert_almost_equal(F.num,np.array([[6,12,20]]))
+    npt.assert_almost_equal(F.den,G.den)
+    
+    num1 = [[[1., 2.], [0., 3.], [2., -1.]],
+            [[1.], [4., 0.], [1., -4., 3.]]]
+    den1 = [[[-3., 2., 4.], [1., 0., 0.], [2., -1.]],
+            [[3., 0., .0], [2., -1., -1.], [1.,0,0,4]]]
+    num2 = [[[0,0,0,-1], [2.], [-1., -1.]],
+            [[1., 2.], [-1., -2.], [4.]]]
+    den2 = [[[-1.], [1., 2., 3.], [-1., -1.]],
+            [[-4., -3., 2.], [0., 1.], [1., 0.]]]    
+
+    G = Transfer(num1,den1)
+    assert_raises(ValueError,Transfer,num2,den2)
+    den2[1][1] = [2,-1,-1]
+    F = Transfer(num2,den2)
+    H = G + F
+    # Flatten list of lists via sum( , []) trick
+    
+    Hnum = [ np.array([[-1.,  5/3  ,10/3]]),
+             np.array([[ 5.,  6.   ,  9.]]),
+             np.array([[ 1.,  0.5  , -0.5]]),
+             np.array([[ 1.,  3.   ,  0.75 , -0.5]]),
+             np.array([[ 3., -2.]]),
+             np.array([[ 5., -4.   ,  3.   ,  16.]])
+           ]
+ 
+    Hden = [ np.array([[ 1., -2/3  , -4/3]]),
+             np.array([[ 1.,  2.       ,  3.       ,  0.   ,  0.]]),
+             np.array([[ 1.,  0.5      , -0.5]]),
+             np.array([[ 1.,  0.75     , -0.5      ,  0.   ,  0.]]),
+             np.array([[ 1., -0.5      , -0.5]]),
+             np.array([[ 1.,  0.       ,  0.       ,  4.   ,  0.]]) 
+           ]
+    Hnum_computed = sum(H.num,[])
+    Hden_computed = sum(H.den,[])
+    for x in range(np.multiply(*H.shape)):
+#        print(x)
+        npt.assert_almost_equal(Hnum[x],Hnum_computed[x])
+        npt.assert_almost_equal(Hden[x],Hden_computed[x])    
     
 
 def test_State_Instantiations():

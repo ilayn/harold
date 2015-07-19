@@ -2092,10 +2092,6 @@ def transfertostate(*tf_or_numden,output='system'):
                 nn , nd = datanum.size , dataden.size
                 
                 if nd == 1: # Case 4 : nn should also be 1.
-                    print(nn)
-                    print(nd)
-                    print(datanum)
-                    print(dataden)
                     D[x,y] = datanum/dataden
                     num[x][y] = np.array([0.])
 
