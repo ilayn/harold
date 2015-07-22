@@ -2,23 +2,7 @@
 # harold
 A systems and controls toolbox for Python3. MIT licensed. See `LICENSE.md` file for details.
 
-
-## Features
-
-The main feature of `harold` is that it is written in pure Python3. Other than Numpy/Scipy, there are no additional libraries outside Python numerically. Thus, everything is under the hood and accessible. This, combined with the typical readable Python syntax, gives the full transparency to the control engineers and mathematicians how a certain functionality is implemented. Moreover, that makes it much easier to spot mistakes/quirks/outdated algorithms. 
-
-Currently, in matlab and other places, many  fundamental algorithms of model-based control algorithms come from a Fortran library called [SLICOT](http://slicot.org/) with an opaque license. As needed to wrap around this library, I tried but couldn't install [Slycot](https://github.com/jgoppert/Slycot) (actually drove me nuts) on Windows and hence I've started to code everything in MIMO context with a possibly unrealistic up-to-production mindset.
-
-`harold` also has a few more features worth mentioning:
-
-  - The function names are verbose and (hopefully) understandable. 
-  - Programmatically, only two classes exist `Transfer` and `State` and the rest is number crunching. 
-  - Interactive plots suitable for Ipython (if I can fix a nasty last problem) hence way better-looking and quite less-painful Bode, Nyquist plots, and of course, in case people are still being tortured by them, root loci. 
-  - Numerical polynomial operations (as opposed to symbolic) such as Least Common Multiples, Greatest Common Divisors etc. which is tested via pathological examples found in academic papers and to some extent practically on strange transfer matrices. 
-  - Matrix-pencil based subroutines, Hessenberg forms and transmission zero computations (this one I've tested as much as I can). Agrees with matlab, if not better resolution, and typically much faster for reasons I don't know yet.
-  - Better control of internal tolerances that affects minimal realizations, rank tolerances and so on. 
-  - When a model is discretized, it remembers the method used (or set later) and also continous/discrete, discrete/discrete type of interconnections recognize the slowest sampling time system and resamples remaining ones. 
-  - Helper functions that makes it easy to slice, concatenate, manipulate system data thanks to Python/Numpy flexibility. 
+See the [Wiki pages](https://github.com/ilayn/harold/wiki) for a brief introduction.
 
 ## Useful Links
 
