@@ -137,7 +137,6 @@ def test_Transfer_algebra():
     Hnum_computed = sum(H.num,[])
     Hden_computed = sum(H.den,[])
     for x in range(np.multiply(*H.shape)):
-#        print(x)
         npt.assert_almost_equal(Hnum[x],Hnum_computed[x])
         npt.assert_almost_equal(Hden[x],Hden_computed[x])    
     
@@ -155,7 +154,55 @@ def test_State_Instantiations():
     assert G._isgain
     assert not G._isSISO
     
+    assert_raises(ValueError,State,
+                  np.eye(2),
+                  np.array([[1],[2],[3]]),
+                  np.array([1,2]),
+                  0)
+
+    assert_raises(ValueError,State,
+                  np.eye(2),
+                  np.array([[1],[2]]),
+                  np.array([1,2,3]),
+                  0)
+    assert_raises(ValueError,State,
+                  np.eye(2),
+                  np.array([[1],[2]]),
+                  np.array([1,2]),
+                  np.array([0,0]))
+
+
+def test_State_algebra():
+    static_siso_state = State(5)
+    static_mimo_state = State(2.0*np.eye(3))
+    dynamic_siso_state = State(haroldcompanion([1,3,3,1]),
+                               eyecolumn(3,-1),
+                               eyecolumn(3,1).T,
+                               0)
+
+    dynamic_mimo_state = State(haroldcompanion([1,3,3,1]),
+                               eyecolumn(3,[1,2]),
+                               np.eye(3),
+                               np.zeros((3,2)))
+                               
+    dynamic_square_state = State(haroldcompanion([1,3,3,1]),
+                               np.eye(3),
+                               np.eye(3),
+                               np.zeros((3,3)))
+
+    assert_raises(IndexError,dynamic_siso_state.__mul__,static_mimo_state)
+    assert_raises(IndexError,dynamic_siso_state.__add__,static_mimo_state)
+    assert_raises(IndexError,static_mimo_state.__add__,dynamic_mimo_state)
+
+    F = static_mimo_state * dynamic_mimo_state
     
+    npt.assert_almost_equal(F.c,np.eye(3)*2.0)
+    npt.assert_almost_equal((dynamic_square_state + static_mimo_state).d,
+                            2*np.eye(3))
+    
+                         
+
+
 
 # %% LinAlg Tests 
 def test_blockdiag():

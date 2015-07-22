@@ -1680,7 +1680,7 @@ class State:
         else:
             raise TypeError('I don\'t know how to multiply a '
                             '{0} with a state representation '
-                            '(yet).'.format(type(other).__name__))
+                            '(yet).'.format(type(other).__qualname__))
 
 
     def __rmul__(self,other):
