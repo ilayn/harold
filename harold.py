@@ -334,7 +334,7 @@ class Transfer:
             else:
                 # Create a dummy statespace and check the zeros there
                 zzz = transfertostate(self._num,self._den,output='matrices')
-                self.zeros = tzeros(*zzz)
+                self.zeros = transmission_zeros(*zzz)
                 self.poles = np.linalg.eigvals(zzz[0])
 
 
@@ -1484,7 +1484,7 @@ class State:
             self.poles = []
             self.zeros = []
         else:
-            self.zeros = tzeros(self._a,self._b,self._c,self._d)
+            self.zeros = transmission_zeros(self._a,self._b,self._c,self._d)
             self.poles = np.linalg.eigvals(self._a)
 
 
@@ -1910,12 +1910,46 @@ class State:
 
 # %% State <--> Transfer conversion
 
-# Implements MIMO-compatible-tf2ss ala Varga,Sima 1981
-# Compute the controllability matrix, get the svd, isolate the c'ble part
-# Pertranspose the system, do the same to get the o'ble part of the c'ble part
-# Then iterate over all row/cols of B and C to get SISO TFs via c(sI-A)b+d
-
 def statetotransfer(*state_or_abcd,output='system'):
+    """
+    Given a State() object of a tuple of A,B,C,D array-likes, converts 
+    the argument into the transfer representation. The output can be 
+    selected as a Transfer() object or the numerator, denominator if 
+    'output' keyword is given with the option 'polynomials'.
+
+    If the input is a Transfer() object it returns the argument with no 
+    modifications.
+    
+    
+    The algorithm is to first get the minimal realization of the State()
+    representation. Then implements the conversion ala Varga,Sima 1981 
+    which can be summarized as iterating over every row/cols of B and C 
+    to get SISO Transfer representations via c*(sI-A)^(-1)*b+d
+    
+    
+    
+    Parameters
+    ----------
+    state_or_abcd : State() or a tuple of A,B,C,D matrices. 
+        
+    output : {'system','polynomials'}
+        Selects whether a State() object or individual numerator, denominator
+        will be returned.
+    
+    
+    Returns
+    -------
+    G : Transfer()
+        If 'output' keyword is set to 'system'
+        
+    num,den : {List of lists of 2D-numpy arrays for MIMO case,
+              2D-Numpy arrays for SISO case}
+        If the 'output' keyword is set to 'polynomials'
+
+      
+    """    
+        
+    
     if not output in ('system','polynomials'):
         raise ValueError('The output can either be "system" or "matrices".\n'
                          'I don\'t know any option as "{0}"'.format(output))    
@@ -1939,7 +1973,7 @@ def statetotransfer(*state_or_abcd,output='system'):
     if it_is_gain:
         return Transfer(D)
     
-    A,B,C = minimalrealization(A,B,C)
+    A,B,C = minimal_realization(A,B,C)
 
     if A.size == 0:
         return D,np.ones_like(D)
@@ -1965,7 +1999,7 @@ def statetotransfer(*state_or_abcd,output='system'):
             # the result should be a real polynomial, we can get 
             # away with it (on paper)
 
-            zz = tzeros(A,b,c,np.array([[0]]))
+            zz = transmission_zeros(A,b,c,np.array([[0]]))
 
             # For finding k of a G(s) we compute
             #          pole polynomial evaluated at s0
@@ -2026,6 +2060,47 @@ def statetotransfer(*state_or_abcd,output='system'):
     #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
 def transfertostate(*tf_or_numden,output='system'):
+    """
+    Given a Transfer() object of a tuple of numerator and denominator, 
+    converts the argument into the state representation. The output can
+    be selected as a State() object or the A,B,C,D matrices if 'output'
+    keyword is given with the option 'matrices'.
+
+    If the input is a State() object it returns the argument with no 
+    modifications.
+    
+    For SISO systems, the algorithm is returning the controllable 
+    companion form. 
+    
+    For MIMO systems a variant of the algorithm given in Section 4.4 of 
+    W.A. Wolowich, Linear Multivariable Systems (1974). The denominators 
+    are equaled with haroldlcm() Least Common Multiple function. 
+    
+    
+    
+    Parameters
+    ----------
+    tf_or_numden : Transfer() or a tuple of numerator and denominator. 
+        For MIMO numerator and denominator arguments see Transfer()
+        docstring. 
+        
+    output : {'system','matrices'}
+        Selects whether a State() object or individual state matrices 
+        will be returned.
+    
+    
+    Returns
+    -------
+    G : State()
+        If 'output' keyword is set to 'system'
+        
+    A,B,C,D : {(nxn),(nxm),(p,n),(p,m)} 2D Numpy-arrays
+        If the 'output' keyword is set to 'matrices'
+
+      
+    """    
+    
+    
     if not output in ('system','matrices'):
         raise ValueError('The output can either be "system" or "polynomials".'
                          '\nI don\'t know any option as "{0}"'.format(output))
@@ -2200,8 +2275,7 @@ def transfertostate(*tf_or_numden,output='system'):
                                 )
                     # if completely zero, then trim to single entry
                     num[y][x] = np.atleast_2d(haroldtrimleftzeros(num[y][x]))
-            print(den)
-            print(num)
+
             coldegrees = [x.size-1 for x in den[0]]
 
             A = haroldcompanion(den[0][0])
@@ -2255,9 +2329,8 @@ zero dynamics systems will fail here. Find out why it is curiously
 much faster than matlab.
 """
 
-def tzeros(A,B,C,D):
+def transmission_zeros(A,B,C,D):
     """
-
     Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
 
     This is a straightforward implementation of the algorithm of Misra, 
@@ -2268,7 +2341,19 @@ def tzeros(A,B,C,D):
     directly row/column compress the matrices without caring about the 
     upper Hessenbergness of E matrix. 
 
+    Parameters
+    ----------
+    A,B,C,D : {(nxn),(nxm),(p,n),(p,m) 2D Numpy arrays} 
+        
+    
+    Returns
+    -------
+    z : {1D Numpy array}
+        The array of computed transmission zeros. The array is returned 
+        empty if no transmission zeros are found. 
 
+      
+ 
     """    
     n , (p , m) = np.shape(A)[0] , np.shape(D)
     r = np.linalg.matrix_rank(D)
@@ -2335,9 +2420,9 @@ def _tzeros_final_compress(A,B,C,D,n,p,m):
     Internal command for finding the Schur form of a full rank and 
     row/column compressed C,D pair. 
     
-    TODO: Clean up the numerical noise and switch to Householder 
+    TODO: Clean up the numerical noise and switch to Householder maybe? 
 
-    TODO : Occasionally z will include 10^15-10^16 entries instead of 
+    TODO : Rarely z will include 10^15-10^16 entries instead of 
     infinite zeros. Decide on a reasonable bound to discard.
     """     
 
@@ -2652,8 +2737,34 @@ def rediscretize(G,dt,method='tustin',alpha=0.5):
 
 # %% Kalman Ops
 
-    
+
+# TODO: Naive coding and type-checking below. Fix these
 def ctrb(G,*args):
+    """
+    Computes the Kalman controllability related quantities. The algorithm
+    is the literal computation of the controllability matrix with increasing
+    powers of A. Numerically, this test is not robust and prone to errors if 
+    the A matrix is not well-conditioned or too big as at each additional 
+    power of A the entries blow up or converge to zero rapidly. 
+    
+    Parameters
+    ----------
+    G : State() or {(n,n),(n,m)} array_like matrices
+        System or matrices to be tested
+        
+    Returns
+    -------
+
+    Cc : {(n,nxm)} 2D numpy array
+        Kalman Controllability Matrix 
+    T : (n,n) 2D numpy arrays
+        The transformation matrix such that T^T * Cc is row compressed 
+        and the number of zero rows at the bottom corresponds to the number
+        of uncontrollable modes.
+    r: integer
+        Numerical rank of the controllability matrix 
+    
+    """
     try:
         A = G.a
         B = G.b
@@ -2675,21 +2786,42 @@ def ctrb(G,*args):
                             'But I don\'t have matrix B, use either\n'
                             'ctrb(<some ss system>) or ctrb(<2d numpy array>,'
                             '<2d numpy array>) with suitable dimensions.')
-
         
     n = A.shape[0]
     Cc = B.copy()
     
-    
-    
     for i in range(1,n):# Append AB,A^2B....A^(n-1)B
         Cc = np.hstack((Cc,np.linalg.matrix_power(A,i).dot(B)))
-    r = np.linalg.matrix_rank(Cc)
-    T = haroldsvd(Cc)[0]
+    T,*_,r = haroldsvd(Cc,also_rank=True)
 
     return Cc,T,r
     
 def obsv(G,*args):
+    """
+    Computes the Kalman observability related objects. The algorithm
+    is the literal computation of the observability matrix with increasing
+    powers of A. Numerically, this test is not robust and prone to errors if 
+    the A matrix is not well-conditioned or too big as at each additional 
+    power of A the entries blow up or converge to zero rapidly. 
+    
+    Parameters
+    ----------
+    G : State() or {(n,n),(n,m)} array_like matrices
+        System or matrices to be tested
+        
+    Returns
+    -------
+
+    Cc : {(n,nxm)} 2D numpy array
+        Kalman observability matrix 
+    T : (n,n) 2D numpy arrays
+        The transformation matrix such that T^T * Cc is row compressed 
+        and the number of zero rows on the right corresponds to the number
+        of unobservable modes.
+    r: integer
+        Numerical rank of the observability matrix 
+    
+    """    
     try:
         A = G.a
         C = G.c
@@ -2981,7 +3113,7 @@ def canceldistance(F,G):
 
 
 
-def minimalrealization(A,B,C,mu_tol=1e-9):
+def minimal_realization(A,B,C,mu_tol=1e-9):
     """
     Given state matrices A,B,C computes minimal state matrices 
     such that the system is controllable and observable within the
@@ -3770,6 +3902,8 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
             freq_resp_array = np.empty((p,m,len(iw)),dtype='complex')
             if isinstance(G,State):
                 Gtf = statetotransfer(G)
+            else:
+                Gtf = G
             for rows in range(p):
                 for cols in range(m):
                     freq_resp_array[rows,cols,:] = (
