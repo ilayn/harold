@@ -40,7 +40,7 @@ from tabulate import tabulate
 from scipy.signal import deconvolve
 from itertools import zip_longest,chain
 import collections
-
+from copy import deepcopy
 
 # %% Module Definitions
 
@@ -1074,11 +1074,19 @@ class Transfer:
                                     len(returned_numden_list[1]),
                                     len(returned_numden_list[1][0])
                                 )                    
+                    # Now we know already the numerator is SISO so we copy
+                    # it to each entry with a list of list that is compatible
+                    # with the denominator shape. !!copy() is needed here.!!
 
-                    returned_numden_list[0] = [
-                        [returned_numden_list[0] for x in range(den_shape[1])]
-                        for y in range(den_shape[0])
-                    ]
+                    # start an empty list and append rows/cols in it
+                    kroneckered_num = np.empty((den_shape[0],0)).tolist()
+                    
+                    for x in range(den_shape[0]):
+                        for y in range(den_shape[1]):
+                            kroneckered_num[x].append(
+                                    returned_numden_list[0].copy()
+                                    )
+                    returned_numden_list[0] = kroneckered_num
 
             # Case 1,2                
             else:
@@ -1155,10 +1163,19 @@ class Transfer:
                                     len(returned_numden_list[0][0])
                                 )                    
 
-                    returned_numden_list[1] = [
-                        [returned_numden_list[1] for x in range(num_shape[1])]
-                        for y in range(num_shape[0])
-                    ]
+                    # Now we know already the denominator is SISO so we copy
+                    # it to each entry with a list of list that is compatible
+                    # with the numerator shape. !!copy() is needed here.!!
+
+                    # start an empty list and append rows/cols in it
+                    kroneckered_den = np.empty((num_shape[0],0)).tolist()
+                    
+                    for x in range(num_shape[0]):
+                        for y in range(num_shape[1]):
+                            kroneckered_den[x].append(
+                                    returned_numden_list[1].copy()
+                                    )
+                    returned_numden_list[1] = kroneckered_num
 
                     
         # Finally if both turned out be SISO !
@@ -2017,11 +2034,11 @@ def transfertostate(*tf_or_numden,output='system'):
     if len(tf_or_numden) > 1:
         num , den = tf_or_numden[:2]
         num,den,(p,m),it_is_gain = Transfer.validate_arguments(num,den)
-    elif isinstance(tf_or_numden,State):
-        return tf_or_numden
+    elif isinstance(tf_or_numden[0],State):
+        return tf_or_numden[0]
     else:
         try:
-            G = tf_or_numden[0]
+            G = deepcopy(tf_or_numden[0])
             num = G.num
             den = G.den
             m,p = G.NumberOfInputs,G.NumberOfOutputs
@@ -2030,7 +2047,8 @@ def transfertostate(*tf_or_numden,output='system'):
             raise TypeError('I\'ve checked the argument for being a' 
                    ' Transfer, a State,\nor a pair for (num,den) but'
                    ' none of them turned out to be the\ncase. Hence'
-                   ' I don\'t know how to convert this to a State object.')
+                   ' I don\'t know how to convert a {0} to a State'
+                   ' object.'.format(type(tf_or_numden[0]).__qualname__))
 
 
     # Check if it is just a gain
@@ -2130,7 +2148,7 @@ def transfertostate(*tf_or_numden,output='system'):
             # Nice, less work. Off to realization. Decide rows or cols?
             if p >= m:# Tall or square matrix => Right Coprime Fact.
                factorside = 'r'
-            else:# Fat matrix, pertranspose the LoL => LCF.
+            else:# Fat matrix, pertranspose the List of Lists => LCF.
                factorside = 'l'
                den = [list(i) for i in zip(*den)]
                num = [list(i) for i in zip(*num)]
@@ -2182,29 +2200,28 @@ def transfertostate(*tf_or_numden,output='system'):
                                 )
                     # if completely zero, then trim to single entry
                     num[y][x] = np.atleast_2d(haroldtrimleftzeros(num[y][x]))
-
+            print(den)
+            print(num)
             coldegrees = [x.size-1 for x in den[0]]
 
             A = haroldcompanion(den[0][0])
-            B = np.zeros((A.shape[0],1))
-            B[-1] = 1.
+            B = eyecolumn(A.shape[0],-1)
 
             for x in range(1,m):
                 Atemp = haroldcompanion(den[0][x])
-                Btemp = np.zeros((Atemp.shape[0],1))
-                Btemp[-1] = 1.
+                Btemp = eyecolumn(Atemp.shape[0],-1)
+
                 A = blockdiag(A,Atemp)
                 B = blockdiag(B,Btemp)
 
             n = A.shape[0]
             C = np.zeros((p,n))
             k = 0
+
             for y in range(m):
                 for x in range(p):
-                    if np.count_nonzero(num[x][y]) != 0:
-                        C[x,k:k+num[x][y].size] = num[x][y][::-1]
-                    else:
-                        C[x,k:k+num[x][y].size] = np.array([0])
+                    C[x,k:k+num[x][y].size] = num[x][y][0,::-1]
+
                 k += coldegrees[y] 
             
             if factorside == 'l':
@@ -3635,7 +3652,7 @@ def haroldpolydiv(dividend,divisor):
     
     return h_factor , h_remainder
 
-# %% Plotting - Frequency Domain
+# %% Frequency Domain
 
 def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
                        custom_logspace=None,
@@ -3761,3 +3778,5 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
                             )
 
     return freq_resp_array , w
+
+
