@@ -2737,8 +2737,6 @@ def rediscretize(G,dt,method='tustin',alpha=0.5):
 
 # %% Kalman Ops
 
-
-# TODO: Naive coding and type-checking below. Fix these
 def kalman_controllability(G,compress=False):
     """
     Computes the Kalman controllability related quantities. The algorithm
@@ -2845,32 +2843,68 @@ def kalman_observability(G,compress=False):
     return Co , T , r
 
     
-def iscontrollable(G):
-    if not B is None:
-        if ctrb(G,B)[2]==G.shape[0]:
-            return True
-        else:
-            return False
-            
-    elif isinstance(G,(State,Transfer)):
-        if ctrb(G)[2]==G.a.shape[0]:
-            return True
-        else:
-            return False
+def is_kalman_controllable(G):
+    """
+    Tests the rank of the Kalman controllability matrix and compares it 
+    with the A matrix size, returns a boolean depending on the outcome. 
+    
+    Parameters:
+    ------
+    
+    G : State() or tuple of {(nxn),(nxm)} array_like matrices
+        The system or the (A,B) matrix tuple    
+        
+    Returns:
+    --------
+    test_bool : Boolean
+        Returns True if the input is Kalman controllable
+    
+    """
+    sys_flag,mats = _state_or_abcd(G,2)
+    if sys_flag:
+        A = G.a
+        B = G.b
+    else:
+        A , B = mats
 
-def isobservable(G,C=None):
-    if not C is None:
-        if obsv(G,C)[2]==G.shape[1]:
-            return True
-        else:
-            return False
-            
-    elif isinstance(G,(State,Transfer)):
-        if obsv(G)[2]==G.a.shape[1]:
-            return True
-        else:
-            return False
+    r = kalman_controllability((A,B))[-1]
 
+    if A.shape[0] > r:
+        return False
+        
+    return True
+    
+def is_kalman_observable(G):
+    """
+    Tests the rank of the Kalman observability matrix and compares it 
+    with the A matrix size, returns a boolean depending on the outcome. 
+    
+    Parameters:
+    ------
+    
+    G : State() or tuple of {(nxn),(pxn)} array_like matrices
+        The system or the (A,C) matrix tuple    
+        
+    Returns:
+    --------
+    test_bool : Boolean
+        Returns True if the input is Kalman observable
+    
+    """
+    sys_flag , mats = _state_or_abcd(G,-1)
+    
+    if sys_flag:
+        A = G.a
+        C = G.c
+    else:
+        A , C = mats
+            
+    r = kalman_observability((A,C))[-1]
+
+    if A.shape[0] > r:
+        return False
+        
+    return True
         
 # %% Linear algebra ops
 
