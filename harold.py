@@ -2739,18 +2739,24 @@ def rediscretize(G,dt,method='tustin',alpha=0.5):
 
 
 # TODO: Naive coding and type-checking below. Fix these
-def ctrb(G,*args):
+def kalman_controllability(G,compress=False):
     """
     Computes the Kalman controllability related quantities. The algorithm
     is the literal computation of the controllability matrix with increasing
     powers of A. Numerically, this test is not robust and prone to errors if 
-    the A matrix is not well-conditioned or too big as at each additional 
-    power of A the entries blow up or converge to zero rapidly. 
+    the A matrix is not well-conditioned or its entries have varying order
+    of magnitude as at each additional power of A the entries blow up or 
+    converge to zero rapidly. 
     
     Parameters
     ----------
-    G : State() or {(n,n),(n,m)} array_like matrices
+    G : State() or tuple of {(n,n),(n,m)} array_like matrices
         System or matrices to be tested
+
+    compress : Boolean
+        If set to True, then the returned controllability matrix is row
+        compressed, and in case of uncontrollable modes, has that many
+        zero rows.
         
     Returns
     -------
@@ -2765,38 +2771,28 @@ def ctrb(G,*args):
         Numerical rank of the controllability matrix 
     
     """
-    try:
+    
+    sys_flag,mats = _state_or_abcd(G,2)
+    if sys_flag:
         A = G.a
         B = G.b
-    except AttributeError:
-        if not isinstance(G,type(np.array([0]))):
-            raise TypeError(('ctrb() expects either a state-space system or a'
-                             ' numpy 2D array as a first argument.\nI got a '
-                             '\"{0}\" and I don\'t know what to do with'
-                             ' it.').format(type(G).__name__))
-        elif not len(args)==0:
-            A = G
-            B = args[0]
-            if not A.shape[0] == B.shape[0]:
-                raise IndexError('A and B should have same number of '
-                                'rows.However what I got is {0} vs. '
-                                '{1}'.format(A.shape[0],B.shape[0]))
-        else:
-            raise ValueError('I found a matrix and assumed it was matrix A. '
-                            'But I don\'t have matrix B, use either\n'
-                            'ctrb(<some ss system>) or ctrb(<2d numpy array>,'
-                            '<2d numpy array>) with suitable dimensions.')
+    else:
+        A , B = mats
         
     n = A.shape[0]
     Cc = B.copy()
     
-    for i in range(1,n):# Append AB,A^2B....A^(n-1)B
+    for i in range(1,n):
         Cc = np.hstack((Cc,np.linalg.matrix_power(A,i).dot(B)))
-    T,*_,r = haroldsvd(Cc,also_rank=True)
 
-    return Cc,T,r
-    
-def obsv(G,*args):
+    if compress:
+        T,S,V,r = haroldsvd(Cc,also_rank=True)
+        return S.dot(V.T) , T , r
+
+    T,*_,r = haroldsvd(Cc,also_rank=True)
+    return Cc , T , r
+
+def kalman_observability(G,compress=False):
     """
     Computes the Kalman observability related objects. The algorithm
     is the literal computation of the observability matrix with increasing
@@ -2808,11 +2804,16 @@ def obsv(G,*args):
     ----------
     G : State() or {(n,n),(n,m)} array_like matrices
         System or matrices to be tested
+
+    compress : Boolean
+        If set to True, then the returned observability matrix is row
+        compressed, and in case of unobservability modes, has that many
+        zero rows.
         
     Returns
     -------
 
-    Cc : {(n,nxm)} 2D numpy array
+    Co : {(n,nxm)} 2D numpy array
         Kalman observability matrix 
     T : (n,n) 2D numpy arrays
         The transformation matrix such that T^T * Cc is row compressed 
@@ -2822,41 +2823,29 @@ def obsv(G,*args):
         Numerical rank of the observability matrix 
     
     """    
-    try:
+    sys_flag , mats = _state_or_abcd(G,-1)
+    
+    if sys_flag:
         A = G.a
         C = G.c
-    except AttributeError:
-        if not isinstance(G,type(np.array([0]))):
-            raise TypeError(('obsv() expects either a state-space system or a'
-                             ' numpy 2D array as a first argument.\nI got a '
-                             '\"{0}\" and I don\'t know what to do with'
-                             ' it.').format(type(G).__name__))
-        elif not len(args)==0:
-            A = G
-            C = args[0]
-            if not A.shape[1] == C.shape[1]:
-                raise IndexError('A and C should have same number of '
-                                'columns.However what I got is {0} vs. '
-                                '{1}'.format(A.shape[1],C.shape[1]))            
-        else:
-            raise ValueError('I found a matrix and assumed it was matrix A. '
-                            'But I don\'t have matrix C, use either\n'
-                            'obsv(<some ss system>) or obsv(<2d numpy array>,'
-                            '<2d numpy array>) with suitable dimensions.')
+    else:
+        A , C = mats
 
-        
     n = A.shape[0]
     Co = C.copy()
 
-    for i in range(1,n):# Append CA,CA^2....CA^(n-1)
+    for i in range(1,n):
         Co = np.vstack((Co,C.dot(np.linalg.matrix_power(A,i))))
-    r = np.linalg.matrix_rank(Co)
-    T = haroldsvd(Co)[2].T
 
-    return Co,T,r
+    if compress:
+        T,S,V,r = haroldsvd(Co,also_rank=True)
+        return T.dot(S) , V.T , r
+
+    *_, T , r = haroldsvd(Co,also_rank=True)
+    return Co , T , r
 
     
-def iscontrollable(G,B=None):
+def iscontrollable(G):
     if not B is None:
         if ctrb(G,B)[2]==G.shape[0]:
             return True
@@ -2884,6 +2873,91 @@ def isobservable(G,C=None):
 
         
 # %% Linear algebra ops
+
+def _state_or_abcd(arg,n=4):
+    """
+    Tests the argument for being a State() object or any number of 
+    arguments for testing. The typical use case is to accept the arguments
+    regardless of whether the input is a class instance or standalone 
+    matrices. 
+    
+    The optional n argument is for testing state matrices less than four. 
+    For example, the argument should be tested for either being a State()
+    object or A,B matrix for controllability. Then we select n=2 such that
+    only A,B but not C,D is sought after. The default is all four matrices.
+    
+    If matrices are given, it passes the argument through the 
+    State.validate_arguments() method to regularize and check the sizes etc.
+    
+    Parameters
+    ----------
+    arg : State() or tuple of 2D Numpy arrays
+        The argument to be parsed and checked for validity. 
+        
+    n : integer {-1,1,2,3,4}
+        If we let A,B,C,D numbered as 1,2,3,4, defines the test scope such
+        that only up to n-th matrix is tested. 
+        
+        To test only an A,C use n = -1
+        
+    Returns
+    --------
+    system_or_not : Boolean
+        True if system and False otherwise
+        
+    validated_matrices: n-many 2D Numpy arrays
+    
+    """
+    if isinstance(arg,tuple):
+        system_or_not = False
+        if len(arg) == n or (n == -1 and len(arg) == 2):
+            z,zz = arg[0].shape
+            if n == 1:
+                if z != zz:
+                    raise ValueError('A matrix is not square.')
+                else:
+                    returned_args = arg[0]
+            elif n == 2:
+                m = arg[1].shape[1]
+                returned_args = State.validate_arguments(
+                                *arg,
+                                c = np.zeros((1,z)),
+                                d = np.zeros((1,m))
+                                )[:2]
+            elif n == 3:
+                m = arg[1].shape[1]
+                p = arg[2].shape[0]
+                returned_args = State.validate_arguments(
+                                *arg,
+                                d = np.zeros((p,m))
+                                )[:3]
+            elif n == 4:
+                m = arg[1].shape[1]
+                p = arg[2].shape[0]
+                returned_args = State.validate_arguments(*arg)[:4]
+            else:
+                p = arg[1].shape[0]
+                returned_args = tuple(State.validate_arguments(
+                                arg[0],
+                                np.zeros((z,1)),
+                                arg[1],
+                                np.zeros((p,1))
+                                )[x] for x in [0,2])
+        else:
+            raise ValueError('_state_or_abcd error:\n'
+                             'Not enough elements in the argument to test.'
+                             'Maybe you forgot to modify the n value?')
+
+
+    elif isinstance(arg,State):
+            system_or_not = True
+            returned_args = None
+    else:
+        raise TypeError('The argument is neither a tuple of matrices nor '
+                        'a State() object.')
+
+    return system_or_not , returned_args
+
 def staircase(A,B,C,compute_T=False,form='c',invert=False):
     """
     The staircase form is used very often to assess system properties. 
@@ -3912,5 +3986,4 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
                             )
 
     return freq_resp_array , w
-
 
