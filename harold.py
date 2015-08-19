@@ -1803,7 +1803,11 @@ class State:
         
         # Compared to the Transfer() inputs, State() can have relatively
         #saner inputs which is one of the following types, hence the var
-        possible_types = (int,float,list,type(np.array([0.0])))
+        possible_types = (int,
+                          float,
+                          list,
+                          type(np.array([0.0])),
+                          type(np.array([[1]])[0,0]))
 
         # Start regularizing the input regardless of the intention
         for abcd_index , abcd in enumerate((a,b,c,d)):
@@ -1827,7 +1831,7 @@ class State:
                                 'much better, a properly typed 2D Numpy '
                                 'array. Instead I found a {1} object.'.format(
                                     entrytext[abcd_index] ,
-                                    type(abcd).__name__
+                                    type(abcd).__qualname__
                                     )
                                 )
 
@@ -2842,6 +2846,47 @@ def kalman_observability(G,compress=False):
     *_, T , r = haroldsvd(Co,also_rank=True)
     return Co , T , r
 
+def kalman_decomposition(G,compute_T=False):
+    """
+    Tests the rank of the Kalman controllability matrix and compares it 
+    with the A matrix size, returns a boolean depending on the outcome. 
+    
+    Note that, Kalman operations are numerically not robust. Hence the 
+    resulting decomposition might miss some 'almost' pole-zero cancellations.
+    Hence, this should be used as a rough assesment tool but not as
+    actual minimality check or for academic purposes to show the modal 
+    decomposition. Use canceldistance() and minimal_realization() functions 
+    instead with better numerical properties. 
+    
+    Parameters:
+    ------
+    
+    G : State() 
+        The state representation that is to be converted into the block
+        triangular form such that unobservable/uncontrollable modes 
+        corresponds to zero blocks in B/C matrices
+        
+    Returns:
+    --------
+    Gk : State()
+        Returns a state representation
+    T  : (nxn) 2D-numpy array
+        If compute_T is True, returns the similarity transform matrix 
+        that brings the state representation in the resulting decomposed
+        form such that 
+        
+            Gk.a = inv(T)*G.a*T
+            Gk.b = inv(T)*G.b
+            Gk.c = G.c*T
+            Gk.d = G.d
+    
+    """
+
+    if isinstance(G,State):
+        raise TypeError('The argument must be a State() object')
+    
+    
+    
     
 def is_kalman_controllable(G):
     """
@@ -3625,7 +3670,7 @@ def haroldgcd(*args):
     be given as numpy.array([1,0,5])
     
     Returns a numpy array holding the polynomial coefficients
-    of GCD. The GCD does not cancel scalars but only monic roots.
+    of GCD. The GCD does not cancel scalars but returns only monic roots.
     In other words, the GCD of polynomials 2 and 2s+4 is computed
     as 1. 
     
@@ -3643,11 +3688,11 @@ def haroldgcd(*args):
     DISCLAIMER : It uses the LU factorization of the Sylvester matrix.
                  Use responsibly. It does not check any certificate of 
                  success by any means (maybe it will in the future).
-                 
-    NOTES : I've tried the recent ERES method too. When there is a nontrivial
-           GCD it performed satisfactorily however did not perform as well
-           when GCD = 1 (maybe due to my implementation). Hence I've switched
-           to matrix-based methods.
+                 I've tried the recent ERES method too. When there is a 
+                 nontrivial GCD it performed satisfactorily however did 
+                 not perform as well when GCD = 1 (maybe due to my 
+                 implementation). Hence I've switched to matrix-based 
+                 methods.
 
     """    
 
@@ -3936,7 +3981,7 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
             high = -2
             low = 2
         else:
-            pz_list = np.concatenate([G.poles,G.zeros])
+            pz_list = np.append(G.poles,G.zeros)
             if G.SamplingSet == 'Z':
                 nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
                 smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)
