@@ -2846,46 +2846,159 @@ def kalman_observability(G,compress=False):
     *_, T , r = haroldsvd(Co,also_rank=True)
     return Co , T , r
 
-def kalman_decomposition(G,compute_T=False):
+def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-9):
     """
-    Tests the rank of the Kalman controllability matrix and compares it 
-    with the A matrix size, returns a boolean depending on the outcome. 
-    
-    Note that, Kalman operations are numerically not robust. Hence the 
+    By performing a sequence of similarity transformations the State
+    representation is transformed into a special structure such that
+    if the system has uncontrollable/unobservable modes, the corresponding
+    rows/columns of the B/C matrices have zero blocks and the modes
+    are isolated in the A matrix. That is to say, there is no contribution
+    of the controllable/observable states on the dynamics of these modes.
+   
+   
+    Note that, Kalman operations are numerically not robust. Hence the
     resulting decomposition might miss some 'almost' pole-zero cancellations.
     Hence, this should be used as a rough assesment tool but not as
-    actual minimality check or for academic purposes to show the modal 
-    decomposition. Use canceldistance() and minimal_realization() functions 
-    instead with better numerical properties. 
+    actual minimality check or maybe to demonstrate the concepts academic
+    purposes to show the modal decomposition. Use canceldistance() and
+    minimal_realization() functions instead with better numerical properties.
+
+    Example usage and verification : 
     
+    G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
+    print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
+    print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
+    F = kalman_decomposition(G)
+    print(F.a,F.b,F.c,sep='\n\n')
+    H = minimal_realization(F.a,F.b,F.c)
+    print('\nThe minimal system matrices are:\n',*H)
+    
+    Expected output : 
+    Is it Kalman Cont'ble ?  False
+    Is it Kalman Obsv'ble ?  False
+    [[ 2.          0.         -1.41421356]
+     [ 7.07106781 -3.         -7.        ]
+     [ 0.          0.          2.        ]]
+    
+    [[-1.]
+     [ 0.]
+     [ 0.]]
+    
+    [[-1.  0.  0.]]
+    
+    The minimal system matrices are:
+     [[ 2.]] [[ 1.]] [[ 1.]]
+
     Parameters:
     ------
-    
-    G : State() 
+   
+    G : State()
         The state representation that is to be converted into the block
-        triangular form such that unobservable/uncontrollable modes 
+        triangular form such that unobservable/uncontrollable modes
         corresponds to zero blocks in B/C matrices
         
+    compute_T : boolean
+        Selects whether the similarity transformation matrix will be 
+        returned.
+        
+    output : {'system','matrices'}
+        Selects whether a State() object or individual state matrices 
+        will be returned.
+    
+    cleanup_threshold : float
+        After the similarity transformation, the matrix entries smaller
+        than this threshold in absolute value would be zeroed. Setting 
+        this value to zero turns this behavior off. 
+    
     Returns:
     --------
-    Gk : State()
-        Returns a state representation
-    T  : (nxn) 2D-numpy array
-        If compute_T is True, returns the similarity transform matrix 
-        that brings the state representation in the resulting decomposed
-        form such that 
+    Gk : State() or if output = 'matrices' is selected (A,B,C,D) tuple
+        Returns a state representation or its matrices as a tuple
         
+    T  : (nxn) 2D-numpy array
+        If compute_T is True, returns the similarity transform matrix
+        that brings the state representation in the resulting decomposed
+        form such that
+       
             Gk.a = inv(T)*G.a*T
             Gk.b = inv(T)*G.b
             Gk.c = G.c*T
             Gk.d = G.d
-    
-    """
 
-    if isinstance(G,State):
+    """
+    if not isinstance(G,State):
         raise TypeError('The argument must be a State() object')
+
+    # If a static gain, then skip and return the argument    
+    if G._isgain:
+        if output == 'matrices':
+            return G.matrices
+        
+        return G
     
+    # TODO: This is an unreliable test anyways but at least check 
+    # which rank drop of Cc, Co is higher and start from that 
+    # to get a tiny improvement
     
+    # First check if controllable 
+    if not is_kalman_controllable(G):
+        Tc , r = kalman_controllability(G)[1:]
+    else:
+        Tc = np.eye(G.a.shape[0])
+        r = G.a.shape[0]
+
+    
+    ac = np.linalg.solve(Tc,G.a).dot(Tc)
+    bc = np.linalg.solve(Tc,G.b)
+    cc = G.c.dot(Tc)
+    ac[ abs(ac) < cleanup_threshold ] = 0.
+    bc[ abs(bc) < cleanup_threshold ] = 0.
+    cc[ abs(cc) < cleanup_threshold ] = 0.
+
+    if r == 0:
+        raise ValueError('The system is trivially uncontrollable.'
+                         'Probably B matrix is numerically all zeros.')
+    elif r != G.a.shape[0]:
+        aco , auco = ac[:r,:r] , ac[r:,r:]
+        bco = bc[:r,:]
+        cco , cuco = cc[:,:r] , cc[:,r:]
+        do_separate_obsv = True
+    else:
+        aco , bco , cco = ac , bc , cc
+        auco , cuco = None , None
+        do_separate_obsv = False
+        
+    if do_separate_obsv:
+        To_co = kalman_observability((aco,cco))[1]
+        To_uco = kalman_observability((auco,cuco))[1]
+        To = blockdiag(To_co,To_uco)
+    else:
+        if not is_kalman_observable((ac,cc)):
+            To , r = kalman_observability((ac,cc))[1:]
+        else:
+            To = np.eye(ac.shape[0])
+       
+    A = np.linalg.solve(To,ac).dot(To)
+    B = np.linalg.solve(To,bc)
+    C = cc.dot(To)
+    
+    # Clean up the mess, if any, for the should-be-zero entries
+    A[ abs(A) < cleanup_threshold ] = 0.
+    B[ abs(B) < cleanup_threshold ] = 0.
+    C[ abs(C) < cleanup_threshold ] = 0.
+    D = G.d.copy()
+    
+    if output == 'matrices':
+        if compute_T:
+            return (A,B,C,D),Tc.dot(To)
+        
+        return (A,B,C,D)
+    
+    if compute_T:
+        return State(A,B,C,D,G.SamplingPeriod),Tc.dot(To)
+    
+    return State(A,B,C,D,G.SamplingPeriod)
+
     
     
 def is_kalman_controllable(G):
