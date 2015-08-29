@@ -4063,45 +4063,37 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
     modes are removed.
 
     """
+    if not isinstance(G,(State,Transfer)):
+        raise ValueError('The argument should either be a State() or '
+                         'Transfer() object. I have found {0}'
+                         ''.format(type(G).__qualname__))
+    
+
     for x in (input_freq_unit,output_freq_unit):
         if x not in ('Hz','rad/s'):
             raise ValueError('I can only handle "Hz" and "rad/s" as '
                              'frequency units. "{0}" is not recognized.'
                              ''.format(x))
 
-    # We first gather all the information about the system(s)
-    # and regularize depending on whether a single or many systems
-    # many provided
+    """ If the system has very small or zero poles/zeros then 
+     the list should be shifted to meaningful region because the result
+     would either be huge or unpractically small especially in logaritmic
+     scale, completely useless."""     
 
-    if isinstance(G,collections.Iterable):
-        pz_list = np.array([],dtype='complex')
-        # If the system is discrete-time, use log(z) for equivalence
-        for x in G:
-            if G.SamplingSet == 'Z':
-                pz_list = np.concatenate([
-                            pz_list,
-                            np.log(np.concatenate([x.poles,x.zeros])) /
-                                                            G.SamplingPeriod
-                            ])
-            else:
-                pz_list = np.concatenate([pz_list,G.poles,G.zeros])
-        
-        nat_freq = np.abs(pz_list)
-        smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)        
-    else:# Single system
-        if G._isgain:
-            samples = 2
-            high = -2
-            low = 2
+    if G._isgain:
+        samples = 2
+        high = -2
+        low = 2
+    else:
+        pz_list = np.append(G.poles,G.zeros)
+
+        if G.SamplingSet == 'Z':
+            nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
         else:
-            pz_list = np.append(G.poles,G.zeros)
-            if G.SamplingSet == 'Z':
-                nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
-                smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)
-            else:
-                nat_freq = np.abs(pz_list)
-                smallest_pz , largest_pz = np.min(nat_freq) , np.max(nat_freq)
+            nat_freq = np.abs(pz_list)
 
+        smallest_pz = np.max(np.min(nat_freq),1e-7)
+        largest_pz  = np.max(np.max(nat_freq),smallest_pz+10)
 
     # The order of hierarchy is as follows:
     #  - We first check if a custom frequency grid is supplied
@@ -4137,45 +4129,26 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
 
 
     # TODO: This has to be rewritten, currently extremely naive
-    if isinstance(G,collections.Iterable):
-        # First get the shape info for the matrices
-        p , m = 1 , 1 # At least SISO
-        for x in G:
-            p = max(p,G.shape[0])
-            m = max(m.G.shape[1])
-        
-        freq_resp_array = np.empty(len(G),p,m,len(iw),dtype='complex')
-        for ind , x in enumerate(G):
-            if isinstance(x,State):
-                x = statetotransfer(x)
-            for rows in x.shape[0]:
-                for cols in x.shape[1]:
-                    freq_resp_array[ind,rows,cols,:] = (
-                                    np.polyval(x.num[rows][cols][0],iw) /
-                                    np.polyval(x.den[rows][cols][0],iw)
-                                    )
+    if G._isSISO:
+        freq_resp_array = np.empty_like(iw,dtype='complex')
+        if isinstance(G,State):
+            Gtf = statetotransfer(G)
+ 
+        freq_resp_array = (np.polyval(Gtf.num[0],iw) /
+                           np.polyval(Gtf.den[0],iw)
+                           )
     else:
-        if G._isSISO:
-            freq_resp_array = np.empty_like(iw,dtype='complex')
-            if isinstance(G,State):
-                Gtf = statetotransfer(G)
-     
-            freq_resp_array = (np.polyval(Gtf.num[0],iw) /
-                               np.polyval(Gtf.den[0],iw)
-                               )
+        p , m = G.shape
+        freq_resp_array = np.empty((p,m,len(iw)),dtype='complex')
+        if isinstance(G,State):
+            Gtf = statetotransfer(G)
         else:
-            p , m = G.shape
-            freq_resp_array = np.empty((p,m,len(iw)),dtype='complex')
-            if isinstance(G,State):
-                Gtf = statetotransfer(G)
-            else:
-                Gtf = G
-            for rows in range(p):
-                for cols in range(m):
-                    freq_resp_array[rows,cols,:] = (
-                            np.polyval(Gtf.num[rows][cols][0],iw) /
-                            np.polyval(Gtf.den[rows][cols][0],iw)
-                            )
+            Gtf = G
+        for rows in range(p):
+            for cols in range(m):
+                freq_resp_array[rows,cols,:] = (
+                        np.polyval(Gtf.num[rows][cols][0],iw) /
+                        np.polyval(Gtf.den[rows][cols][0],iw)
+                        )
 
     return freq_resp_array , w
-
