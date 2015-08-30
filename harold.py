@@ -4121,10 +4121,7 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
         freq_resp_array = np.empty_like(iw,dtype='complex')
         
         if isinstance(G,State):
-            print(G.a,G.b,G.c,G.d)
-            print(G._isgain)
             Gtf = statetotransfer(G)
-            print(Gtf._isgain)
         freq_resp_array = (np.polyval(Gtf.num[0],iw) /
                            np.polyval(Gtf.den[0],iw)
                            )
