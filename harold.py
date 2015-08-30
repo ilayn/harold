@@ -1952,35 +1952,36 @@ def statetotransfer(*state_or_abcd,output='system'):
 
       
     """    
-        
+
+    #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
     
     if not output in ('system','polynomials'):
         raise ValueError('The output can either be "system" or "matrices".\n'
-                         'I don\'t know any option as "{0}"'.format(output))    
-    # mildly check if we have a transfer,state, or (num,den)
-    if len(state_or_abcd) > 1:
-        A,B,C,D,(p,m),it_is_gain = State.validate_arguments(state_or_abcd[:4])
-    elif isinstance(state_or_abcd[0],Transfer):
-        return state_or_abcd
-    else:
-        try:
-            A,B,C,D = state_or_abcd[0].matrices
-            p,m = state_or_abcd[0].shape
-            it_is_gain = state_or_abcd[0]._isgain
-        except AttributeError: 
-            raise TypeError('I\'ve checked the argument for being a' 
-                   ' Transfer,\na State,or for (a,b,c,d) but'
-                   ' none of them turned out to be the\ncase. Hence'
-                   ' I don\'t know how to convert {0} to a Transfer '
-                   'object.'.format(type(state_or_abcd).__name__)) 
+                         'I don\'t know any option as "{0}"'.format(output))
 
+    # If a discrete time system is given this will be modified to the 
+    # SamplingPeriod later.
+    ZR = None
+                         
+    system_given, validated_matrices = _state_or_abcd(state_or_abcd[0],4)
+    
+    if system_given:
+        A , B , C , D = state_or_abcd[0].matrices
+        p , m = state_or_abcd[0].shape
+        it_is_gain = state_or_abcd[0]._isgain
+        ZR = state_or_abcd[0].SamplingPeriod
+    else:
+        A,B,C,D,(p,m),it_is_gain = State.validate_arguments(validated_matrices)
+        
     if it_is_gain:
         return Transfer(D)
     
     A,B,C = minimal_realization(A,B,C)
-
     if A.size == 0:
-        return D,np.ones_like(D)
+        if output is 'polynomials':
+            return D,np.ones_like(D) 
+        return Transfer(D,np.ones_like(D),ZR)
+
     
     n = A.shape[0]
 
@@ -1990,8 +1991,8 @@ def statetotransfer(*state_or_abcd,output='system'):
     
     entry_den = np.real(haroldpoly(pp))
     # Allocate some list objects for num and den entries
-    num_list = [[None]*m for n in range(p)] 
-    den_list = [[entry_den]*m for n in range(p)] 
+    num_list = [[None]*m for rows in range(p)] 
+    den_list = [[entry_den]*m for rows in range(p)] 
     
     
     for rowind in range(p):# All rows of C
@@ -2048,20 +2049,9 @@ def statetotransfer(*state_or_abcd,output='system'):
         num_list = num_list[0][0]
         den_list = den_list[0][0]
 
-    try:# if the arg was a tf object
-        is_ct = state_or_abcd[0].SamplingSet is 'R'
-        if is_ct:
-            return (num_list,den_list) if output=='polynomials' else Transfer(
-                                                        num_list,den_list)
-        else:
-            return (num_list,den_list) if output=='polynomials' else Transfer(
-                                        num_list,den_list,G.SamplingPeriod)
-    except AttributeError:# the arg was num,den
-        return (A,B,C,D) if output=='polynomials' else Transfer(num_list,
-                                                                    den_list)
-
-
-    #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
+    if output is 'polynomials':
+        return (num_list,den_list) 
+    return Transfer(num_list,den_list,ZR)
 
 def transfertostate(*tf_or_numden,output='system'):
     """
@@ -3466,7 +3456,6 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
                             break
                         else:
                             kc_mod = canceldistance(Ac_mod,Bc_mod)[0]
-                            print('hey',kc_mod)
     
                     kc = kc_mod
                     # Fake an iterable to fool the sum below
@@ -4092,8 +4081,8 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
         else:
             nat_freq = np.abs(pz_list)
 
-        smallest_pz = np.max(np.min(nat_freq),1e-7)
-        largest_pz  = np.max(np.max(nat_freq),smallest_pz+10)
+        smallest_pz = np.max([np.min(nat_freq),1e-7])
+        largest_pz  = np.max([np.max(nat_freq),smallest_pz+10])
 
     # The order of hierarchy is as follows:
     #  - We first check if a custom frequency grid is supplied
@@ -4127,13 +4116,15 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
 
     iw = 1j*w.flatten()
 
-
     # TODO: This has to be rewritten, currently extremely naive
     if G._isSISO:
         freq_resp_array = np.empty_like(iw,dtype='complex')
+        
         if isinstance(G,State):
+            print(G.a,G.b,G.c,G.d)
+            print(G._isgain)
             Gtf = statetotransfer(G)
- 
+            print(Gtf._isgain)
         freq_resp_array = (np.polyval(Gtf.num[0],iw) /
                            np.polyval(Gtf.den[0],iw)
                            )
