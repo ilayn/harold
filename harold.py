@@ -141,8 +141,9 @@ class Transfer:
         # Initialization Switch and Variable Defaults
 
         self._isgain = False
-        self._isSISO = False        
-        self._DiscretizedWith = None       
+        self._isSISO = False
+        self._isstable = False
+        self._DiscretizedWith = None
         self._DiscretizationMatrix = None
         self._PrewarpFrequency = 0.
         self._SamplingPeriod = False
@@ -320,7 +321,9 @@ class Transfer:
                
 
     def _recalc(self):
-
+        """
+        Internal bookkeeping routine to readjust the class properties
+        """
         if self._isgain:
             self.poles = np.array([])
             self.zeros = np.array([])
@@ -336,8 +339,14 @@ class Transfer:
                 zzz = transfertostate(self._num,self._den,output='matrices')
                 self.zeros = transmission_zeros(*zzz)
                 self.poles = np.linalg.eigvals(zzz[0])
+        
+        self._set_stability()
 
-
+    def _set_stability(self):
+        if self._SamplingSet == 'Z':
+            self._isstable = all(1>abs(self.poles))
+        else:
+            self._isstable = all(0>np.real(G.poles))
 
     # =================================
     # Transfer class arithmetic methods
@@ -1281,6 +1290,7 @@ class State:
         self._PrewarpFrequency = 0.
         self._isSISO = False
         self._isgain = False
+        self._isstable = False
         
 
         *abcd , self._shape , self._isgain = self.validate_arguments(a,b,c,d)
@@ -1487,7 +1497,13 @@ class State:
             self.zeros = transmission_zeros(self._a,self._b,self._c,self._d)
             self.poles = np.linalg.eigvals(self._a)
 
+        self._set_stability()
 
+    def _set_stability(self):
+        if self._SamplingSet == 'Z':
+            self._isstable = all(1>abs(self.poles))
+        else:
+            self._isstable = all(0>np.real(G.poles))
 
 
     # ===========================
@@ -3517,11 +3533,11 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
     return both. To reduce the clutter, the rank information is supressed
     by default. 
     
-     numpy svd is a bit strange because it compresses and looses the 
-     S matrix structure. From the manual, it is advised to use 
-     u.dot(np.diag(s).dot(v)) for recovering the original matrix. But 
-     that won't work for rectangular matrices. Hence it recreates the 
-     rectangular S matrix of U,S,V triplet.
+    numpy svd is a bit strange because it compresses and looses the 
+    S matrix structure. From the manual, it is advised to use 
+    u.dot(np.diag(s).dot(v)) for recovering the original matrix. But 
+    that won't work for rectangular matrices. Hence it recreates the 
+    rectangular S matrix of U,S,V triplet.
 
     Parameters
     ----------
@@ -3614,7 +3630,105 @@ def blockdiag(*args):
 def eyecolumn(width,nth=0):
     return np.eye(width)[[nth]].T
 
+# norms, where do these belong? magnets, how do they work? 
+def system_norm(state_or_transfer, 
+                p = np.inf, 
+                validate=False, 
+                verbose=False,
+                why_inf=False):
+    """
+    Computes the system p-norm. Currently, no balancing is done on the 
+    system, however in the future, a scaling of some sort will be introduced.
+    Another short-coming is that while sounding general, only H2 and Hinf 
+    norm are understood. 
+    
+    For Hinf norm, (with kind and generous help of Melina Freitag) the 
+    algorithm given in:
+    
+    M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_\infty$-norm 
+    using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2), 
+    619-635, 2014
 
+    For H2 norm, the standard grammian definition via controllability 
+    grammian can be found elsewhere is used.
+    
+    Parameters
+    ----------
+    state_or_transfer : {State,Transfer}
+        System for which the norm is computed
+    p : {int,Inf}
+        Whether the rank of the matrix should also be reported or not.
+        The returned rank is computed via the definition taken from the
+        official numpy.linalg.matrix_rank and appended here.
+
+    validate: boolean
+        If applicable and if the resulting norm is finite, the result is 
+        validated via other means.
+
+    verbose: boolean
+        If True, the (some) internal progress is printed out.
+    
+    why_inf: boolean
+        Returns the reason why the result is set to infinity. Might give
+        some hints when stuck. 
+
+    Returns
+    -------
+
+    n : float
+        Computed norm. In NumPy, infinity is also float-type
+    omega : float
+        For Hinf norm, omega is the frequency where the maximum is attained
+        (technically this is a numerical approximation of the supremum).
+    reason : str
+        If why_inf is true, returns the string about the reason if the 
+        result is infinity. Complains about the ungrateful user if the 
+        result is finite.
+        
+    """
+    if not isinstance(state_or_transfer,(State,Transfer)):
+        raise('The argument should be a State or Transfer. Instead I '
+              'received {0}'.format(type(state_or_transfer).__qualname__))
+    if isinstance(state_or_transfer,Transfer):
+        now_state = transfertostate(state_or_transfer)
+    else:
+        now_state = state_or_transfer
+    
+    if not isinstance(p,(int,float)):
+        raise('The p in p-norm is not an integer or float.'
+              'If you tried the string \'inf\', use Numpy.Inf instead')
+
+    # Two norm
+    if p == 2:
+        # Handle trivial infinities
+        if now_state._isgain:
+            # If nonzero -> infinity, if zero -> zero
+            if np.count_nonzero(now_state.d) > 0:
+                return np.Inf
+                if why_inf:
+                    reason = 'The system has a non-zero feedthrough term.'
+            else:
+                return 0.
+            
+        if not now_state._isstable:
+            if why_inf:
+                reason = 'The system is not stable.'
+            return np.Inf
+            
+        a , b = now_state.matrices[:2]
+        x = sp.linalg.solve_sylvester(a,a.T,-b.dot(b.T))
+        n = np.sqrt(np.trace(c.dot(x.dot(c.T))))
+
+        if why_inf:
+            return n,reason
+        return n
+
+    elif np.isinf(p):
+        
+    else:
+        raise('I can only handle the cases for p=2,inf for now.')
+            
+            
 # %% Polynomial ops    
 def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     """
