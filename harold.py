@@ -346,7 +346,7 @@ class Transfer:
         if self._SamplingSet == 'Z':
             self._isstable = all(1>abs(self.poles))
         else:
-            self._isstable = all(0>np.real(G.poles))
+            self._isstable = all(0>np.real(self.poles))
 
     # =================================
     # Transfer class arithmetic methods
@@ -1503,7 +1503,7 @@ class State:
         if self._SamplingSet == 'Z':
             self._isstable = all(1>abs(self.poles))
         else:
-            self._isstable = all(0>np.real(G.poles))
+            self._isstable = all(0>np.real(self.poles))
 
 
     # ===========================
@@ -3724,6 +3724,11 @@ def system_norm(state_or_transfer,
         return n
 
     elif np.isinf(p):
+        if not now_state._isstable:
+            if why_inf:
+                reason = 'The system is not stable.'
+            return np.Inf
+            
         
     else:
         raise('I can only handle the cases for p=2,inf for now.')
