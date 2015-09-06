@@ -3715,7 +3715,7 @@ def system_norm(state_or_transfer,
                 reason = 'The system is not stable.'
             return np.Inf
             
-        a , b = now_state.matrices[:2]
+        a , b , c = now_state.matrices[:3]
         x = sp.linalg.solve_sylvester(a,a.T,-b.dot(b.T))
         n = np.sqrt(np.trace(c.dot(x.dot(c.T))))
 
@@ -3727,9 +3727,37 @@ def system_norm(state_or_transfer,
         if not now_state._isstable:
             if why_inf:
                 reason = 'The system is not stable.'
-            return np.Inf
+            return np.Inf,None
+
+        # How many modes should be considered for the initial guess
+        k_eig = 7
             
+        a , b , c , d = now_state.matrices
+        n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
         
+        J = np.kron([[0,1],[-1,0]],np.eye(n_s))
+        
+        # Initial gamma0 guess
+        # Get the max of the largest svd of either
+        #   - feedthrough matrix 
+        #   - G(iw) response at the left most min(k_eig,n_s) imag part modes
+
+        # We only need the svd vals hence call numpy svd
+        lb1 = np.max(np.linalg.svd(d,compute_uv=False))
+        rmost_eigs = np.sort(np.linalg.eigvals(a))[::-1][::np.min(k_eig,n_s)]
+        # We only need a rough estimate
+        rmost_freqs = np.unique(np.around(np.imag(rmost_freqs),decimals=5))
+        
+        f , w = frequency_response(now_state,rmost_freqs)
+        lb2 = np.zeros((1,len(rmost_freqs))).flatten()
+        for ind in range(len(rmost_freqs)):
+            if f.ndim > 2:
+                lb2[ind] = np.max(np.linalg.svd(f[::ind],compute_uv=0))
+            else:
+                lb2[ind] = abs(f[ind])
+        
+        gamma0 = np.max(lb1,np.max(lb2))
+
     else:
         raise('I can only handle the cases for p=2,inf for now.')
             
