@@ -2148,21 +2148,24 @@ def transfertostate(*tf_or_numden,output='system'):
     if (m,p) == (1,1): # SISO
         A = haroldcompanion(den)
         B = np.vstack((np.zeros((A.shape[0]-1,1)),1))
+        # num and den are now flattened
         num = haroldtrimleftzeros(num)
         den = haroldtrimleftzeros(den)
 
+
+
         # Monic denominator
-        if den[0,0] != 1.:
-            d = den[0,0]
+        if den[0] != 1.:
+            d = den[0]
             num,den = num/d,den/d
 
-        if num.shape[1] < den.shape[1]:
-            C = np.zeros((1,den.shape[1]-1))
-            C[0,:num.shape[1]] = num[::-1]
+        if num.size < den.size:
+            C = np.zeros((1,den.size-1))
+            C[0,:num.size] = num[::-1]
             D = np.array([[0]])
         else: 
             # Watch out for full cancellation !!
-            NumOrEmpty , datanum = haroldpolydiv(num.flatten(),den.flatten())
+            NumOrEmpty , datanum = haroldpolydiv(num,den)
             
             # If all cancelled datanum is returned empty
             if datanum.size==0:
@@ -3730,7 +3733,7 @@ def system_norm(state_or_transfer,
             return np.Inf,None
 
         # How many modes should be considered for the initial guess
-        k_eig = 7
+        k_eig = 7 # Completely psychological choice. 
             
         a , b , c , d = now_state.matrices
         n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
@@ -3757,6 +3760,19 @@ def system_norm(state_or_transfer,
                 lb2[ind] = abs(f[ind])
         
         gamma0 = np.max(lb1,np.max(lb2))
+
+        # Compute the bordering vector via H_of_gam rightmost eigenvector
+        R_of_gam = d.T.dot(d) - gamma0**2 * np.eye(d.shape[1])
+        
+        #           [ 0     A  ]  _ [  B  ] * [        -1 ] * [-C.T*D].T 
+        #  H(gam) = [A.T  C.T*C]    [C.T*D]   [R_of_gam   ]   [   B  ]
+        
+        H_of_gam = np.c_[np.r_[np.zeros_like(a),a],
+                         np.r_[a.T,c.T.dot(c)]] - np.c_[b,c.T.dot(d)].dot(
+                     sp.linalg.solve(R_of_gam,np.c_[-c.T.dot(d),b].T)
+                   )
+        
+        
 
     else:
         raise('I can only handle the cases for p=2,inf for now.')
