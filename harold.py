@@ -3639,7 +3639,7 @@ def system_norm(state_or_transfer,
                 validate=False, 
                 verbose=False,
                 max_iter_limit=100,
-                hinf_tolerance=1e-5,
+                hinf_tolerance=1e-10,
                 eig_tolerance=1e-12
                 ):
     """
@@ -3705,8 +3705,10 @@ def system_norm(state_or_transfer,
         
     """
     if not isinstance(state_or_transfer,(State,Transfer)):
-        raise('The argument should be a State or Transfer. Instead I '
-              'received {0}'.format(type(state_or_transfer).__qualname__))
+        raise TypeError('The argument should be a State or Transfer. Instead '
+                        'I received {0}'.format(type(
+                                    state_or_transfer).__qualname__))
+                                    
     if isinstance(state_or_transfer,Transfer):
         now_state = transfertostate(state_or_transfer)
     else:
@@ -3766,23 +3768,22 @@ def system_norm(state_or_transfer,
             )])
         else:
             low_damp_freq = np.min(np.abs(now_state.poles))
+            
 
-        
-        
         f , w = frequency_response(now_state,custom_grid=[0,low_damp_freq])
         if now_state._isSISO:
             lb2 = np.max(np.abs(f))
         else:
-            lb2 = [np.linalg.svd(f[::x],compute_uv=0) for x in range(2)]
+            lb2 = [np.linalg.svd(f[:,:,x],compute_uv=0) for x in range(2)]
             lb2 = np.max(lb2)
-        
+
         # Finally 
         gamma_lb = np.max([lb1,lb2])
 
         # Constant part of the Hamiltonian to shave off a few flops
         H_of_gam_const = np.c_[np.r_[a,np.zeros_like(a)],np.r_[c.T.dot(c),a.T]]
-        H_of_gam_lfact = np.c_[b,c.T.dot(d)]
-        H_of_gam_rfact = J.dot(-H_of_gam_lfact).T
+        H_of_gam_lfact = np.r_[b,c.T.dot(d)]
+        H_of_gam_rfact = np.c_[-d.T.dot(c),b.T]
 
         # Start a for loop with a definite end !
         for x in range(max_iter_limit):
