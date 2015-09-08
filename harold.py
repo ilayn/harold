@@ -824,7 +824,7 @@ class Transfer:
         # Booleans for Nones
         None_flags = [False,False]
         
-        # Booleans for Nones
+        # Booleans for Gains
         Gain_flags = [False,False]
         
         # A boolean list that holds the recognized MIMO/SISO context 
@@ -3638,22 +3638,31 @@ def system_norm(state_or_transfer,
                 p = np.inf, 
                 validate=False, 
                 verbose=False,
-                why_inf=False):
+                max_iter_limit=100,
+                hinf_tolerance=1e-5,
+                eig_tolerance=1e-12
+                ):
     """
     Computes the system p-norm. Currently, no balancing is done on the 
     system, however in the future, a scaling of some sort will be introduced.
     Another short-coming is that while sounding general, only H2 and Hinf 
     norm are understood. 
-    
-    For Hinf norm, (with kind and generous help of Melina Freitag) the 
-    algorithm given in:
-    
-    M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_\infty$-norm 
-    using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2), 
-    619-635, 2014
 
     For H2 norm, the standard grammian definition via controllability 
     grammian can be found elsewhere is used.
+
+    Currently, the Hinf norm is computed via so-called Boyd-Balakhrishnan-
+    Bruinsma-Steinbuch algorithm (See e.g. [2]). 
+    
+    However, (with kind and generous help of Melina Freitag) the algorithm 
+    given in [1] is being implemented and will be replaced as the default.
+    
+    [1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_\infty$-norm 
+    using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2), 
+    619-635, 2014
+
+    [2] N.A. Bruinsma, M. Steinbuch: Fast Computation of $H_\infty$-norm of 
+    transfer function. System and Control Letters, 14, 1990
     
     Parameters
     ----------
@@ -3671,9 +3680,19 @@ def system_norm(state_or_transfer,
     verbose: boolean
         If True, the (some) internal progress is printed out.
     
-    why_inf: boolean
-        Returns the reason why the result is set to infinity. Might give
-        some hints when stuck. 
+    max_iter_limit: int
+        Stops the iteration after max_iter_limit many times spinning the
+        loop. Very unlikely but might be required for pathological examples.
+        
+    hinf_tolerance: float
+        Convergence check value such that when the progress is below this
+        tolerance the result is accepted as *converged*.
+        
+    eig_tolerance: float
+        The algorithm relies on checking the eigenvalues of the Hamiltonian
+        being on the imaginary axis or not. This value is the threshold 
+        such that the absolute real value of the eigenvalues smaller than 
+        this value will be accepted as pure imaginary eigenvalues.
 
     Returns
     -------
@@ -3683,10 +3702,6 @@ def system_norm(state_or_transfer,
     omega : float
         For Hinf norm, omega is the frequency where the maximum is attained
         (technically this is a numerical approximation of the supremum).
-    reason : str
-        If why_inf is true, returns the string about the reason if the 
-        result is infinity. Complains about the ungrateful user if the 
-        result is finite.
         
     """
     if not isinstance(state_or_transfer,(State,Transfer)):
@@ -3708,23 +3723,21 @@ def system_norm(state_or_transfer,
             # If nonzero -> infinity, if zero -> zero
             if np.count_nonzero(now_state.d) > 0:
                 return np.Inf
-                if why_inf:
-                    reason = 'The system has a non-zero feedthrough term.'
             else:
                 return 0.
             
         if not now_state._isstable:
-            if why_inf:
-                reason = 'The system is not stable.'
             return np.Inf
             
-        a , b , c = now_state.matrices[:3]
-        x = sp.linalg.solve_sylvester(a,a.T,-b.dot(b.T))
-        n = np.sqrt(np.trace(c.dot(x.dot(c.T))))
+        if now_state.SamplingSet == 'R':
+            a , b , c = now_state.matrices[:3]
+            x = sp.linalg.solve_sylvester(a,a.T,-b.dot(b.T))
+            return np.sqrt(np.trace(c.dot(x.dot(c.T))))
+        else:
+            a , b , c , d = now_state.matrices
+            x = sp.linalg.solve_discrete_lyapunov(a,-b.dot(b.T))
+            return np.sqrt(np.trace(c.dot(x.dot(c.T))+d.dot(d.T)))
 
-        if why_inf:
-            return n,reason
-        return n
 
     elif np.isinf(p):
         if not now_state._isstable:
@@ -3732,9 +3745,6 @@ def system_norm(state_or_transfer,
                 reason = 'The system is not stable.'
             return np.Inf,None
 
-        # How many modes should be considered for the initial guess
-        k_eig = 7 # Completely psychological choice. 
-            
         a , b , c , d = now_state.matrices
         n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
         
@@ -3743,35 +3753,87 @@ def system_norm(state_or_transfer,
         # Initial gamma0 guess
         # Get the max of the largest svd of either
         #   - feedthrough matrix 
-        #   - G(iw) response at the left most min(k_eig,n_s) imag part modes
+        #   - G(iw) response at the pole with smallest damping
+        #   - G(iw) at w = 0
 
         # We only need the svd vals hence call numpy svd
         lb1 = np.max(np.linalg.svd(d,compute_uv=False))
-        rmost_eigs = np.sort(np.linalg.eigvals(a))[::-1][::np.min(k_eig,n_s)]
-        # We only need a rough estimate
-        rmost_freqs = np.unique(np.around(np.imag(rmost_freqs),decimals=5))
         
-        f , w = frequency_response(now_state,rmost_freqs)
-        lb2 = np.zeros((1,len(rmost_freqs))).flatten()
-        for ind in range(len(rmost_freqs)):
-            if f.ndim > 2:
-                lb2[ind] = np.max(np.linalg.svd(f[::ind],compute_uv=0))
-            else:
-                lb2[ind] = abs(f[ind])
-        
-        gamma0 = np.max(lb1,np.max(lb2))
+        # Formula (4.3) given in Bruinsma, Steinbuch Sys.Cont.Let. (1990)
+        if any(np.abs(np.imag(now_state.poles)>1e-5)):
+            low_damp_freq = np.abs(now_state.poles[np.argmax(
+            [np.abs(np.imag(x)/np.real(x)/np.abs(x)) for x in now_state.poles]
+            )])
+        else:
+            low_damp_freq = np.min(np.abs(now_state.poles))
 
-        # Compute the bordering vector via H_of_gam rightmost eigenvector
-        R_of_gam = d.T.dot(d) - gamma0**2 * np.eye(d.shape[1])
         
-        #           [ 0     A  ]  _ [  B  ] * [        -1 ] * [-C.T*D].T 
-        #  H(gam) = [A.T  C.T*C]    [C.T*D]   [R_of_gam   ]   [   B  ]
         
-        H_of_gam = np.c_[np.r_[np.zeros_like(a),a],
-                         np.r_[a.T,c.T.dot(c)]] - np.c_[b,c.T.dot(d)].dot(
-                     sp.linalg.solve(R_of_gam,np.c_[-c.T.dot(d),b].T)
-                   )
+        f , w = frequency_response(now_state,custom_grid=[0,low_damp_freq])
+        if now_state._isSISO:
+            lb2 = np.max(np.abs(f))
+        else:
+            lb2 = [np.linalg.svd(f[::x],compute_uv=0) for x in range(2)]
+            lb2 = np.max(lb2)
         
+        # Finally 
+        gamma_lb = np.max([lb1,lb2])
+
+        # Constant part of the Hamiltonian to shave off a few flops
+        H_of_gam_const = np.c_[np.r_[a,np.zeros_like(a)],np.r_[c.T.dot(c),a.T]]
+        H_of_gam_lfact = np.c_[b,c.T.dot(d)]
+        H_of_gam_rfact = J.dot(-H_of_gam_lfact).T
+
+        # Start a for loop with a definite end !
+        for x in range(max_iter_limit):
+            
+            # (Step b1)
+            test_gamma = gamma_lb * ( 1 + 2*hinf_tolerance)
+
+            # (Step b2)
+            R_of_gam = d.T.dot(d) - test_gamma**2 * np.eye(d.shape[1])
+            # TODO : It might be good to implement the result of Benner et al.
+            # for the Hamiltionian later
+            eigs_of_H = sp.linalg.eigvals(
+                            H_of_gam_const - H_of_gam_lfact.dot(
+                                sp.linalg.solve(R_of_gam,H_of_gam_rfact)
+                            )
+                        )
+            # (Step b3)
+            # 
+            if all(np.abs(np.real(eigs_of_H)) > eig_tolerance):
+                gamma_ub = test_gamma
+                break
+            else:
+                # Pick up the ones with the tiny or zero real parts
+                # but leave out the euclidian ball around the origin
+                mix_imag_eigs = eigs_of_H[np.abs(
+                            np.real(eigs_of_H)) < eig_tolerance]
+                imag_eigs = np.unique(np.round(np.abs(
+                        eigs_of_H[np.abs(np.imag(eigs_of_H)) > eig_tolerance]
+                            ),decimals=7))
+                            
+                m_i = [np.average(imag_eigs[x],imag_eigs[x+1]
+                                    ) for x in range(len(imag_eigs))]
+                
+                
+                f , w = frequency_response(now_state,custom_grid=m_i)
+                if now_state._isSISO:
+                    gamma_lb = np.max(np.abs(f))
+                else:
+                    gamma_lb = [np.linalg.svd(
+                            f[::x],compute_uv=0) for x in range(len(m_i))]
+                    gamma_lb = np.max(lb2)
+                
+                
+            
+        return np.mean([gamma_lb,gamma_ub])
+        
+
+        #           [ A     0  ]  _ [  B  ] * [        -1 ] * [-C.T*D].T 
+        #  H(gam) = [C.T*C  A.T]    [C.T*D]   [R_of_gam   ]   [   B  ]
+
+            
         
 
     else:
@@ -4285,6 +4347,8 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
         
         if isinstance(G,State):
             Gtf = statetotransfer(G)
+        else:
+            Gtf = G
         freq_resp_array = (np.polyval(Gtf.num[0],iw) /
                            np.polyval(Gtf.den[0],iw)
                            )
