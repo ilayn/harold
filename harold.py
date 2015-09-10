@@ -3817,7 +3817,7 @@ def system_norm(state_or_transfer,
                 if 'singular matrix' == str(err):
                     at,bt,ct = minimal_realization(a,b,c)
                     if at.size == 0:
-                        return np.Inf,None
+                        return lb1,None
                     else:
                         raise ValueError('The A matrix is/looks like stable '
                                          'but somehow I managed to screw it '
