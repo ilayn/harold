@@ -69,17 +69,15 @@ class Transfer:
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
     e.g.,
     
-    >>>> G = Transfer([1],[1,2,1])
-    
-    Notice that, matlab-like scalar inputs are not recognized as 1D
-    arrays hence would lead to TypeError. 
+    >>>> G = Transfer(1,[1,2,1])
     
     For MIMO systems, depending on the shared denominators, there are 
     two distinct ways of entering a MIMO transfer function
 
-        1-  Entering list of lists such that every element of the inner 
-            lists are numpy array-able (explicitly checked) for numerator
-            and entering a 1D list or 1D numpy array for denominator
+        1-  Entering "list of lists of lists" such that every element 
+            of the inner lists are numpy array-able (explicitly checked) 
+            for numerator and entering a 1D list or 1D numpy array for 
+            denominator
             
     >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
     >>>> G.shape
@@ -100,6 +98,24 @@ class Transfer:
                        ])
     >>>> G.shape
     (2,2)
+    
+        Same behavior can be done also with providing the full denominator
+        and omitting providing a common numerator.
+        
+        There is a very involved validator and if you would like to know 
+        why or how this input is handled. Provide the same numerator and 
+        denominator to the static method below with 'verbose=True' keyword
+        argument, e.g. 
+        
+        >>>> n , d , shape , is_it_static = Transfer.validate_arguments(
+                      [1,3,2], # common numerator
+                      [[[1,2,1],[1,3,3]],[[1,0,0],[1,2,3,4]]],# explicit den
+                      verbose=True # print the logic it followed 
+                      )
+        
+        would give information about the context together with the 
+        regularized numerator, denominator, resulting system shape
+        and boolean whether or not the system has dynamics.
         
     However, the preferred way is to make everything a numpy array inside
     the list of lists. That would skip many compatibility checks. 
@@ -1241,9 +1257,9 @@ class State:
     Transfer() ). 
     
     A State object can be instantiated in a straightforward manner by 
-    entering 2D arrays. 
+    entering 2D arrays, floats, 1D arrays for row vectors and so on. 
     
-    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1])
+    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)
     
     
     However, the preferred way is to make everything a numpy array.
