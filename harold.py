@@ -3759,15 +3759,11 @@ def system_norm(state_or_transfer,
 
     elif np.isinf(p):
         if not now_state._isstable:
-            if why_inf:
-                reason = 'The system is not stable.'
             return np.Inf,None
 
         a , b , c , d = now_state.matrices
-        n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
-        
-        J = np.kron([[0,1],[-1,0]],np.eye(n_s))
-        
+#        n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
+                
         # Initial gamma0 guess
         # Get the max of the largest svd of either
         #   - feedthrough matrix 
@@ -3810,12 +3806,26 @@ def system_norm(state_or_transfer,
             # (Step b2)
             R_of_gam = d.T.dot(d) - test_gamma**2 * np.eye(d.shape[1])
             # TODO : It might be good to implement the result of Benner et al.
-            # for the Hamiltionian later
-            eigs_of_H = sp.linalg.eigvals(
-                            H_of_gam_const - H_of_gam_lfact.dot(
-                                sp.linalg.solve(R_of_gam,H_of_gam_rfact)
+            # for the Hamiltonian later
+            try:
+                eigs_of_H = sp.linalg.eigvals(
+                                H_of_gam_const - H_of_gam_lfact.dot(
+                                    sp.linalg.solve(R_of_gam,H_of_gam_rfact)
+                                )
                             )
-                        )
+            except np.linalg.linalg.LinAlgError as err:
+                if 'singular matrix' == str(err):
+                    at,bt,ct = minimal_realization(a,b,c)
+                    if at.size == 0:
+                        return np.Inf,None
+                    else:
+                        raise ValueError('The A matrix is/looks like stable '
+                                         'but somehow I managed to screw it '
+                                         'up. Please send an insulting mail '
+                                         'to ilhan together with this example'
+                                         '.')
+
+                    
             # (Step b3)
             # 
             if all(np.abs(np.real(eigs_of_H)) > eig_tolerance):
