@@ -2386,8 +2386,12 @@ def transmission_zeros(A,B,C,D):
     """    
     n , (p , m) = np.shape(A)[0] , np.shape(D)
     r = np.linalg.matrix_rank(D)
-        
-    if (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
+    
+    # Trivially zero, transmission zero doesn't make sense
+    if np.count_nonzero(B) == 0 or np.count_nonzero(C) == 0:
+        return np.zeros((0,1))
+
+    elif (p==1 and m==1 and r>0) or (r == min(p,m) and p==m):
         z = _tzeros_final_compress(A,B,C,D,n,p,m)
         return z
     else:# Reduction needed
@@ -3671,7 +3675,8 @@ def system_norm(state_or_transfer,
     Bruinsma-Steinbuch algorithm (See e.g. [2]). 
     
     However, (with kind and generous help of Melina Freitag) the algorithm 
-    given in [1] is being implemented and will be replaced as the default.
+    given in [1] is being implemented and depending on the speed benefit
+    might be replaced as the default.
     
     [1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_\infty$-norm 
     using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2), 
@@ -3715,6 +3720,7 @@ def system_norm(state_or_transfer,
 
     n : float
         Computed norm. In NumPy, infinity is also float-type
+        
     omega : float
         For Hinf norm, omega is the frequency where the maximum is attained
         (technically this is a numerical approximation of the supremum).
@@ -3837,12 +3843,14 @@ def system_norm(state_or_transfer,
                 mix_imag_eigs = eigs_of_H[np.abs(
                             np.real(eigs_of_H)) < eig_tolerance]
                 imag_eigs = np.unique(np.round(np.abs(
-                        eigs_of_H[np.abs(np.imag(eigs_of_H)) > eig_tolerance]
+                        mix_imag_eigs[np.abs(np.imag(eigs_of_H))>eig_tolerance]
                             ),decimals=7))
                             
                 m_i = [np.average(imag_eigs[x],imag_eigs[x+1]
                                     ) for x in range(len(imag_eigs))]
                 
+                # TODO : Clean up this mess above with imag_eigs etc. 
+                # TODO : Still needs five times speed-up
                 
                 f , w = frequency_response(now_state,custom_grid=m_i)
                 if now_state._isSISO:
