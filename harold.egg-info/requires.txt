@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+bokeh
+tabulate
+
+[dev]
+check-manifest
+
+[test]
+coverage

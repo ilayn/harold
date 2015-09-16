@@ -1,0 +1,10 @@
+﻿ChangeLog
+=========
+
+
+v0.1.0
+-------
++ Initial versioning and packaging.
++ Adding documentation and Sphinx integration.
++ Basically everything there is.
+
