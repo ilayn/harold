@@ -1,5 +1,9 @@
-|GitHub license| |Join the chat at https://gitter.im/ilayn/harold| #
-harold A systems and controls toolbox for Python3. MIT licensed. See
+|GitHub license| |Join the chat at https://gitter.im/ilayn/harold| 
+
+harold
+======
+
+A systems and controls toolbox for Python3. MIT licensed. See
 ``LICENSE.md`` file for details.
 
 See the `Wiki pages`_ for a brief introduction.
