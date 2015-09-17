@@ -44,6 +44,21 @@ from copy import deepcopy
 
 # %% Module Definitions
 
+# Dummy documentation test function
+def big_func1(abra, cadabra, sesame=None):
+    """This is about big_func1.
+   
+    :param abra: abra number.
+    :param cadabra: cadabra number.
+    :param sesame: sesame information.
+    :return ret_val: result information.
+    :rtype: int.
+    """
+    ret_val = abra + cadabra
+    print(sesame["street"])
+    return ret_val
+
+    
 _KnownDiscretizationMethods = ('bilinear',
                               'tustin',
                               'zoh',

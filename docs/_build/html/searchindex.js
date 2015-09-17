@@ -1,0 +1,1 @@
+Search.setIndex({envversion:47,filenames:["harold","index","setup"],objects:{},objnames:{},objtypes:{},terms:{index:1,page:1,search:1,setup:1},titles:["harold package","Welcome to harold&#8217;s documentation!","setup module"],titleterms:{content:0,document:1,harold:[0,1],indic:1,modul:[0,2],packag:0,setup:2,submodul:0,tabl:1,welcom:1}})

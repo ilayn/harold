@@ -17,18 +17,11 @@ already most of the essential tasks. Hence, if you want to have
 something that resembles the basics of matlab control toolbox give it a
 try.
 
-``python-control`` emulates the matlab syntax and usage (for a good
-reason considering the matlab users) which is something I really wish to
-leave behind completely. Over the years I truly hated that syntax but
-that’s just me. Just to name a few, argument hopping thanks to
-``nargin,nargout`` stuff, inconsistent (sometimes just stupid) error
-handling, weird amalgam of structs and cells usage…
-
 2- By the way, if you are interested in robust control you would
 probably appreciate the `Skogestad-Python`_ project.
 
 Contact
--------
+--------
 
 If you have a question/comment feel free to shoot one to
 ``harold.of.python@gmail.com``

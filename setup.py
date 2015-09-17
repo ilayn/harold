@@ -25,14 +25,14 @@ def read(*filenames, **kwargs):
             buf.append(f.read())
     return sep.join(buf)
     
-long_description = read('README.md', 'CHANGES.txt')
+long_description = read('README.rst', 'CHANGES.txt')
 
 setup(
     name='harold',
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1a1',
+    version='0.1.1a2',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',
