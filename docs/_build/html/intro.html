@@ -1,0 +1,109 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &mdash; harold 0.1.0a2 documentation</title>
+    
+    <link rel="stylesheet" href="_static/scrolls.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.0a2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/theme_extras.js"></script>
+    <link rel="top" title="harold 0.1.0a2 documentation" href="index.html" />
+    <link rel="next" title="harold module" href="harold.html" />
+    <link rel="prev" title="Welcome to harold’s documentation!" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="index.html"
+          title="back to the documentation overview"><span>Introduction</span></a></h1>
+      </div>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="index.html">&laquo; Welcome to harold&#8217;s documentation!</a> |
+        <a href="#">Introduction</a>
+        | <a href="harold.html">harold module &raquo;</a>
+      </div>
+      <div id="contentwrapper">
+        <div id="toc" role="navigation" aria-label="table of contents navigation">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#development">Development</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+        
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>This is the documentation for the harold control systems toolbox.
+harold is a library for Python3 that is designed to be completely open-source
+to serve the mantra <em>reproducible research</em>.</p>
+<p>The main goal of harold is to provide accessible computation algorithms for
+common control engineering tasks. For the academic use, the functions are
+documented as much as possible with proper citations and inline comments to
+demonstrate the strength and weaknesses(if any) for future improvements or
+debugging convenience. More importantly, if you think the developer goofed
+with a certain detailed, you can directly modify and fix your code as
+everything under the hood is visible to the user.</p>
+<p>For the industrial use, the most important aspect is its license. With proper
+citation, it is possible to use in a commercial context. Secondary advantages
+are ease of context creation, for example, if you have an identification
+experiment, it is possible to identify from which point in the loop the
+measurements are taken, and harold will try to fill the gaps for you (this
+is currently being tested on a real experiment).</p>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>harold works with Python &gt;= 3.4.  It uses the packages NumPy, SciPy, <cite>tabulate</cite>
+and also relies on <cite>itertools</cite>, <cite>collections</cite>, and <cite>copy</cite> modules. It uses
+Bokeh as the main graphical framework for plots and so on. However, currently
+for the terminal use and simpler manipulation a <cite>matplotlib</cite> frontend is
+experimented with.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Installing harold is a straightforward package installation: you can install
+the most recent harold version using <a class="reference external" href="http://peak.telecommunity.com/DevCenter/EasyInstall">easy_install</a> or <a class="reference external" href="http://pypi.python.org/pypi/pip">pip</a>:</p>
+<div class="highlight-python"><div class="highlight"><pre>easy_install harold
+pip install harold
+</pre></div>
+</div>
+</div>
+<div class="section" id="development">
+<h2>Development<a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h2>
+<p>The official development is located on
+<a class="reference external" href="https://github.com/ilayn/harold">harold GitHub repository</a>.</p>
+</div>
+</div>
+
+
+      </div>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Ilhan Polat.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>

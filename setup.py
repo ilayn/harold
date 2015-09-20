@@ -38,7 +38,6 @@ setup(
     license='MIT',
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
@@ -52,6 +51,7 @@ setup(
         'Operating System :: MacOS'
     ],
     packages=find_packages(),
+    py_modules=['setuptools_subversion'],
     #classifiers=[f for f in CLASSIFIERS.split('\n') if f],
     install_requires=['numpy','scipy','matplotlib','bokeh','tabulate'],
     tests_require=['numpy','nose'],

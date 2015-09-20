@@ -6,15 +6,16 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>harold package &mdash; harold  documentation</title>
+    <title>harold module &mdash; harold 0.1.0a2 documentation</title>
     
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/scrolls.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '',
+        VERSION:     '0.1.0a2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,109 +24,1137 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="harold  documentation" href="index.html" />
-    <link rel="next" title="setup module" href="setup.html" />
-    <link rel="prev" title="Welcome to harold’s documentation!" href="index.html" />
-   
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
-
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/theme_extras.js"></script>
+    <link rel="top" title="harold 0.1.0a2 documentation" href="index.html" />
+    <link rel="next" title="Frequently Asked Questions" href="faq.html" />
+    <link rel="prev" title="Introduction" href="intro.html" /> 
   </head>
   <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="setup.html" title="setup module"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="index.html" title="Welcome to harold’s documentation!"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">harold  documentation</a> &raquo;</li> 
-      </ul>
-    </div>  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
-  <div class="section" id="harold-package">
-<h1>harold package<a class="headerlink" href="#harold-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="harold-harold-module">
-<h2>harold.harold module<a class="headerlink" href="#harold-harold-module" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
-</div>
-</div>
-
-
-          </div>
-        </div>
+    <div id="content">
+      <div class="header">
+        <h1 class="heading"><a href="index.html"
+          title="back to the documentation overview"><span>harold module</span></a></h1>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">harold package</a><ul>
-<li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#harold-harold-module">harold.harold module</a></li>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+      <div class="relnav" role="navigation" aria-label="related navigation">
+        <a href="intro.html">&laquo; Introduction</a> |
+        <a href="#">harold module</a>
+        | <a href="faq.html">Frequently Asked Questions &raquo;</a>
+      </div>
+      <div id="contentwrapper">
+        
+  <div class="section" id="module-harold">
+<span id="harold-module"></span><h1>harold module<a class="headerlink" href="#module-harold" title="Permalink to this headline">¶</a></h1>
+<p>The MIT License (MIT)</p>
+<p>Copyright (c) 2015 Ilhan Polat</p>
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &#8220;Software&#8221;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED &#8220;AS IS&#8221;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+<dl class="class">
+<dt id="harold.State">
+<em class="property">class </em><code class="descclassname">harold.</code><code class="descname">State</code><span class="sig-paren">(</span><em>a</em>, <em>b=None</em>, <em>c=None</em>, <em>d=None</em>, <em>dt=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.State" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>State() is the one of two main system classes in harold (together with
+Transfer() ).</p>
+<p>A State object can be instantiated in a straightforward manner by
+entering 2D arrays, floats, 1D arrays for row vectors and so on.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)</span>
+</pre></div>
+</div>
+<p>However, the preferred way is to make everything a numpy array.
+That would skip many compatibility checks. Once created the shape
+of the numerator and denominator cannot be changed. But compatible
+sized arrays can be supplied and it will recalculate the pole/zero
+locations etc. properties automatically.</p>
+<p>The Sampling Period can be given as a last argument or a keyword
+with &#8216;dt&#8217; key or changed later with the property access.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)</span>
+<span class="go">&gt;&gt;&gt;&gt; G.SamplingSet</span>
+<span class="go">&#39;Z&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; G.SamplingPeriod</span>
+<span class="go">0.5</span>
+<span class="go">&gt;&gt;&gt;&gt; F = State(1,2,3,4)</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingSet</span>
+<span class="go">&#39;R&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingPeriod = 0.5</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingSet</span>
+<span class="go">&#39;Z&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingPeriod</span>
+<span class="go">0.5</span>
+</pre></div>
+</div>
+<p>Setting  SamplingPeriod property to &#8216;False&#8217; value to the will make
+the system continous time again and relevant properties are reset
+to continuous-time properties.</p>
+<p>Warning: Unlike matlab or other tools, a discrete time system
+needs a specified sampling period (and possibly a discretization
+method if applicable) because a model without a sampling period
+doesn&#8217;t make sense for analysis. If you don&#8217;t care, then make up
+a number, say, a million, since you don&#8217;t care.</p>
+<dl class="attribute">
+<dt id="harold.State.DiscretizationMatrix">
+<code class="descname">DiscretizationMatrix</code><a class="headerlink" href="#harold.State.DiscretizationMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.DiscretizedWith">
+<code class="descname">DiscretizedWith</code><a class="headerlink" href="#harold.State.DiscretizedWith" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.NumberOfInputs">
+<code class="descname">NumberOfInputs</code><a class="headerlink" href="#harold.State.NumberOfInputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.NumberOfOutputs">
+<code class="descname">NumberOfOutputs</code><a class="headerlink" href="#harold.State.NumberOfOutputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.NumberOfStates">
+<code class="descname">NumberOfStates</code><a class="headerlink" href="#harold.State.NumberOfStates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.PrewarpFrequency">
+<code class="descname">PrewarpFrequency</code><a class="headerlink" href="#harold.State.PrewarpFrequency" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.SamplingPeriod">
+<code class="descname">SamplingPeriod</code><a class="headerlink" href="#harold.State.SamplingPeriod" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.SamplingSet">
+<code class="descname">SamplingSet</code><a class="headerlink" href="#harold.State.SamplingSet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.a">
+<code class="descname">a</code><a class="headerlink" href="#harold.State.a" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.b">
+<code class="descname">b</code><a class="headerlink" href="#harold.State.b" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.c">
+<code class="descname">c</code><a class="headerlink" href="#harold.State.c" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.d">
+<code class="descname">d</code><a class="headerlink" href="#harold.State.d" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.matrices">
+<code class="descname">matrices</code><a class="headerlink" href="#harold.State.matrices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.State.shape">
+<code class="descname">shape</code><a class="headerlink" href="#harold.State.shape" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="harold.State.validate_arguments">
+<em class="property">static </em><code class="descname">validate_arguments</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>c</em>, <em>d</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.State.validate_arguments" title="Permalink to this definition">¶</a></dt>
+<dd><p>An internal command to validate whether given arguments to a
+State() instance are valid and compatible.</p>
+<p>It also checks if the lists are 2D numpy.array&#8217;able entries.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="harold.Transfer">
+<em class="property">class </em><code class="descclassname">harold.</code><code class="descname">Transfer</code><span class="sig-paren">(</span><em>num</em>, <em>den=None</em>, <em>dt=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.Transfer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Transfer is the one of two main system classes in harold (together
+with State()).</p>
+<p>Main types of instantiation of this class depends on whether the
+user wants to create a Single Input/Single Output system (SISO) or
+a Multiple Input/Multiple Output system (MIMO).</p>
+<p>For SISO system creation, 1D lists or 1D numpy arrays are expected,
+e.g.,:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = Transfer(1,[1,2,1])</span>
+</pre></div>
+</div>
+<p>For MIMO systems, depending on the shared denominators, there are
+two distinct ways of entering a MIMO transfer function:</p>
+<blockquote>
+<div><p>1.  Entering &#8220;list of lists of lists&#8221; such that every element of the
+inner lists are numpy array-able (explicitly checked) for numerator
+and entering a 1D list or 1D numpy array for denominator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])</span>
+<span class="go">&gt;&gt;&gt;&gt; G.shape</span>
+<span class="go">(2,2)</span>
+</pre></div>
+</div>
+<p>2. Entering the denominator also as a list of lists for individual
+entries as a bracket nightmare (thanks to Python&#8217;s nonnative support
+for arrays and tedious array syntax).:</p>
+<div class="highlight-python"><div class="highlight"><pre> &gt;&gt;&gt;&gt; G = Transfer([
+          [ [1,3,2], [1,3] ],
+          [   [1]  , [1,0] ]
+        ],# end of num
+        [
+           [ [1,2,1] ,  [1,3,3]  ],
+           [ [1,0,0] , [1,2,3,4] ]
+        ])
+&gt;&gt;&gt;&gt; G.shape
+(2,2)
+</pre></div>
+</div>
+</div></blockquote>
+<p>Same behavior can be done also with providing the full denominator
+and omitting providing a common numerator.</p>
+<p>There is a very involved validator and if you would like to know
+why or how this input is handled. Provide the same numerator and
+denominator to the static method below with &#8216;verbose=True&#8217; keyword
+argument, e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; n , d , shape , is_it_static = Transfer.validate_arguments(</span>
+<span class="go">          [1,3,2], # common numerator</span>
+<span class="go">          [[[1,2,1],[1,3,3]],[[1,0,0],[1,2,3,4]]],# explicit den</span>
+<span class="go">          verbose=True # print the logic it followed</span>
+<span class="go">          )</span>
+</pre></div>
+</div>
+<p>would give information about the context together with the
+regularized numerator, denominator, resulting system shape
+and boolean whether or not the system has dynamics.</p>
+<p>However, the preferred way is to make everything a numpy array inside
+the list of lists. That would skip many compatibility checks.
+Once created the shape of the numerator and denominator cannot be
+changed. But compatible sized arrays can be supplied and it will
+recalculate the pole/zero locations etc. properties automatically.</p>
+<p>The Sampling Period can be given as a last argument or a keyword
+with &#8216;dt&#8217; key or changed later with the property access.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = Transfer([1],[1,4,4],0.5)</span>
+<span class="go">&gt;&gt;&gt;&gt; G.SamplingSet</span>
+<span class="go">&#39;Z&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; G.SamplingPeriod</span>
+<span class="go">0.5</span>
+<span class="go">&gt;&gt;&gt;&gt; F = Transfer([1],[1,2])</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingSet</span>
+<span class="go">&#39;R&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingPeriod = 0.5</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingSet</span>
+<span class="go">&#39;Z&#39;</span>
+<span class="go">&gt;&gt;&gt;&gt; F.SamplingPeriod</span>
+<span class="go">0.5</span>
+</pre></div>
+</div>
+<p>Providing &#8216;False&#8217; value to the SamplingPeriod property will make
+the system continous time again and relevant properties are reset
+to CT properties.</p>
+<p>Warning: Unlike matlab or other tools, a discrete time system
+needs a specified sampling period (and possibly a discretization
+method if applicable) because a model without a sampling period
+doesn&#8217;t make sense for analysis. If you don&#8217;t care, then make up
+a number, say, a million, since you don&#8217;t care.</p>
+<dl class="attribute">
+<dt id="harold.Transfer.DiscretizationMatrix">
+<code class="descname">DiscretizationMatrix</code><a class="headerlink" href="#harold.Transfer.DiscretizationMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.DiscretizedWith">
+<code class="descname">DiscretizedWith</code><a class="headerlink" href="#harold.Transfer.DiscretizedWith" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.NumberOfInputs">
+<code class="descname">NumberOfInputs</code><a class="headerlink" href="#harold.Transfer.NumberOfInputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.NumberOfOutputs">
+<code class="descname">NumberOfOutputs</code><a class="headerlink" href="#harold.Transfer.NumberOfOutputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.PrewarpFrequency">
+<code class="descname">PrewarpFrequency</code><a class="headerlink" href="#harold.Transfer.PrewarpFrequency" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.SamplingPeriod">
+<code class="descname">SamplingPeriod</code><a class="headerlink" href="#harold.Transfer.SamplingPeriod" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.SamplingSet">
+<code class="descname">SamplingSet</code><a class="headerlink" href="#harold.Transfer.SamplingSet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.den">
+<code class="descname">den</code><a class="headerlink" href="#harold.Transfer.den" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.num">
+<code class="descname">num</code><a class="headerlink" href="#harold.Transfer.num" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.polynomials">
+<code class="descname">polynomials</code><a class="headerlink" href="#harold.Transfer.polynomials" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="harold.Transfer.shape">
+<code class="descname">shape</code><a class="headerlink" href="#harold.Transfer.shape" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="harold.Transfer.validate_arguments">
+<em class="property">static </em><code class="descname">validate_arguments</code><span class="sig-paren">(</span><em>num</em>, <em>den</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.Transfer.validate_arguments" title="Permalink to this definition">¶</a></dt>
+<dd><p>A helper function to validate whether given arguments to an
+Transfer instance are valid and compatible for instantiation.</p>
+<p>Since there are many cases that might lead to a valid Transfer
+instance, Pythonic &#8220;try,except&#8221; machinery is not very helpful
+to check every possibility and equally challenging to branch
+off. A few examples of such issues that needs to be addressed
+is static gain, single entry for a MIMO system with common
+denominators and so on.</p>
+<p>Thus, this function provides a front-end to the laborious size
+and type checking which would make the Transfer object itself
+seemingly compatible with duck-typing while keeping the nasty
+branching implementation internal.</p>
+<p>The resulting output is compatible with the main harold
+Transfer class convention such that</p>
+<blockquote>
+<div><ul class="simple">
+<li>If the recognized context is MIMO the resulting outputs are
+list of lists with numpy arrays being the polynomial
+coefficient entries.</li>
+<li>If the recognized context is SISO the entries are numpy
+arrays with any list structure is stripped off.</li>
 </ul>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>num</strong> (<em>The polynomial coefficient containers. Etiher of them</em>) &#8211; <p>can be (not both) None to assume that the context will
+be derived from the other for static gains. Otherwise
+both are expected to be one of</p>
+<p>np.array, int , float , list ,
+list of lists of lists or numpy arrays.</p>
+<p>For MIMO context, element numbers and causality
+checks are performed such that numerator list of
+list has internal arrays that have less than or
+equal to the internal arrays of the respective
+denominator entries.</p>
+<p>For SISO context, causality check is performed
+between numerator and denominator arrays.</p>
+</li>
+<li><strong>den</strong> (<em>Same as num</em>) &#8211; </li>
+<li><strong>verbose</strong> (<em>boolean switch to print out what this method thinks</em>) &#8211; about the argument context.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
+<li><p class="first"><strong>num</strong> (<em>{(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)</em>) &#8211;
+{(1,s),(1,r)} 2D numpy arrays (SISO)</p>
+<p>m,p integers are the shape of the MIMO system
+r,s integers are the degree of the SISO num,den</p>
+</li>
+<li><p class="first"><strong>den</strong> (<em>Same as num</em>)</p>
+</li>
+<li><p class="first"><strong>shape</strong> (<em>2-tuple</em>) &#8211;
+Returns the recognized shape of the system</p>
+</li>
+<li><p class="first"><em>Gain_flag</em> &#8211;
+Returns True if the system is recognized as a static
+gain False otherwise (for both SISO and MIMO)</p>
 </li>
 </ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to harold&#8217;s documentation!</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="setup.html"
-                        title="next chapter">setup module</a></p>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/harold.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.blockdiag">
+<code class="descclassname">harold.</code><code class="descname">blockdiag</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.blockdiag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.canceldistance">
+<code class="descclassname">harold.</code><code class="descname">canceldistance</code><span class="sig-paren">(</span><em>F</em>, <em>G</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.canceldistance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given matrices F,G, computes the upper and lower bounds of
+the perturbation needed to render the pencil [F-pI | G]
+rank deficient. It is used for assessing the controllability/
+observability degenerate distance and hence for minimality
+assessment.</p>
+<p>Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>F,G</strong> (<em>{(n,n), (n,m)} array_like</em>) &#8211; Pencil matrices to be checked for rank deficiency distance</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>upper2</strong> (<em>float</em>) &#8211;
+Upper bound on the norm of the perturbation [dF | dG] such
+that [F + dF - pI | G + dG ] is rank deficient.</li>
+<li><strong>upper1</strong> (<em>float</em>) &#8211;
+A theoretically softer upper bound than the upper2 for the
+same quantity.</li>
+<li><strong>lower0</strong> (<em>float</em>) &#8211;
+Lower bound on the same quantity given in upper2</li>
+<li><strong>e_f</strong> (<em>complex</em>) &#8211;
+Indicates the eigenvalue that renders [F + dF - pI | G + dG ]
+rank deficient i.e. equals to the p value at the closest rank
+deficiency.</li>
+<li><strong>radius</strong> (<em>float</em>) &#8211;
+The perturbation with the norm bound &#8220;upper2&#8221; is located within
+a disk in the complex plane whose center is on &#8220;e_f&#8221; and whose
+radius is bounded by this output.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.discretize">
+<code class="descclassname">harold.</code><code class="descname">discretize</code><span class="sig-paren">(</span><em>G</em>, <em>dt</em>, <em>method='tustin'</em>, <em>PrewarpAt=0.0</em>, <em>q=None</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.discretize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.eyecolumn">
+<code class="descclassname">harold.</code><code class="descname">eyecolumn</code><span class="sig-paren">(</span><em>width</em>, <em>nth=0</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.eyecolumn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.frequency_response">
+<code class="descclassname">harold.</code><code class="descname">frequency_response</code><span class="sig-paren">(</span><em>G</em>, <em>custom_grid=None</em>, <em>high=None</em>, <em>low=None</em>, <em>samples=None</em>, <em>custom_logspace=None</em>, <em>input_freq_unit='Hz'</em>, <em>output_freq_unit='Hz'</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.frequency_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the frequency response matrix of a State() or Transfer()
+object. Transfer matrices are converted to state representations
+before the computations. The system representations are always
+checked for minimality and, if any, unobservable/uncontrollable
+modes are removed.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldcompanion">
+<code class="descclassname">harold.</code><code class="descname">haroldcompanion</code><span class="sig-paren">(</span><em>somearray</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldcompanion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an 1D numpy array or list and returns the companion matrix
+of the monic polynomial of somearray. Hence <cite>[0.5,1,2]</cite> will be first
+converted to <cite>[1,2,4]</cite></p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; haroldcompanion([2,4,6])</span>
+<span class="go">    array([[ 0.,  1.],</span>
+<span class="go">           [-3., -2.]])</span>
+
+<span class="go">&gt;&gt;&gt;&gt; haroldcompanion([1,3])</span>
+<span class="go">    array([[-3.]])</span>
+
+<span class="go">&gt;&gt;&gt;&gt; haroldcompanion([1])</span>
+<span class="go">    array([], dtype=float64)</span>
+</pre></div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
-        </div>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldgcd">
+<code class="descclassname">harold.</code><code class="descname">haroldgcd</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldgcd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes <a href="#id1"><span class="problematic" id="id2">*</span></a>args-many 1D numpy arrays and computes the numerical
+greatest common divisor polynomial. The polynomials are
+assumed to be in decreasing powers, e.g. s^2 + 5 should
+be given as numpy.array([1,0,5])</p>
+<p>Returns a numpy array holding the polynomial coefficients
+of GCD. The GCD does not cancel scalars but returns only monic roots.
+In other words, the GCD of polynomials 2 and 2s+4 is computed
+as 1.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; a = haroldgcd(*map(</span>
+<span class="go">            haroldpoly,</span>
+<span class="go">            ([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)</span>
+<span class="go">          )</span>
+<span class="go">        )</span>
+<span class="go">&gt;&gt;&gt;&gt; print(a)</span>
+<span class="go">     array([ 1.,  2.])</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">It uses the LU factorization of the Sylvester matrix.
+Use responsibly. It does not check any certificate of
+success by any means (maybe it will in the future).
+I&#8217;ve tried the recent ERES method too. When there is a
+nontrivial GCD it performed satisfactorily however did
+not perform as well when GCD = 1 (maybe due to my
+implementation). Hence I&#8217;ve switched to matrix-based
+methods.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldlcm">
+<code class="descclassname">harold.</code><code class="descname">haroldlcm</code><span class="sig-paren">(</span><em>*args</em>, <em>compute_multipliers=True</em>, <em>cleanup_threshold=1e-09</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldlcm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes n-many 1D numpy arrays and computes the numerical
+least common multiple polynomial. The polynomials are
+assumed to be in decreasing powers, e.g. s^2 + 5 should
+be given as numpy.array([1,0,5])</p>
+<p>Returns a numpy array holding the polynomial coefficients
+of LCM and a list, of which entries are the polynomial
+multipliers to arrive at the LCM of each input element.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; a , b = haroldlcm(*map(</span>
+<span class="go">                        np.array,</span>
+<span class="go">                        ([1,3,0,-4],[1,-4,-3,18],[1,-4,3],[1,-2,-8])</span>
+<span class="go">                        )</span>
+<span class="go">                    )</span>
+<span class="go">&gt;&gt;&gt;&gt; a</span>
+<span class="go">    (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])</span>
+
+<span class="go">&gt;&gt;&gt;&gt; b</span>
+<span class="go">    [array([  1., -10.,  33., -36.]),</span>
+<span class="go">     array([  1.,  -3.,  -6.,   8.]),</span>
+<span class="go">     array([  1.,  -3., -12.,  20.,  48.]),</span>
+<span class="go">     array([  1.,  -5.,   1.,  21., -18.])]</span>
+
+<span class="go">&gt;&gt;&gt;&gt; np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult</span>
+<span class="go">    (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldpoly">
+<code class="descclassname">harold.</code><code class="descname">haroldpoly</code><span class="sig-paren">(</span><em>rootlist</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldpoly" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldpolyadd">
+<code class="descclassname">harold.</code><code class="descname">haroldpolyadd</code><span class="sig-paren">(</span><em>*args</em>, <em>trimzeros=True</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldpolyadd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to official polyadd from numpy but allows for
+multiple args and doesn&#8217;t invert the order,</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldpolydiv">
+<code class="descclassname">harold.</code><code class="descname">haroldpolydiv</code><span class="sig-paren">(</span><em>dividend</em>, <em>divisor</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldpolydiv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Polynomial division wrapped around scipy deconvolve
+function. Takes two arguments and divides the first
+by the second.</p>
+<p>Returns, two arguments: the factor and the remainder,
+both passed through a left zeros trimming function.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldpolymul">
+<code class="descclassname">harold.</code><code class="descname">haroldpolymul</code><span class="sig-paren">(</span><em>*args</em>, <em>trimzeros=True</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldpolymul" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple wrapper around the scipy convolve function
+for polynomial multiplication with multiple args.
+The arguments are passed through the left zero
+trimming function first.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])</span>
+<span class="go">array([ 1.,  4.,  6.,  4.,  1.,  0.])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldsvd">
+<code class="descclassname">harold.</code><code class="descname">haroldsvd</code><span class="sig-paren">(</span><em>D</em>, <em>also_rank=False</em>, <em>rank_tol=None</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldsvd" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a wrapper/container function of both the SVD decomposition
+and the rank computation. Since the regular rank computation is
+implemented via SVD it doesn&#8217;t make too much sense to recompute
+the SVD if we already have the rank information. Thus instead of
+typing two commands back to back for both the SVD and rank, we
+return both. To reduce the clutter, the rank information is supressed
+by default.</p>
+<p>numpy svd is a bit strange because it compresses and looses the
+S matrix structure. From the manual, it is advised to use
+u.dot(np.diag(s).dot(v)) for recovering the original matrix. But
+that won&#8217;t work for rectangular matrices. Hence it recreates the
+rectangular S matrix of U,S,V triplet.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>D</strong> (<em>(m,n) array_like</em>) &#8211; Matrix to be decomposed</li>
+<li><strong>also_rank</strong> (<em>bool, optional</em>) &#8211; Whether the rank of the matrix should also be reported or not.
+The returned rank is computed via the definition taken from the
+official numpy.linalg.matrix_rank and appended here.</li>
+<li><strong>rank_tol</strong> (<em>{None,float} optional</em>) &#8211; The tolerance used for deciding the numerical rank. The default
+is set to None and uses the default definition of matrix_rank()
+from numpy.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>U,S,V</strong> (<em>{(m,m),(m,n),(n,n)} 2D numpy arrays</em>) &#8211;
+Decomposed-form matrices</li>
+<li><strong>r</strong> (<em>integer</em>) &#8211;
+If the boolean &#8220;also_rank&#8221; is true, this variable is the numerical
+rank of the matrix D</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.haroldtrimleftzeros">
+<code class="descclassname">harold.</code><code class="descname">haroldtrimleftzeros</code><span class="sig-paren">(</span><em>somearray</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.haroldtrimleftzeros" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.is_kalman_controllable">
+<code class="descclassname">harold.</code><code class="descname">is_kalman_controllable</code><span class="sig-paren">(</span><em>G</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.is_kalman_controllable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests the rank of the Kalman controllability matrix and compares it
+with the A matrix size, returns a boolean depending on the outcome.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>G</strong> (<em>State() or tuple of {(nxn),(nxm)} array_like matrices</em>) &#8211; The system or the (A,B) matrix tuple</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>test_bool</strong> &#8211;
+Returns True if the input is Kalman controllable</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Boolean</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.is_kalman_observable">
+<code class="descclassname">harold.</code><code class="descname">is_kalman_observable</code><span class="sig-paren">(</span><em>G</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.is_kalman_observable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests the rank of the Kalman observability matrix and compares it
+with the A matrix size, returns a boolean depending on the outcome.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>G</strong> (<em>State() or tuple of {(nxn),(pxn)} array_like matrices</em>) &#8211; The system or the (A,C) matrix tuple</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>test_bool</strong> &#8211;
+Returns True if the input is Kalman observable</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Boolean</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.kalman_controllability">
+<code class="descclassname">harold.</code><code class="descname">kalman_controllability</code><span class="sig-paren">(</span><em>G</em>, <em>compress=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.kalman_controllability" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the Kalman controllability related quantities. The algorithm
+is the literal computation of the controllability matrix with increasing
+powers of A. Numerically, this test is not robust and prone to errors if
+the A matrix is not well-conditioned or its entries have varying order
+of magnitude as at each additional power of A the entries blow up or
+converge to zero rapidly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>G</strong> (<em>State() or tuple of {(n,n),(n,m)} array_like matrices</em>) &#8211; System or matrices to be tested</li>
+<li><strong>compress</strong> (<em>Boolean</em>) &#8211; If set to True, then the returned controllability matrix is row
+compressed, and in case of uncontrollable modes, has that many
+zero rows.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>Cc</strong> (<em>{(n,nxm)} 2D numpy array</em>) &#8211;
+Kalman Controllability Matrix</li>
+<li><strong>T</strong> (<em>(n,n) 2D numpy arrays</em>) &#8211;
+The transformation matrix such that T^T * Cc is row compressed
+and the number of zero rows at the bottom corresponds to the number
+of uncontrollable modes.</li>
+<li><strong>r</strong> (<em>integer</em>) &#8211;
+Numerical rank of the controllability matrix</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.kalman_decomposition">
+<code class="descclassname">harold.</code><code class="descname">kalman_decomposition</code><span class="sig-paren">(</span><em>G</em>, <em>compute_T=False</em>, <em>output='system'</em>, <em>cleanup_threshold=1e-09</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.kalman_decomposition" title="Permalink to this definition">¶</a></dt>
+<dd><p>By performing a sequence of similarity transformations the State
+representation is transformed into a special structure such that
+if the system has uncontrollable/unobservable modes, the corresponding
+rows/columns of the B/C matrices have zero blocks and the modes
+are isolated in the A matrix. That is to say, there is no contribution
+of the controllable/observable states on the dynamics of these modes.</p>
+<p>Note that, Kalman operations are numerically not robust. Hence the
+resulting decomposition might miss some &#8216;almost&#8217; pole-zero cancellations.
+Hence, this should be used as a rough assesment tool but not as
+actual minimality check or maybe to demonstrate the concepts academic
+purposes to show the modal decomposition. Use canceldistance() and
+minimal_realization() functions instead with better numerical properties.</p>
+<p>Example usage and verification :</p>
+<div class="highlight-python"><div class="highlight"><pre>G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
+print(&#39;Is it Kalman Cont&#39;ble ? &#39;,is_kalman_controllable(G))
+print(&#39;Is it Kalman Obsv&#39;ble ? &#39;,is_kalman_observable(G))
+F = kalman_decomposition(G)
+print(F.a,F.b,F.c)
+H = minimal_realization(F.a,F.b,F.c)
+print(&#39;The minimal system matrices are:&#39;,*H)
+</pre></div>
+</div>
+<p>Expected output :</p>
+<div class="highlight-python"><div class="highlight"><pre>Is it Kalman Cont&#39;ble ?  False
+Is it Kalman Obsv&#39;ble ?  False
+[[ 2.          0.         -1.41421356]
+ [ 7.07106781 -3.         -7.        ]
+ [ 0.          0.          2.        ]]
+
+[[-1.]
+ [ 0.]
+ [ 0.]]
+
+[[-1.  0.  0.]]
+
+The minimal system matrices are:
+ [[ 2.]] [[ 1.]] [[ 1.]]
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Kalman decomposition is often described in an ambigous fashion
+in the literature. I would like to thank Joaquin Carrasco for
+his generous help on this matter for his lucid argument as to
+why this is probably happening. This is going to be
+reimplemented with better tests on pathological models.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>G</strong> (<a class="reference internal" href="#harold.State" title="harold.State"><em>State()</em></a>) &#8211; The state representation that is to be converted into the block
+triangular form such that unobservable/uncontrollable modes
+corresponds to zero blocks in B/C matrices</li>
+<li><strong>compute_T</strong> (<em>boolean</em>) &#8211; Selects whether the similarity transformation matrix will be
+returned.</li>
+<li><strong>output</strong> (<em>{&#8216;system&#8217;,&#8217;matrices&#8217;}</em>) &#8211; Selects whether a State() object or individual state matrices
+will be returned.</li>
+<li><strong>cleanup_threshold</strong> (<em>float</em>) &#8211; After the similarity transformation, the matrix entries smaller
+than this threshold in absolute value would be zeroed. Setting
+this value to zero turns this behavior off.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
+<li><p class="first"><strong>Gk</strong> (<em>State() or if output = &#8216;matrices&#8217; is selected (A,B,C,D) tuple</em>) &#8211;
+Returns a state representation or its matrices as a tuple</p>
+</li>
+<li><p class="first"><strong>T</strong> (<em>(nxn) 2D-numpy array</em>) &#8211;
+If compute_T is True, returns the similarity transform matrix
+that brings the state representation in the resulting decomposed
+form such that</p>
+<blockquote>
+<div><p>Gk.a = inv(T)*G.a*T
+Gk.b = inv(T)*G.b
+Gk.c = G.c*T
+Gk.d = G.d</p>
+</div></blockquote>
+</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.kalman_observability">
+<code class="descclassname">harold.</code><code class="descname">kalman_observability</code><span class="sig-paren">(</span><em>G</em>, <em>compress=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.kalman_observability" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the Kalman observability related objects. The algorithm
+is the literal computation of the observability matrix with increasing
+powers of A. Numerically, this test is not robust and prone to errors if
+the A matrix is not well-conditioned or too big as at each additional
+power of A the entries blow up or converge to zero rapidly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>G</strong> (<em>State() or {(n,n),(n,m)} array_like matrices</em>) &#8211; System or matrices to be tested</li>
+<li><strong>compress</strong> (<em>Boolean</em>) &#8211; If set to True, then the returned observability matrix is row
+compressed, and in case of unobservability modes, has that many
+zero rows.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>Co</strong> (<em>{(n,nxm)} 2D numpy array</em>) &#8211;
+Kalman observability matrix</li>
+<li><strong>T</strong> (<em>(n,n) 2D numpy arrays</em>) &#8211;
+The transformation matrix such that T^T * Cc is row compressed
+and the number of zero rows on the right corresponds to the number
+of unobservable modes.</li>
+<li><strong>r</strong> (<em>integer</em>) &#8211;
+Numerical rank of the observability matrix</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.matrixslice">
+<code class="descclassname">harold.</code><code class="descname">matrixslice</code><span class="sig-paren">(</span><em>M</em>, <em>M11shape</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.matrixslice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.minimal_realization">
+<code class="descclassname">harold.</code><code class="descname">minimal_realization</code><span class="sig-paren">(</span><em>A</em>, <em>B</em>, <em>C</em>, <em>mu_tol=1e-09</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.minimal_realization" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given state matrices A,B,C computes minimal state matrices
+such that the system is controllable and observable within the
+given tolerance mu.</p>
+<dl class="docutils">
+<dt>Implements a basic two pass algorithm :</dt>
+<dd>1- First distance to mode cancellation is computed then also
+the Hessenberg form is obtained with the identified o&#8217;ble/c&#8217;ble
+block numbers. If staircase form reports that there are no
+cancellations but the distance is less than the tolerance,
+distance wins and the respective mode is removed.</dd>
+</dl>
+<p>Uses canceldistance(), and staircase() for the aforementioned checks.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>A,B,C</strong> (<em>{(n,n), (n,m), (pxn)} array_like</em>) &#8211; System matrices to be checked for minimality</li>
+<li><strong>mu_tol</strong> (<em>float (default 1-e6)</em>) &#8211; The sensitivity threshold for the cancellation to be compared
+with the first default output of canceldistance() function.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>A,B,C</strong> &#8211;
+System matrices that are identified as minimal with k states
+instead of the original n where (k &lt;= n)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">{(k,k), (k,m), (pxk)} array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.rediscretize">
+<code class="descclassname">harold.</code><code class="descname">rediscretize</code><span class="sig-paren">(</span><em>G</em>, <em>dt</em>, <em>method='tustin'</em>, <em>alpha=0.5</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.rediscretize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.ssconcat">
+<code class="descclassname">harold.</code><code class="descname">ssconcat</code><span class="sig-paren">(</span><em>G</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.ssconcat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.ssslice">
+<code class="descclassname">harold.</code><code class="descname">ssslice</code><span class="sig-paren">(</span><em>H</em>, <em>n</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.ssslice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harold.staircase">
+<code class="descclassname">harold.</code><code class="descname">staircase</code><span class="sig-paren">(</span><em>A</em>, <em>B</em>, <em>C</em>, <em>compute_T=False</em>, <em>form='c'</em>, <em>invert=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.staircase" title="Permalink to this definition">¶</a></dt>
+<dd><p>The staircase form is used very often to assess system properties.
+Given a state system matrix triplet A,B,C, this function computes
+the so-called controller-Hessenberg form such that the resulting
+system matrices have the block-form (x denoting the nonzero blocks):</p>
+<div class="highlight-python"><div class="highlight"><pre>[x x x x x] |  [ x ]
+[x x x x x] |  [ 0 ]
+[0 x x x x] |  [ 0 ]
+[0 0 x x x] |  [ 0 ]
+[0 0 0 x x] |  [ 0 ]
+------------|-------
+[x x x x x] |
+[x x x x x] |
+</pre></div>
+</div>
+<p>For controllability and observability, the existence of zero-rank
+subdiagonal blocks can be checked, as opposed to forming the Kalman
+matrix and checking the rank. Staircase method can numerically be
+more stable since for certain matrices, A^n computations can
+introduce large errors (for some A that have entries with varying
+order of magnitudes). But it is also prone to numerical rank guessing
+mismatches.</p>
+<p>Notice that, if we use the pertransposed data, then we have the
+observer form which is usually asked from the user to supply
+the data as A,B,C ==&gt; A^T,C^T,B^T and then transpose back the result.
+This is just silly to ask the user to do that. Hence the additional
+&#8220;form&#8221; option denoting whether it is the observer or the controller
+form that is requested.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>A,B,C</strong> (<em>{(n,n),(n,m),(p,n)} array_like</em>) &#8211; System Matrices to be converted</li>
+<li><strong>compute_T</strong> (<em>bool, optional</em>) &#8211; Whether the transformation matrix T should be computed or not</li>
+<li><strong>form</strong> (<em>{ &#8216;c&#8217; , &#8216;o&#8217; }, optional</em>) &#8211; Determines whether the controller- or observer-Hessenberg form
+will be computed.</li>
+<li><strong>invert</strong> (<em>bool, optional</em>) &#8211; Whether to select which side the B or C matrix will be compressed.
+For example, the default case returns the B matrix with (if any)
+zero rows at the bottom. invert option flips this choice either in
+B or C matrices depending on the &#8220;form&#8221; switch.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
+<li><p class="first"><strong>Ah,Bh,Ch</strong> (<em>{(n,n),(n,m),(p,n)} 2D numpy arrays</em>) &#8211;
+Converted system matrices</p>
+</li>
+<li><p class="first"><strong>T</strong> (<em>(n,n) 2D numpy arrays</em>) &#8211;
+If the boolean &#8220;compute_T&#8221; is true, returns the transformation
+matrix such that</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">T</span><span class="o">^</span><span class="n">T</span> <span class="o">*</span> <span class="n">A</span> <span class="o">*</span> <span class="n">T</span> <span class="o">|</span> <span class="n">T</span><span class="o">^</span><span class="n">T</span> <span class="o">*</span> <span class="n">B</span><span class="p">]</span>
+<span class="p">[</span>    <span class="n">C</span> <span class="o">*</span> <span class="n">T</span>   <span class="o">|</span>    <span class="n">D</span>   <span class="p">]</span>
+</pre></div>
+</div>
+<p>is in the desired staircase form.</p>
+</li>
+<li><p class="first"><strong>k</strong> (<em>np.array</em>) &#8211;
+Array of controllable block sizes identified during block
+diagonalization</p>
+</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.statetotransfer">
+<code class="descclassname">harold.</code><code class="descname">statetotransfer</code><span class="sig-paren">(</span><em>*state_or_abcd</em>, <em>output='system'</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.statetotransfer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a State() object of a tuple of A,B,C,D array-likes, converts
+the argument into the transfer representation. The output can be
+selected as a Transfer() object or the numerator, denominator if
+&#8216;output&#8217; keyword is given with the option &#8216;polynomials&#8217;.</p>
+<p>If the input is a Transfer() object it returns the argument with no
+modifications.</p>
+<p>The algorithm is to first get the minimal realization of the State()
+representation. Then implements the conversion ala Varga,Sima 1981
+which can be summarized as iterating over every row/cols of B and C
+to get SISO Transfer representations via c*(sI-A)^(-1)*b+d</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>state_or_abcd</strong> (<em>State() or a tuple of A,B,C,D matrices.</em>) &#8211; </li>
+<li><strong>output</strong> (<em>{&#8216;system&#8217;,&#8217;polynomials&#8217;}</em>) &#8211; Selects whether a State() object or individual numerator, denominator
+will be returned.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
+<li><p class="first"><strong>G</strong> (<em>Transfer()</em>) &#8211;
+If &#8216;output&#8217; keyword is set to &#8216;system&#8217;</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>num</strong> (<em>{List of lists of 2D-numpy arrays for MIMO case,</em>) &#8211;</dt>
+<dd><p class="first last">2D-Numpy arrays for SISO case}</p>
+</dd>
+</dl>
+<p>If the &#8216;output&#8217; keyword is set to &#8216;polynomials&#8217;</p>
+</li>
+<li><p class="first"><strong>den</strong> (<em>Same as num</em>)</p>
+</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.system_norm">
+<code class="descclassname">harold.</code><code class="descname">system_norm</code><span class="sig-paren">(</span><em>state_or_transfer</em>, <em>p=inf</em>, <em>validate=False</em>, <em>verbose=False</em>, <em>max_iter_limit=100</em>, <em>hinf_tolerance=1e-10</em>, <em>eig_tolerance=1e-12</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.system_norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the system p-norm. Currently, no balancing is done on the
+system, however in the future, a scaling of some sort will be introduced.
+Another short-coming is that while sounding general, only H2 and Hinf
+norm are understood.</p>
+<p>For H2 norm, the standard grammian definition via controllability
+grammian can be found elsewhere is used.</p>
+<p>Currently, the Hinf norm is computed via so-called Boyd-Balakhrishnan-
+Bruinsma-Steinbuch algorithm (See e.g. [2]).</p>
+<p>However, (with kind and generous help of Melina Freitag) the algorithm
+given in [1] is being implemented and depending on the speed benefit
+might be replaced as the default.</p>
+<p>[1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_infty$-norm
+using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2),
+619-635, 2014</p>
+<p>[2] N.A. Bruinsma, M. Steinbuch: Fast Computation of $H_infty$-norm of
+transfer function. System and Control Letters, 14, 1990</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>state_or_transfer</strong> (<em>{State,Transfer}</em>) &#8211; System for which the norm is computed</li>
+<li><strong>p</strong> (<em>{int,Inf}</em>) &#8211; Whether the rank of the matrix should also be reported or not.
+The returned rank is computed via the definition taken from the
+official numpy.linalg.matrix_rank and appended here.</li>
+<li><strong>validate</strong> (<em>boolean</em>) &#8211; If applicable and if the resulting norm is finite, the result is
+validated via other means.</li>
+<li><strong>verbose</strong> (<em>boolean</em>) &#8211; If True, the (some) internal progress is printed out.</li>
+<li><strong>max_iter_limit</strong> (<em>int</em>) &#8211; Stops the iteration after max_iter_limit many times spinning the
+loop. Very unlikely but might be required for pathological examples.</li>
+<li><strong>hinf_tolerance</strong> (<em>float</em>) &#8211; Convergence check value such that when the progress is below this
+tolerance the result is accepted as <em>converged</em>.</li>
+<li><strong>eig_tolerance</strong> (<em>float</em>) &#8211; The algorithm relies on checking the eigenvalues of the Hamiltonian
+being on the imaginary axis or not. This value is the threshold
+such that the absolute real value of the eigenvalues smaller than
+this value will be accepted as pure imaginary eigenvalues.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>n</strong> (<em>float</em>) &#8211;
+Computed norm. In NumPy, infinity is also float-type</li>
+<li><strong>omega</strong> (<em>float</em>) &#8211;
+For Hinf norm, omega is the frequency where the maximum is attained
+(technically this is a numerical approximation of the supremum).</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.transfertostate">
+<code class="descclassname">harold.</code><code class="descname">transfertostate</code><span class="sig-paren">(</span><em>*tf_or_numden</em>, <em>output='system'</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.transfertostate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a Transfer() object of a tuple of numerator and denominator,
+converts the argument into the state representation. The output can
+be selected as a State() object or the A,B,C,D matrices if &#8216;output&#8217;
+keyword is given with the option &#8216;matrices&#8217;.</p>
+<p>If the input is a State() object it returns the argument with no
+modifications.</p>
+<p>For SISO systems, the algorithm is returning the controllable
+companion form.</p>
+<p>For MIMO systems a variant of the algorithm given in Section 4.4 of
+W.A. Wolowich, Linear Multivariable Systems (1974). The denominators
+are equaled with haroldlcm() Least Common Multiple function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tf_or_numden</strong> (<em>Transfer() or a tuple of numerator and denominator.</em>) &#8211; For MIMO numerator and denominator arguments see Transfer()
+docstring.</li>
+<li><strong>output</strong> (<em>{&#8216;system&#8217;,&#8217;matrices&#8217;}</em>) &#8211; Selects whether a State() object or individual state matrices
+will be returned.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>G</strong> (<em>State()</em>) &#8211;
+If &#8216;output&#8217; keyword is set to &#8216;system&#8217;</li>
+<li><strong>A,B,C,D</strong> (<em>{(nxn),(nxm),(p,n),(p,m)} 2D Numpy-arrays</em>) &#8211;
+If the &#8216;output&#8217; keyword is set to &#8216;matrices&#8217;</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.transmission_zeros">
+<code class="descclassname">harold.</code><code class="descname">transmission_zeros</code><span class="sig-paren">(</span><em>A</em>, <em>B</em>, <em>C</em>, <em>D</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.transmission_zeros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the transmission zeros of a (A,B,C,D) system matrix quartet.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This is a straightforward implementation of the algorithm of Misra,
+van Dooren, Varga 1994 but skipping the descriptor matrix which in
+turn becomes Emami-Naeini,van Dooren 1979. I don&#8217;t know if anyone
+actually uses descriptor systems in practice so I removed the
+descriptor parts to reduce the clutter. Hence, it is possible to
+directly row/column compress the matrices without caring about the
+upper Hessenbergness of E matrix.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>A,B,C,D</strong> (<em>{(nxn),(nxm),(p,n),(p,m) 2D Numpy arrays}</em>) &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>z</strong> &#8211;
+The array of computed transmission zeros. The array is returned
+empty if no transmission zeros are found.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">{1D Numpy array}</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="harold.undiscretize">
+<code class="descclassname">harold.</code><code class="descname">undiscretize</code><span class="sig-paren">(</span><em>G</em>, <em>OverrideWith=None</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.undiscretize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a discrete time system model continuous system model.
+If the model has the Discretization Method set, then uses that
+discretization method to reach back to the continous system model.</p>
+</dd></dl>
+
+</div>
+
+
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2015, Author.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.3</a>
-      
-      |
-      <a href="_sources/harold.txt"
-          rel="nofollow">Page source</a></li>
     </div>
 
-    
-
-    
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Ilhan Polat.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
   </body>
 </html>

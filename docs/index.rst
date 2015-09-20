@@ -1,18 +1,30 @@
 .. harold documentation master file, created by
-   sphinx-quickstart on Thu Sep 17 02:42:22 2015.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+   sphinx-quickstart on Sat Sep 19 17:38:48 2015.
 
 Welcome to harold's documentation!
 ==================================
 
 Contents:
+---------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
+   intro
    harold
-   setup
+    
+Additional Information
+----------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   faq
+   changelog
+   
+.. automodule:: harold.
+   :members:
+   :undoc-members:
 
 
 Indices and tables

@@ -1,14 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  8 15:30:46 2014
-Rewrite of old ltisys class file
-@author: ilayn
-"""
-
 
 # %% License Notice
 """
-
 The MIT License (MIT)
 
 Copyright (c) 2015 Ilhan Polat
@@ -30,8 +23,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+"""
 
 """
+<hr>
+"""
+
 
 # %% Imports/shorthands
 import numpy as np
@@ -43,22 +40,6 @@ import collections
 from copy import deepcopy
 
 # %% Module Definitions
-
-# Dummy documentation test function
-def big_func1(abra, cadabra, sesame=None):
-    """This is about big_func1.
-   
-    :param abra: abra number.
-    :param cadabra: cadabra number.
-    :param sesame: sesame information.
-    :return ret_val: result information.
-    :rtype: int.
-    """
-    ret_val = abra + cadabra
-    print(sesame["street"])
-    return ret_val
-
-    
 _KnownDiscretizationMethods = ('bilinear',
                               'tustin',
                               'zoh',
@@ -82,55 +63,53 @@ class Transfer:
     a Multiple Input/Multiple Output system (MIMO). 
     
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
-    e.g.,
+    e.g.,::
     
-    >>>> G = Transfer(1,[1,2,1])
+        >>>> G = Transfer(1,[1,2,1])
     
     For MIMO systems, depending on the shared denominators, there are 
-    two distinct ways of entering a MIMO transfer function
+    two distinct ways of entering a MIMO transfer function:
 
-        1-  Entering "list of lists of lists" such that every element 
-            of the inner lists are numpy array-able (explicitly checked) 
-            for numerator and entering a 1D list or 1D numpy array for 
-            denominator
+        1.  Entering "list of lists of lists" such that every element of the 
+        inner lists are numpy array-able (explicitly checked) for numerator 
+        and entering a 1D list or 1D numpy array for denominator::
+                
+            >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
+            >>>> G.shape
+            (2,2)
+        
+        2. Entering the denominator also as a list of lists for individual 
+        entries as a bracket nightmare (thanks to Python's nonnative support 
+        for arrays and tedious array syntax).::
             
-    >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
-    >>>> G.shape
-    (2,2)
+            >>>> G = Transfer([
+                     [ [1,3,2], [1,3] ],
+                     [   [1]  , [1,0] ]
+                   ],# end of num
+                   [
+                      [ [1,2,1] ,  [1,3,3]  ],
+                      [ [1,0,0] , [1,2,3,4] ]
+                   ])
+           >>>> G.shape
+           (2,2)
     
-        2- Entering the denominator also as a list of lists for 
-        individual entries as a bracket nightmare (thanks to 
-        Python's nonnative support for arrays and tedious array
-        syntax). 
-        
-    >>>> G = Transfer([
-                         [ [1,3,2], [1,3] ],
-                         [   [1]  , [1,0] ]
-                       ],# end of num
-                       [
-                          [ [1,2,1] ,  [1,3,3]  ],
-                          [ [1,0,0] , [1,2,3,4] ]
-                       ])
-    >>>> G.shape
-    (2,2)
+    Same behavior can be done also with providing the full denominator
+    and omitting providing a common numerator.
     
-        Same behavior can be done also with providing the full denominator
-        and omitting providing a common numerator.
-        
-        There is a very involved validator and if you would like to know 
-        why or how this input is handled. Provide the same numerator and 
-        denominator to the static method below with 'verbose=True' keyword
-        argument, e.g. 
+    There is a very involved validator and if you would like to know 
+    why or how this input is handled. Provide the same numerator and 
+    denominator to the static method below with 'verbose=True' keyword
+    argument, e.g. ::
         
         >>>> n , d , shape , is_it_static = Transfer.validate_arguments(
-                      [1,3,2], # common numerator
-                      [[[1,2,1],[1,3,3]],[[1,0,0],[1,2,3,4]]],# explicit den
-                      verbose=True # print the logic it followed 
-                      )
+                  [1,3,2], # common numerator
+                  [[[1,2,1],[1,3,3]],[[1,0,0],[1,2,3,4]]],# explicit den
+                  verbose=True # print the logic it followed 
+                  )
         
-        would give information about the context together with the 
-        regularized numerator, denominator, resulting system shape
-        and boolean whether or not the system has dynamics.
+    would give information about the context together with the 
+    regularized numerator, denominator, resulting system shape
+    and boolean whether or not the system has dynamics.
         
     However, the preferred way is to make everything a numpy array inside
     the list of lists. That would skip many compatibility checks. 
@@ -139,21 +118,21 @@ class Transfer:
     recalculate the pole/zero locations etc. properties automatically.
 
     The Sampling Period can be given as a last argument or a keyword 
-    with 'dt' key or changed later with the property access.
+    with 'dt' key or changed later with the property access.::
     
-    >>>> G = Transfer([1],[1,4,4],0.5) 
-    >>>> G.SamplingSet
-    'Z'
-    >>>> G.SamplingPeriod
-    0.5
-    >>>> F = Transfer([1],[1,2])
-    >>>> F.SamplingSet
-    'R'
-    >>>> F.SamplingPeriod = 0.5
-    >>>> F.SamplingSet
-    'Z'
-    >>>> F.SamplingPeriod
-    0.5
+        >>>> G = Transfer([1],[1,4,4],0.5) 
+        >>>> G.SamplingSet
+        'Z'
+        >>>> G.SamplingPeriod
+        0.5
+        >>>> F = Transfer([1],[1,2])
+        >>>> F.SamplingSet
+        'R'
+        >>>> F.SamplingPeriod = 0.5
+        >>>> F.SamplingSet
+        'Z'
+        >>>> F.SamplingPeriod
+        0.5
     
     Providing 'False' value to the SamplingPeriod property will make 
     the system continous time again and relevant properties are reset
@@ -164,7 +143,6 @@ class Transfer:
     method if applicable) because a model without a sampling period 
     doesn't make sense for analysis. If you don't care, then make up 
     a number, say, a million, since you don't care.
-
     """
 
     def __init__(self,num,den=None,dt=False):
@@ -776,7 +754,7 @@ class Transfer:
 
         Parameters
         ----------
-        num , den : The polynomial coefficient containers. Etiher of them
+        num       : The polynomial coefficient containers. Etiher of them
                     can be (not both) None to assume that the context will
                     be derived from the other for static gains. Otherwise
                     both are expected to be one of 
@@ -792,6 +770,8 @@ class Transfer:
                     
                     For SISO context, causality check is performed 
                     between numerator and denominator arrays.
+
+        den       : Same as num
                     
         verbose   : boolean switch to print out what this method thinks
                     about the argument context. 
@@ -800,12 +780,13 @@ class Transfer:
         Returns
         -------
     
-        num, den : {(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)
+        num : {(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)
                    {(1,s),(1,r)} 2D numpy arrays (SISO)
                    
                    m,p integers are the shape of the MIMO system
                    r,s integers are the degree of the SISO num,den
-            
+
+        den : Same as num
             
         shape    : 2-tuple
                     Returns the recognized shape of the system
@@ -1257,13 +1238,7 @@ class Transfer:
             
 
         return num , den , shape , Gain_flag
-        
 
-#=======================================
-#=======================================
-# End of Transfer Class
-#=======================================
-#=======================================
        
 class State:
     """
@@ -1272,9 +1247,9 @@ class State:
     Transfer() ). 
     
     A State object can be instantiated in a straightforward manner by 
-    entering 2D arrays, floats, 1D arrays for row vectors and so on. 
+    entering 2D arrays, floats, 1D arrays for row vectors and so on.:: 
     
-    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)
+        >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)
     
     
     However, the preferred way is to make everything a numpy array.
@@ -1284,21 +1259,21 @@ class State:
     locations etc. properties automatically.
 
     The Sampling Period can be given as a last argument or a keyword 
-    with 'dt' key or changed later with the property access.
+    with 'dt' key or changed later with the property access.::
     
-    >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)
-    >>>> G.SamplingSet
-    'Z'
-    >>>> G.SamplingPeriod
-    0.5
-    >>>> F = State(1,2,3,4)
-    >>>> F.SamplingSet
-    'R'
-    >>>> F.SamplingPeriod = 0.5
-    >>>> F.SamplingSet
-    'Z'
-    >>>> F.SamplingPeriod
-    0.5
+        >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)
+        >>>> G.SamplingSet
+        'Z'
+        >>>> G.SamplingPeriod
+        0.5
+        >>>> F = State(1,2,3,4)
+        >>>> F.SamplingSet
+        'R'
+        >>>> F.SamplingPeriod = 0.5
+        >>>> F.SamplingSet
+        'Z'
+        >>>> F.SamplingPeriod
+        0.5
     
     Setting  SamplingPeriod property to 'False' value to the will make 
     the system continous time again and relevant properties are reset
@@ -1309,8 +1284,6 @@ class State:
     method if applicable) because a model without a sampling period 
     doesn't make sense for analysis. If you don't care, then make up 
     a number, say, a million, since you don't care.
-
-    
     """
 
     def __init__(self,a,b=None,c=None,d=None,dt=False):
@@ -1952,12 +1925,6 @@ class State:
         else:
             return a,b,c,d,d.shape,Gain_flag
 
-#=======================================
-#=======================================
-# End of State Class
-#=======================================
-#=======================================
-            
 
 # %% State <--> Transfer conversion
 
@@ -1993,10 +1960,11 @@ def statetotransfer(*state_or_abcd,output='system'):
     G : Transfer()
         If 'output' keyword is set to 'system'
         
-    num,den : {List of lists of 2D-numpy arrays for MIMO case,
+    num : {List of lists of 2D-numpy arrays for MIMO case,
               2D-Numpy arrays for SISO case}
         If the 'output' keyword is set to 'polynomials'
 
+    den : Same as num
       
     """    
 
@@ -2362,7 +2330,6 @@ def transfertostate(*tf_or_numden,output='system'):
 # %% Transmission zeros of a state space system
 
 """
-
 TODO Though the descriptor code also works up-to-production, I truncated 
 to explicit systems. I better ask around if anybody needs them (though 
 the answer to such question is always a yes).
@@ -2377,13 +2344,13 @@ def transmission_zeros(A,B,C,D):
     """
     Computes the transmission zeros of a (A,B,C,D) system matrix quartet. 
 
-    This is a straightforward implementation of the algorithm of Misra, 
-    van Dooren, Varga 1994 but skipping the descriptor matrix which in 
-    turn becomes Emami-Naeini,van Dooren 1979. I don't know if anyone 
-    actually uses descriptor systems in practice so I removed the 
-    descriptor parts to reduce the clutter. Hence, it is possible to 
-    directly row/column compress the matrices without caring about the 
-    upper Hessenbergness of E matrix. 
+    .. note:: This is a straightforward implementation of the algorithm of Misra, 
+              van Dooren, Varga 1994 but skipping the descriptor matrix which in 
+              turn becomes Emami-Naeini,van Dooren 1979. I don't know if anyone 
+              actually uses descriptor systems in practice so I removed the 
+              descriptor parts to reduce the clutter. Hence, it is possible to
+              directly row/column compress the matrices without caring about the
+              upper Hessenbergness of E matrix. 
 
     Parameters
     ----------
@@ -2689,6 +2656,11 @@ def __discretize(T,dt,method,PrewarpAt,q):
 
 
 def undiscretize(G,OverrideWith = None):
+    """
+    Converts a discrete time system model continuous system model. 
+    If the model has the Discretization Method set, then uses that 
+    discretization method to reach back to the continous system model.
+    """
     if not isinstance(G,(Transfer,State)):
         raise TypeError('The argument is not transfer '
         'function or a state\nspace model.'
@@ -2780,6 +2752,9 @@ def __undiscretize(G):
         
 
 def rediscretize(G,dt,method='tustin',alpha=0.5):
+    """
+    .. todo:: Not implemented yet!
+    """
     pass
 
 
@@ -2907,34 +2882,42 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
     purposes to show the modal decomposition. Use canceldistance() and
     minimal_realization() functions instead with better numerical properties.
 
-    Example usage and verification : 
+    Example usage and verification : ::
     
-    G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
-    print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
-    print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
-    F = kalman_decomposition(G)
-    print(F.a,F.b,F.c,sep='\n\n')
-    H = minimal_realization(F.a,F.b,F.c)
-    print('\nThe minimal system matrices are:\n',*H)
+        G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
+        print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
+        print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
+        F = kalman_decomposition(G)
+        print(F.a,F.b,F.c)
+        H = minimal_realization(F.a,F.b,F.c)
+        print('The minimal system matrices are:',*H)
     
-    Expected output : 
-    Is it Kalman Cont'ble ?  False
-    Is it Kalman Obsv'ble ?  False
-    [[ 2.          0.         -1.41421356]
-     [ 7.07106781 -3.         -7.        ]
-     [ 0.          0.          2.        ]]
-    
-    [[-1.]
-     [ 0.]
-     [ 0.]]
-    
-    [[-1.  0.  0.]]
-    
-    The minimal system matrices are:
-     [[ 2.]] [[ 1.]] [[ 1.]]
+        
+    Expected output : :: 
 
-    Parameters:
-    ------
+        Is it Kalman Cont'ble ?  False
+        Is it Kalman Obsv'ble ?  False
+        [[ 2.          0.         -1.41421356]
+         [ 7.07106781 -3.         -7.        ]
+         [ 0.          0.          2.        ]]
+        
+        [[-1.]
+         [ 0.]
+         [ 0.]]
+        
+        [[-1.  0.  0.]]
+        
+        The minimal system matrices are:
+         [[ 2.]] [[ 1.]] [[ 1.]]
+         
+    .. warning:: Kalman decomposition is often described in an ambigous fashion 
+                 in the literature. I would like to thank Joaquin Carrasco for 
+                 his generous help on this matter for his lucid argument as to 
+                 why this is probably happening. This is going to be 
+                 reimplemented with better tests on pathological models.
+
+    Parameters
+    ----------
    
     G : State()
         The state representation that is to be converted into the block
@@ -2954,8 +2937,8 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
         than this threshold in absolute value would be zeroed. Setting 
         this value to zero turns this behavior off. 
     
-    Returns:
-    --------
+    Returns
+    -------
     Gk : State() or if output = 'matrices' is selected (A,B,C,D) tuple
         Returns a state representation or its matrices as a tuple
         
@@ -3050,14 +3033,14 @@ def is_kalman_controllable(G):
     Tests the rank of the Kalman controllability matrix and compares it 
     with the A matrix size, returns a boolean depending on the outcome. 
     
-    Parameters:
-    ------
+    Parameters
+    ----------
     
     G : State() or tuple of {(nxn),(nxm)} array_like matrices
         The system or the (A,B) matrix tuple    
         
-    Returns:
-    --------
+    Returns
+    -------
     test_bool : Boolean
         Returns True if the input is Kalman controllable
     
@@ -3081,14 +3064,15 @@ def is_kalman_observable(G):
     Tests the rank of the Kalman observability matrix and compares it 
     with the A matrix size, returns a boolean depending on the outcome. 
     
-    Parameters:
-    ------
+    Parameters
+    ----------
     
     G : State() or tuple of {(nxn),(pxn)} array_like matrices
         The system or the (A,C) matrix tuple    
         
-    Returns:
-    --------
+    Returns
+    -------
+    
     test_bool : Boolean
         Returns True if the input is Kalman observable
     
@@ -3137,7 +3121,7 @@ def _state_or_abcd(arg,n=4):
         To test only an A,C use n = -1
         
     Returns
-    --------
+    -------
     system_or_not : Boolean
         True if system and False otherwise
         
@@ -3199,7 +3183,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
     The staircase form is used very often to assess system properties. 
     Given a state system matrix triplet A,B,C, this function computes 
     the so-called controller-Hessenberg form such that the resulting 
-    system matrices have the block-form (x denoting the nonzero blocks)
+    system matrices have the block-form (x denoting the nonzero blocks)::
     
                 [x x x x x] |  [ x ]
                 [x x x x x] |  [ 0 ]
@@ -3228,6 +3212,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
     
     Parameters
     ----------
+    
     A,B,C : {(n,n),(n,m),(p,n)} array_like
         System Matrices to be converted
     compute_T : bool, optional
@@ -3248,7 +3233,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
         Converted system matrices 
     T : (n,n) 2D numpy arrays
         If the boolean "compute_T" is true, returns the transformation 
-        matrix such that 
+        matrix such that ::
         
                         [T^T * A * T | T^T * B]
                         [    C * T   |    D   ]
@@ -3373,6 +3358,7 @@ def canceldistance(F,G):
     
     Parameters
     ----------
+    
     F,G : {(n,n), (n,m)} array_like
         Pencil matrices to be checked for rank deficiency distance
 
@@ -3440,6 +3426,7 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
     
     Parameters
     ----------
+    
     A,B,C : {(n,n), (n,m), (pxn)} array_like
         System matrices to be checked for minimality
     mu_tol: float (default 1-e6)
@@ -3579,6 +3566,7 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
 
     Parameters
     ----------
+    
     D : (m,n) array_like
         Matrix to be decomposed
     also_rank : bool, optional
@@ -3902,24 +3890,24 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     of LCM and a list, of which entries are the polynomial 
     multipliers to arrive at the LCM of each input element. 
     
-    Example: 
+    Example: ::
     
-    >>>> a , b = haroldlcm(*map(
-                            np.array,
-                            ([1,3,0,-4],[1,-4,-3,18],[1,-4,3],[1,-2,-8])
+        >>>> a , b = haroldlcm(*map(
+                                np.array,
+                                ([1,3,0,-4],[1,-4,-3,18],[1,-4,3],[1,-2,-8])
+                                )
                             )
-                        )
-    >>>> a 
-        (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
-
-    >>>> b
-        [array([  1., -10.,  33., -36.]),
-         array([  1.,  -3.,  -6.,   8.]),
-         array([  1.,  -3., -12.,  20.,  48.]),
-         array([  1.,  -5.,   1.,  21., -18.])]
-         
-    >>>> np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult
-        (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
+        >>>> a 
+            (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
+    
+        >>>> b
+            [array([  1., -10.,  33., -36.]),
+             array([  1.,  -3.,  -6.,   8.]),
+             array([  1.,  -3., -12.,  20.,  48.]),
+             array([  1.,  -5.,   1.,  21., -18.])]
+             
+        >>>> np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult
+            (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
 
     """
     # As typical, it turns out that the minimality and c'ble subspace for 
@@ -4051,18 +4039,18 @@ def haroldgcd(*args):
     In other words, the GCD of polynomials 2 and 2s+4 is computed
     as 1. 
     
-    Example: 
+    Example: ::
     
-    >>>> a = haroldgcd(*map(
-                haroldpoly,
-                ([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)
-              )
-            )
-    >>>> print(a)
-         array([ 1.,  2.])
+        >>>> a = haroldgcd(*map(
+                    haroldpoly,
+                    ([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)
+                  )
+                )
+        >>>> print(a)
+             array([ 1.,  2.])
          
     
-    DISCLAIMER : It uses the LU factorization of the Sylvester matrix.
+    .. warning:: It uses the LU factorization of the Sylvester matrix.
                  Use responsibly. It does not check any certificate of 
                  success by any means (maybe it will in the future).
                  I've tried the recent ERES method too. When there is a 
@@ -4165,20 +4153,20 @@ def haroldgcd(*args):
 def haroldcompanion(somearray):
     """
     Takes an 1D numpy array or list and returns the companion matrix
-    of the monic polynomial of somearray. Hence [0.5,1,2] will be first
-    converted to [1,2,4]
+    of the monic polynomial of somearray. Hence `[0.5,1,2]` will be first
+    converted to `[1,2,4]`
     
-    Example:
+    Example: ::
     
-    >>>> haroldcompanion([2,4,6])
-        array([[ 0.,  1.],
-               [-3., -2.]])
-
-    >>>> haroldcompanion([1,3])
-        array([[-3.]])
-
-    >>>> haroldcompanion([1])
-        array([], dtype=float64)
+        >>>> haroldcompanion([2,4,6])
+            array([[ 0.,  1.],
+                   [-3., -2.]])
+    
+        >>>> haroldcompanion([1,3])
+            array([[-3.]])
+    
+        >>>> haroldcompanion([1])
+            array([], dtype=float64)
     
     """
     if not isinstance(somearray,(list,type(np.array([0.])))):
@@ -4273,10 +4261,10 @@ def haroldpolymul(*args,trimzeros=True):
     The arguments are passed through the left zero 
     trimming function first.
     
-    Example: 
+    Example: ::
     
-    >>>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
-    array([ 1.,  4.,  6.,  4.,  1.,  0.])
+        >>>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
+        array([ 1.,  4.,  6.,  4.,  1.,  0.])
     
     
     """
