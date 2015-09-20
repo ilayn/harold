@@ -39,8 +39,8 @@ extensions = [
     'sphinx.ext.mathjax',
 ]
 
-#
-todo_include_todos=True
+# 
+autodoc_member_order = 'bysource'
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -81,7 +81,7 @@ author = 'Ilhan Polat'
 # built documents.
 #
 # The short X.Y version.
-version = '0.1.0a2'
+version = '0.1.0'
 # The full version, including alpha/beta/rc tags.
 release = '0.1.0a2'
 
@@ -100,7 +100,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build','setup.py']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -127,7 +127,7 @@ pygments_style = 'sphinx'
 #keep_warnings = False
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+todo_include_todos = True
 
 
 # -- Options for HTML output ----------------------------------------------
@@ -135,14 +135,8 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # html_theme = 'alabaster'
-html_theme = "scrolls"
-#html_theme_options = {
-#    headerbordercolor
-#    subheadlinecolor
-#    linkcolor
-#    visitedlinkcolor
-#    admonitioncolor
-# }
+html_theme = "sphinx_rtd_theme"
+
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

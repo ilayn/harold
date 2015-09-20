@@ -25,9 +25,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-"""
-<hr>
-"""
 
 
 # %% Imports/shorthands
@@ -97,7 +94,7 @@ class Transfer:
     and omitting providing a common numerator.
     
     There is a very involved validator and if you would like to know 
-    why or how this input is handled. Provide the same numerator and 
+    why or how this input is handled ,provide the same numerator and 
     denominator to the static method below with 'verbose=True' keyword
     argument, e.g. ::
         

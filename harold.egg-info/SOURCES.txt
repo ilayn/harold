@@ -1,0 +1,7 @@
+README.rst
+setup.py
+harold.egg-info/PKG-INFO
+harold.egg-info/SOURCES.txt
+harold.egg-info/dependency_links.txt
+harold.egg-info/requires.txt
+harold.egg-info/top_level.txt
