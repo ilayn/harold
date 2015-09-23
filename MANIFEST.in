@@ -1,0 +1,2 @@
+recursive-include docs/_build/html *
+recursive-include tests *
