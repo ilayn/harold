@@ -17,9 +17,6 @@ Contents:
 harold Reference
 ----------------
 
-.. toctree::
-   :maxdepth: 1
-
 .. automodule:: harold.
    :members:
    :undoc-members:
@@ -33,8 +30,6 @@ Additional Information
    faq
    changelog
    
-
-
 
 Indices and tables
 ==================

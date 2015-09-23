@@ -1,7 +1,5 @@
 numpy
 scipy
-matplotlib
-bokeh
 tabulate
 
 [dev]

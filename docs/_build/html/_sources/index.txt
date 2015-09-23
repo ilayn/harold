@@ -8,11 +8,19 @@ Contents:
 ---------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    intro
-   harold
-    
+   preflight
+   tutorial
+
+harold Reference
+----------------
+
+.. automodule:: harold.
+   :members:
+   :undoc-members:
+ 
 Additional Information
 ----------------------
 
@@ -22,10 +30,6 @@ Additional Information
    faq
    changelog
    
-.. automodule:: harold.
-   :members:
-   :undoc-members:
-
 
 Indices and tables
 ==================
