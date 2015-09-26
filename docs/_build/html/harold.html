@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>harold module &mdash; harold 0.1.1a3 documentation</title>
+  <title>harold module &mdash; harold 0.1.1a5 documentation</title>
   
 
   
@@ -30,7 +30,7 @@
   
 
   
-    <link rel="top" title="harold 0.1.1a3 documentation" href="index.html"/> 
+    <link rel="top" title="harold 0.1.1a5 documentation" href="index.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -75,8 +75,6 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">A primer to harold</a></li>
-</ul>
-<ul class="simple">
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a><ul>
@@ -153,7 +151,7 @@ THE SOFTWARE.</p>
 with State()).</p>
 <p>Main types of instantiation of this class depends on whether the
 user wants to create a Single Input/Single Output system (SISO) or
-a Multiple Input/Multiple Output system (MIMO).</p>
+a Multiple Input/Multiple Output system (MIMO) model.</p>
 <p>For SISO system creation, 1D lists or 1D numpy arrays are expected,
 e.g.,:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = Transfer(1,[1,2,1])</span>
@@ -164,7 +162,8 @@ two distinct ways of entering a MIMO transfer function:</p>
 <blockquote>
 <div><p>1.  Entering &#8220;list of lists of lists&#8221; such that every element of the
 inner lists are numpy array-able (explicitly checked) for numerator
-and entering a 1D list or 1D numpy array for denominator:</p>
+and entering a 1D list or 1D numpy array for denominator (and
+similarly for numerator):</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="go">&gt;&gt;&gt;&gt; G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])</span>
 <span class="go">&gt;&gt;&gt;&gt; G.shape</span>
 <span class="go">(2,2)</span>
@@ -172,7 +171,7 @@ and entering a 1D list or 1D numpy array for denominator:</p>
 </div>
 <p>2. Entering the denominator also as a list of lists for individual
 entries as a bracket nightmare (thanks to Python&#8217;s nonnative support
-for arrays and tedious array syntax).:</p>
+for arrays and tedious array syntax):</p>
 <div class="highlight-python"><div class="highlight"><pre> &gt;&gt;&gt;&gt; G = Transfer([
           [ [1,3,2], [1,3] ],
           [   [1]  , [1,0] ]
@@ -186,8 +185,6 @@ for arrays and tedious array syntax).:</p>
 </pre></div>
 </div>
 </div></blockquote>
-<p>Same behavior can be done also with providing the full denominator
-and omitting providing a common numerator.</p>
 <p>There is a very involved validator and if you would like to know
 why or how this input is handled ,provide the same numerator and
 denominator to the static method below with &#8216;verbose=True&#8217; keyword
@@ -227,65 +224,152 @@ with &#8216;dt&#8217; key or changed later with the property access.:</p>
 <p>Providing &#8216;False&#8217; value to the SamplingPeriod property will make
 the system continous time again and relevant properties are reset
 to CT properties.</p>
-<p>Warning: Unlike matlab or other tools, a discrete time system
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Unlike matlab or other tools, a discrete time system
 needs a specified sampling period (and possibly a discretization
 method if applicable) because a model without a sampling period
 doesn&#8217;t make sense for analysis. If you don&#8217;t care, then make up
 a number, say, a million, since you don&#8217;t care.</p>
+</div>
 <dl class="attribute">
 <dt id="harold.Transfer.SamplingSet">
 <code class="descname">SamplingSet</code><a class="headerlink" href="#harold.Transfer.SamplingSet" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If this property is called <code class="docutils literal"><span class="pre">G.SamplingSet</span></code> then returns the
+set <code class="docutils literal"><span class="pre">Z</span></code> or <code class="docutils literal"><span class="pre">R</span></code> for discrete and continous models respectively.
+This is a read only property and cannot be set. Instead an appropriate
+setting should be given to the <code class="docutils literal"><span class="pre">SamplingPeriod</span></code> property.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.NumberOfInputs">
 <code class="descname">NumberOfInputs</code><a class="headerlink" href="#harold.Transfer.NumberOfInputs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A read only property that holds the number of inputs.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.NumberOfOutputs">
 <code class="descname">NumberOfOutputs</code><a class="headerlink" href="#harold.Transfer.NumberOfOutputs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A read only property that holds the number of outputs.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.shape">
 <code class="descname">shape</code><a class="headerlink" href="#harold.Transfer.shape" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A read only property that holds the shape of the system as a tuple
+such that the result is <code class="docutils literal"><span class="pre">(#</span> <span class="pre">of</span> <span class="pre">inputs</span> <span class="pre">,</span> <span class="pre">#</span> <span class="pre">of</span> <span class="pre">outputs)</span></code>.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.polynomials">
 <code class="descname">polynomials</code><a class="headerlink" href="#harold.Transfer.polynomials" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A read only property that returns the model numerator and the
+denominator as the outputs.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.SamplingPeriod">
 <code class="descname">SamplingPeriod</code><a class="headerlink" href="#harold.Transfer.SamplingPeriod" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If this property is called <code class="docutils literal"><span class="pre">G.SamplingPeriod</span></code> then returns the
+sampling period data. If this property is set to <code class="docutils literal"><span class="pre">False</span></code>, the model
+is assumed to be a continuous model. Otherwise, a discrete time model
+is assumed. Upon changing this value, relevant system properties are
+recalculated.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.num">
 <code class="descname">num</code><a class="headerlink" href="#harold.Transfer.num" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If this property is called <code class="docutils literal"><span class="pre">G.num</span></code> then returns the numerator data.
+Alternatively, if this property is set then the provided value is
+first validated with the existing denominator shape and causality.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.den">
 <code class="descname">den</code><a class="headerlink" href="#harold.Transfer.den" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If this property is called <code class="docutils literal"><span class="pre">G.den</span></code> then returns the numerator data.
+Alternatively, if this property is set then the provided value is
+first validated with the existing numerator shape and causality.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.DiscretizedWith">
 <code class="descname">DiscretizedWith</code><a class="headerlink" href="#harold.Transfer.DiscretizedWith" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This property is used internally to keep track of (if applicable)
+the original method used for discretization. It is used by the
+<code class="docutils literal"><span class="pre">undiscretize()</span></code> function to reach back to the continous model that
+would hopefully minimize the discretization errors. It is also
+possible to manually set this property such that <code class="docutils literal"><span class="pre">undiscretize</span></code>
+uses the provided method.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.DiscretizationMatrix">
 <code class="descname">DiscretizationMatrix</code><a class="headerlink" href="#harold.Transfer.DiscretizationMatrix" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This matrix denoted with <span class="math">\(Q\)</span> is internally used to represent
+the upper linear fractional transformation of the operation
+<span class="math">\(\frac{1}{s} I = \frac{1}{z} I \star Q\)</span>. For example, the
+typical tustin, forward/backward difference methods can be represented
+with</p>
+<div class="math">
+\[\begin{split}Q = \begin{bmatrix} I &amp; \sqrt{T}I \\ \sqrt{T}I &amp; aTI \end{bmatrix}\end{split}\]</div>
+<p>then for different <span class="math">\(a\)</span> values corresponds to the transformation
+given below:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="29%" />
+<col width="71%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head"><span class="math">\(a\)</span></th>
+<th class="head">method</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><span class="math">\(0\)</span></td>
+<td>backward difference (euler)</td>
+</tr>
+<tr class="row-odd"><td><span class="math">\(0.5\)</span></td>
+<td>tustin</td>
+</tr>
+<tr class="row-even"><td><span class="math">\(1\)</span></td>
+<td>forward difference (euler)</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>This operation is usually given with a Riemann sum argument however
+for control theoretical purposes a proper mapping argument immediately
+suggests a more precise control over the domain the left half plane is
+mapped to. For this reason, a discretization matrix option is provided
+to the user.</p>
+<p>The available methods (and their aliases) can be accessed via the
+internal <code class="docutils literal"><span class="pre">_KnownDiscretizationMethods</span></code> variable.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The common discretization techniques can be selected with
+a keyword argument and this matrix business can safely be
+avoided. This is a rather technical issue and it is best to
+be used sparingly. For the experts, I have to note that
+the transformation is currently not tested for well-posedness.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">SciPy actually uses a variant of this LFT
+representation as given in the paper of <a class="reference external" href="http://dx.doi.org/10.1080/00207170802247728">Zhang et al.</a></p>
+</div>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="harold.Transfer.PrewarpFrequency">
 <code class="descname">PrewarpFrequency</code><a class="headerlink" href="#harold.Transfer.PrewarpFrequency" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If the discretization method is <code class="docutils literal"><span class="pre">tustin</span></code> then a frequency warping
+correction might be required the match of the discrete time system
+response at the frequency band of interest. Via this property, the
+prewarp frequency can be provided.</p>
+</dd></dl>
 
 <dl class="staticmethod">
 <dt id="harold.Transfer.validate_arguments">
@@ -318,10 +402,10 @@ arrays with any list structure is stripped off.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>num</strong> (<em>The polynomial coefficient containers. Etiher of them</em>) &#8211; <p>can be (not both) None to assume that the context will
+<li><strong>num</strong> &#8211; <p>The polynomial coefficient containers. Either of them
+can be (not both) None to assume that the context will
 be derived from the other for static gains. Otherwise
-both are expected to be one of</p>
-<p>np.array, int , float , list ,
+both are expected to be one of np.array, int , float , list ,
 list of lists of lists or numpy arrays.</p>
 <p>For MIMO context, element numbers and causality
 checks are performed such that numerator list of
@@ -331,26 +415,20 @@ denominator entries.</p>
 <p>For SISO context, causality check is performed
 between numerator and denominator arrays.</p>
 </li>
-<li><strong>den</strong> (<em>Same as num</em>) &#8211; </li>
-<li><strong>verbose</strong> (<em>boolean switch to print out what this method thinks</em>) &#8211; about the argument context.</li>
+<li><strong>den</strong> &#8211; Same as num</li>
+<li><strong>verbose</strong> (<em>boolean</em>) &#8211; A boolean switch to print out what this method thinksabout the
+argument context.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><p class="first"><strong>num</strong> (<em>{(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)</em>) &#8211;
-{(1,s),(1,r)} 2D numpy arrays (SISO)</p>
-<p>m,p integers are the shape of the MIMO system
-r,s integers are the degree of the SISO num,den</p>
-</li>
-<li><p class="first"><strong>den</strong> (<em>Same as num</em>)</p>
-</li>
-<li><p class="first"><strong>shape</strong> (<em>2-tuple</em>) &#8211;
-Returns the recognized shape of the system</p>
-</li>
-<li><p class="first"><em>Gain_flag</em> &#8211;
-Returns True if the system is recognized as a static
-gain False otherwise (for both SISO and MIMO)</p>
-</li>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>num</strong> (<em>List of lists or numpy array (MIMO/SISO)</em>)</li>
+<li><strong>den</strong> (<em>List of lists or numpy array (MIMO/SISO)</em>)</li>
+<li><strong>shape</strong> (<em>2-tuple</em>) &#8211;
+Returns the recognized shape of the system</li>
+<li><strong>Gain_flag</strong> (<em>Boolean</em>) &#8211;
+Returns <code class="docutils literal"><span class="pre">True</span></code> if the system is recognized as a static gain
+<code class="docutils literal"><span class="pre">False</span></code> otherwise (for both SISO and MIMO)</li>
 </ul>
 </p>
 </td>
@@ -829,18 +907,29 @@ Returns True if the input is Kalman observable</td>
 <code class="descclassname">harold.</code><code class="descname">staircase</code><span class="sig-paren">(</span><em>A</em>, <em>B</em>, <em>C</em>, <em>compute_T=False</em>, <em>form='c'</em>, <em>invert=False</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.staircase" title="Permalink to this definition">¶</a></dt>
 <dd><p>The staircase form is used very often to assess system properties.
 Given a state system matrix triplet A,B,C, this function computes
-the so-called controller-Hessenberg form such that the resulting
-system matrices have the block-form (x denoting the nonzero blocks):</p>
-<div class="highlight-python"><div class="highlight"><pre>[x x x x x] |  [ x ]
-[x x x x x] |  [ 0 ]
-[0 x x x x] |  [ 0 ]
-[0 0 x x x] |  [ 0 ]
-[0 0 0 x x] |  [ 0 ]
-------------|-------
-[x x x x x] |
-[x x x x x] |
-</pre></div>
-</div>
+the so-called controller/observer-Hessenberg form such that the resulting
+system matrices have the block-form (x denoting the nonzero blocks)</p>
+<div class="math">
+\[\begin{split}\begin{array}{c|c}
+    \begin{bmatrix}
+        \times &amp; \times &amp; \times &amp; \times &amp; \times \\
+        \times &amp; \times &amp; \times &amp; \times &amp; \times \\
+        0       &amp; \times &amp; \times &amp; \times &amp; \times \\
+        0       &amp; 0       &amp; \times &amp; \times &amp; \times \\
+        0       &amp; 0       &amp;  0      &amp; \times &amp; \times
+    \end{bmatrix} &amp;
+    \begin{bmatrix}
+        \times \\
+        0       \\
+        0       \\
+        0       \\
+        0
+    \end{bmatrix} \\ \hline
+    \begin{bmatrix}
+        \times &amp; \times &amp; \times &amp; \times &amp; \times \\
+        \times &amp; \times &amp; \times &amp; \times &amp; \times
+    \end{bmatrix}
+\end{array}\end{split}\]</div>
 <p>For controllability and observability, the existence of zero-rank
 subdiagonal blocks can be checked, as opposed to forming the Kalman
 matrix and checking the rank. Staircase method can numerically be
@@ -850,10 +939,10 @@ order of magnitudes). But it is also prone to numerical rank guessing
 mismatches.</p>
 <p>Notice that, if we use the pertransposed data, then we have the
 observer form which is usually asked from the user to supply
-the data as A,B,C ==&gt; A^T,C^T,B^T and then transpose back the result.
-This is just silly to ask the user to do that. Hence the additional
-&#8220;form&#8221; option denoting whether it is the observer or the controller
-form that is requested.</p>
+the data as <span class="math">\(A,B,C \Rightarrow A^T,C^T,B^T\)</span> and then transpose
+back the result. This is just silly to ask the user to do that. Hence
+the additional <code class="docutils literal"><span class="pre">form</span></code> option denoting whether it is the observer or
+the controller form that is requested.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -874,16 +963,17 @@ B or C matrices depending on the &#8220;form&#8221; switch.</li>
 <li><p class="first"><strong>Ah,Bh,Ch</strong> (<em>{(n,n),(n,m),(p,n)} 2D numpy arrays</em>) &#8211;
 Converted system matrices</p>
 </li>
-<li><p class="first"><strong>T</strong> (<em>(n,n) 2D numpy arrays</em>) &#8211;
-If the boolean &#8220;compute_T&#8221; is true, returns the transformation
+<li><p class="first"><strong>T</strong> (<em>(n,n) 2D numpy array</em>) &#8211;
+If the boolean <code class="docutils literal"><span class="pre">compute_T</span></code> is true, returns the transformation
 matrix such that</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">T</span><span class="o">^</span><span class="n">T</span> <span class="o">*</span> <span class="n">A</span> <span class="o">*</span> <span class="n">T</span> <span class="o">|</span> <span class="n">T</span><span class="o">^</span><span class="n">T</span> <span class="o">*</span> <span class="n">B</span><span class="p">]</span>
-<span class="p">[</span>    <span class="n">C</span> <span class="o">*</span> <span class="n">T</span>   <span class="o">|</span>    <span class="n">D</span>   <span class="p">]</span>
-</pre></div>
-</div>
+<div class="math">
+\[\begin{split}\left[\begin{array}{c|c}
+    T^{-1}AT &amp;T^{-1}B \\ \hline
+    CT &amp; D
+\end{array}\right]\end{split}\]</div>
 <p>is in the desired staircase form.</p>
 </li>
-<li><p class="first"><strong>k</strong> (<em>np.array</em>) &#8211;
+<li><p class="first"><strong>k</strong> (<em>Numpy array</em>) &#8211;
 Array of controllable block sizes identified during block
 diagonalization</p>
 </li>
@@ -898,22 +988,24 @@ diagonalization</p>
 <dl class="function">
 <dt id="harold.canceldistance">
 <code class="descclassname">harold.</code><code class="descname">canceldistance</code><span class="sig-paren">(</span><em>F</em>, <em>G</em><span class="sig-paren">)</span><a class="headerlink" href="#harold.canceldistance" title="Permalink to this definition">¶</a></dt>
-<dd><p>Given matrices F,G, computes the upper and lower bounds of
-the perturbation needed to render the pencil [F-pI | G]
-rank deficient. It is used for assessing the controllability/
-observability degenerate distance and hence for minimality
-assessment.</p>
+<dd><p>Given matrices <span class="math">\(F,G\)</span>, computes the upper and lower bounds of
+the perturbation needed to render the pencil <span class="math">\(\left[
+\begin{array}{c|c}F-pI &amp; G\end{array}\right]\)</span> rank deficient. It is
+used for assessing the controllability/observability degenerate distance
+and hence for minimality assessment.</p>
 <p>Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>F,G</strong> (<em>{(n,n), (n,m)} array_like</em>) &#8211; Pencil matrices to be checked for rank deficiency distance</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>F,G</strong> (<em>2D arrays</em>) &#8211; Pencil matrices to be checked for rank deficiency distance</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
 <li><strong>upper2</strong> (<em>float</em>) &#8211;
-Upper bound on the norm of the perturbation [dF | dG] such
-that [F + dF - pI | G + dG ] is rank deficient.</li>
+Upper bound on the norm of the perturbation
+<span class="math">\(\left[\begin{array}{c|c}dF &amp; dG\end{array}\right]\)</span> such
+that <span class="math">\(\left[\begin{array}{c|c}F+dF-pI &amp; G+dG \end{array}
+\right]\)</span> is rank deficient.</li>
 <li><strong>upper1</strong> (<em>float</em>) &#8211;
 A theoretically softer upper bound than the upper2 for the
 same quantity.</li>
@@ -1265,7 +1357,7 @@ modes are removed.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.1a3',
+            VERSION:'0.1.1a5',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

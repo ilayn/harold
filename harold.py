@@ -57,7 +57,7 @@ class Transfer:
 
     Main types of instantiation of this class depends on whether the 
     user wants to create a Single Input/Single Output system (SISO) or
-    a Multiple Input/Multiple Output system (MIMO). 
+    a Multiple Input/Multiple Output system (MIMO) model. 
     
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
     e.g.,::
@@ -69,7 +69,8 @@ class Transfer:
 
         1.  Entering "list of lists of lists" such that every element of the 
         inner lists are numpy array-able (explicitly checked) for numerator 
-        and entering a 1D list or 1D numpy array for denominator::
+        and entering a 1D list or 1D numpy array for denominator (and 
+        similarly for numerator)::
                 
             >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
             >>>> G.shape
@@ -77,7 +78,7 @@ class Transfer:
         
         2. Entering the denominator also as a list of lists for individual 
         entries as a bracket nightmare (thanks to Python's nonnative support 
-        for arrays and tedious array syntax).::
+        for arrays and tedious array syntax)::
             
             >>>> G = Transfer([
                      [ [1,3,2], [1,3] ],
@@ -90,8 +91,7 @@ class Transfer:
            >>>> G.shape
            (2,2)
     
-    Same behavior can be done also with providing the full denominator
-    and omitting providing a common numerator.
+
     
     There is a very involved validator and if you would like to know 
     why or how this input is handled ,provide the same numerator and 
@@ -135,11 +135,11 @@ class Transfer:
     the system continous time again and relevant properties are reset
     to CT properties.
 
-    Warning: Unlike matlab or other tools, a discrete time system 
-    needs a specified sampling period (and possibly a discretization 
-    method if applicable) because a model without a sampling period 
-    doesn't make sense for analysis. If you don't care, then make up 
-    a number, say, a million, since you don't care.
+    .. warning:: Unlike matlab or other tools, a discrete time system 
+        needs a specified sampling period (and possibly a discretization 
+        method if applicable) because a model without a sampling period 
+        doesn't make sense for analysis. If you don't care, then make up 
+        a number, say, a million, since you don't care.
     """
 
     def __init__(self,num,den=None,dt=False):
@@ -163,31 +163,84 @@ class Transfer:
         self._recalc()
 
     @property
-    def num(self): return self._num
+    def num(self): 
+        """
+        If this property is called ``G.num`` then returns the numerator data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing denominator shape and causality. 
+        """
+        return self._num
     
     @property
-    def den(self): return self._den    
+    def den(self): 
+        """
+        If this property is called ``G.den`` then returns the numerator data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing numerator shape and causality. 
+        """
+        return self._den    
 
     @property
-    def SamplingPeriod(self): return self._SamplingPeriod
+    def SamplingPeriod(self): 
+        """
+        If this property is called ``G.SamplingPeriod`` then returns the 
+        sampling period data. If this property is set to ``False``, the model
+        is assumed to be a continuous model. Otherwise, a discrete time model
+        is assumed. Upon changing this value, relevant system properties are 
+        recalculated.
+        """
+        return self._SamplingPeriod
         
     @property
-    def SamplingSet(self): return self._SamplingSet
+    def SamplingSet(self): 
+        """
+        If this property is called ``G.SamplingSet`` then returns the 
+        set ``Z`` or ``R`` for discrete and continous models respectively.
+        This is a read only property and cannot be set. Instead an appropriate
+        setting should be given to the ``SamplingPeriod`` property.
+        """
+        return self._SamplingSet
 
     @property
-    def NumberOfInputs(self): return self._m
+    def NumberOfInputs(self): 
+        """
+        A read only property that holds the number of inputs.
+        """
+        return self._m
 
     @property
-    def NumberOfOutputs(self): return self._p
+    def NumberOfOutputs(self): 
+        """
+        A read only property that holds the number of outputs.
+        """
+        return self._p
 
     @property
-    def shape(self): return self._shape
+    def shape(self): 
+        """
+        A read only property that holds the shape of the system as a tuple
+        such that the result is ``(# of inputs , # of outputs)``.
+        """
+        return self._shape
         
     @property
-    def polynomials(self): return self._num,self._den
+    def polynomials(self): 
+        """
+        A read only property that returns the model numerator and the 
+        denominator as the outputs.
+        """
+        return self._num,self._den
 
     @property
-    def DiscretizedWith(self): 
+    def DiscretizedWith(self):
+        """
+        This property is used internally to keep track of (if applicable)
+        the original method used for discretization. It is used by the 
+        ``undiscretize()`` function to reach back to the continous model that
+        would hopefully minimize the discretization errors. It is also 
+        possible to manually set this property such that ``undiscretize``
+        uses the provided method.         
+        """        
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization method associated with it.')
@@ -200,6 +253,49 @@ class Transfer:
             
     @property
     def DiscretizationMatrix(self):
+        """
+        This matrix denoted with :math:`Q` is internally used to represent 
+        the upper linear fractional transformation of the operation 
+        :math:`\\frac{1}{s} I = \\frac{1}{z} I \\star Q`. For example, the 
+        typical tustin, forward/backward difference methods can be represented 
+        with 
+        
+        .. math::
+        
+            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & aTI \\end{bmatrix}
+            
+
+        then for different :math:`a` values corresponds to the transformation
+        given below:
+        
+            ===========  ===========================
+            :math:`a`     method
+            ===========  ===========================
+            :math:`0`    backward difference (euler)
+            :math:`0.5`  tustin
+            :math:`1`    forward difference (euler)
+            ===========  ===========================
+        
+        This operation is usually given with a Riemann sum argument however
+        for control theoretical purposes a proper mapping argument immediately
+        suggests a more precise control over the domain the left half plane is 
+        mapped to. For this reason, a discretization matrix option is provided
+        to the user. 
+
+        The available methods (and their aliases) can be accessed via the 
+        internal ``_KnownDiscretizationMethods`` variable. 
+        
+        .. note:: The common discretization techniques can be selected with
+            a keyword argument and this matrix business can safely be 
+            avoided. This is a rather technical issue and it is best to 
+            be used sparingly. For the experts, I have to note that 
+            the transformation is currently not tested for well-posedness.
+            
+        .. note:: SciPy actually uses a variant of this LFT
+            representation as given in the paper of `Zhang et al. 
+            <http://dx.doi.org/10.1080/00207170802247728>`_
+            
+        """
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization matrix associated with it.')
@@ -216,6 +312,12 @@ class Transfer:
 
     @property
     def PrewarpFrequency(self):
+        """
+        If the discretization method is ``tustin`` then a frequency warping
+        correction might be required the match of the discrete time system
+        response at the frequency band of interest. Via this property, the
+        prewarp frequency can be provided. 
+        """
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization matrix associated with it.')
@@ -751,46 +853,44 @@ class Transfer:
 
         Parameters
         ----------
-        num       : The polynomial coefficient containers. Etiher of them
-                    can be (not both) None to assume that the context will
-                    be derived from the other for static gains. Otherwise
-                    both are expected to be one of 
-                    
-                    np.array, int , float , list , 
-                    list of lists of lists or numpy arrays. 
+        
+        num : 
+            The polynomial coefficient containers. Either of them
+            can be (not both) None to assume that the context will
+            be derived from the other for static gains. Otherwise
+            both are expected to be one of np.array, int , float , list , 
+            list of lists of lists or numpy arrays. 
             
-                    For MIMO context, element numbers and causality
-                    checks are performed such that numerator list of 
-                    list has internal arrays that have less than or 
-                    equal to the internal arrays of the respective 
-                    denominator entries. 
-                    
-                    For SISO context, causality check is performed 
-                    between numerator and denominator arrays.
+            For MIMO context, element numbers and causality
+            checks are performed such that numerator list of 
+            list has internal arrays that have less than or 
+            equal to the internal arrays of the respective 
+            denominator entries. 
+            
+            For SISO context, causality check is performed 
+            between numerator and denominator arrays.
 
-        den       : Same as num
+        den : 
+            Same as num
                     
-        verbose   : boolean switch to print out what this method thinks
-                    about the argument context. 
-                    
+        verbose : boolean
+            A boolean switch to print out what this method thinksabout the 
+            argument context. 
+
             
         Returns
         -------
     
-        num : {(m,p),(m,p)} list of lists of 2D numpy arrays (MIMO)
-                   {(1,s),(1,r)} 2D numpy arrays (SISO)
-                   
-                   m,p integers are the shape of the MIMO system
-                   r,s integers are the degree of the SISO num,den
+        num : List of lists or numpy array (MIMO/SISO)
 
-        den : Same as num
+        den : List of lists or numpy array (MIMO/SISO)
             
-        shape    : 2-tuple
-                    Returns the recognized shape of the system
+        shape : 2-tuple
+            Returns the recognized shape of the system
 
-        Gain_flag: 
-                    Returns True if the system is recognized as a static 
-                    gain False otherwise (for both SISO and MIMO)
+        Gain_flag : Boolean
+            Returns ``True`` if the system is recognized as a static gain 
+            ``False`` otherwise (for both SISO and MIMO)
 
         """
 
@@ -3179,17 +3279,32 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
     """
     The staircase form is used very often to assess system properties. 
     Given a state system matrix triplet A,B,C, this function computes 
-    the so-called controller-Hessenberg form such that the resulting 
-    system matrices have the block-form (x denoting the nonzero blocks)::
+    the so-called controller/observer-Hessenberg form such that the resulting 
+    system matrices have the block-form (x denoting the nonzero blocks)
     
-                [x x x x x] |  [ x ]
-                [x x x x x] |  [ 0 ]
-                [0 x x x x] |  [ 0 ]
-                [0 0 x x x] |  [ 0 ]
-                [0 0 0 x x] |  [ 0 ]
-                ------------|-------
-                [x x x x x] |
-                [x x x x x] |
+    .. math::
+    
+        \\begin{array}{c|c}
+            \\begin{bmatrix}
+                \\times & \\times & \\times & \\times & \\times \\\\
+                \\times & \\times & \\times & \\times & \\times \\\\
+                0       & \\times & \\times & \\times & \\times \\\\
+                0       & 0       & \\times & \\times & \\times \\\\
+                0       & 0       &  0      & \\times & \\times 
+            \\end{bmatrix} &
+            \\begin{bmatrix}
+                \\times \\\\
+                0       \\\\
+                0       \\\\
+                0       \\\\
+                0       
+            \\end{bmatrix} \\\\ \\hline
+            \\begin{bmatrix}
+                \\times & \\times & \\times & \\times & \\times \\\\
+                \\times & \\times & \\times & \\times & \\times 
+            \\end{bmatrix}
+        \\end{array}
+    
 
     For controllability and observability, the existence of zero-rank 
     subdiagonal blocks can be checked, as opposed to forming the Kalman 
@@ -3201,10 +3316,10 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
     
     Notice that, if we use the pertransposed data, then we have the 
     observer form which is usually asked from the user to supply
-    the data as A,B,C ==> A^T,C^T,B^T and then transpose back the result.
-    This is just silly to ask the user to do that. Hence the additional 
-    "form" option denoting whether it is the observer or the controller 
-    form that is requested.
+    the data as :math:`A,B,C \Rightarrow A^T,C^T,B^T` and then transpose 
+    back the result. This is just silly to ask the user to do that. Hence 
+    the additional ``form`` option denoting whether it is the observer or 
+    the controller form that is requested.
     
     
     Parameters
@@ -3228,15 +3343,19 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
 
     Ah,Bh,Ch : {(n,n),(n,m),(p,n)} 2D numpy arrays
         Converted system matrices 
-    T : (n,n) 2D numpy arrays
-        If the boolean "compute_T" is true, returns the transformation 
-        matrix such that ::
+    T : (n,n) 2D numpy array
+        If the boolean ``compute_T`` is true, returns the transformation 
+        matrix such that 
         
-                        [T^T * A * T | T^T * B]
-                        [    C * T   |    D   ]
+        .. math::
+        
+            \\left[\\begin{array}{c|c}
+                T^{-1}AT &T^{-1}B \\\\ \\hline
+                CT & D
+            \\end{array}\\right]
 
         is in the desired staircase form.
-    k: np.array
+    k: Numpy array
         Array of controllable block sizes identified during block 
         diagonalization
         
@@ -3345,26 +3464,28 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
 
 def canceldistance(F,G):
     """
-    Given matrices F,G, computes the upper and lower bounds of 
-    the perturbation needed to render the pencil [F-pI | G]
-    rank deficient. It is used for assessing the controllability/
-    observability degenerate distance and hence for minimality 
-    assessment. 
+    Given matrices :math:`F,G`, computes the upper and lower bounds of 
+    the perturbation needed to render the pencil :math:`\\left[
+    \\begin{array}{c|c}F-pI & G\\end{array}\\right]` rank deficient. It is 
+    used for assessing the controllability/observability degenerate distance 
+    and hence for minimality assessment. 
     
     Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990. 
     
     Parameters
     ----------
     
-    F,G : {(n,n), (n,m)} array_like
+    F,G : 2D arrays
         Pencil matrices to be checked for rank deficiency distance
 
     Returns
     -------
 
     upper2 : float
-        Upper bound on the norm of the perturbation [dF | dG] such
-        that [F + dF - pI | G + dG ] is rank deficient. 
+        Upper bound on the norm of the perturbation 
+        :math:`\\left[\\begin{array}{c|c}dF & dG\\end{array}\\right]` such
+        that :math:`\\left[\\begin{array}{c|c}F+dF-pI & G+dG \\end{array}
+        \\right]` is rank deficient. 
     upper1 : float
         A theoretically softer upper bound than the upper2 for the 
         same quantity.
