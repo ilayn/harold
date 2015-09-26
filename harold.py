@@ -265,16 +265,16 @@ class Transfer:
             Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & aTI \\end{bmatrix}
             
 
-        then for different :math:`a` values corresponds to the transformation
-        given below:
+        then for different :math:`\\alpha` values corresponds to the 
+        transformation given below:
         
-            ===========  ===========================
-            :math:`a`     method
-            ===========  ===========================
-            :math:`0`    backward difference (euler)
-            :math:`0.5`  tustin
-            :math:`1`    forward difference (euler)
-            ===========  ===========================
+            =============== ===========================
+            :math:`\\alpha`  method
+            =============== ===========================
+            :math:`0`       backward difference (euler)
+            :math:`0.5`     tustin
+            :math:`1`       forward difference (euler)
+            =============== ===========================
         
         This operation is usually given with a Riemann sum argument however
         for control theoretical purposes a proper mapping argument immediately
@@ -1351,7 +1351,7 @@ class State:
     
     However, the preferred way is to make everything a numpy array.
     That would skip many compatibility checks. Once created the shape 
-    of the numerator and denominator cannot be changed. But compatible 
+    of the system matrices cannot be changed. But compatible 
     sized arrays can be supplied and it will recalculate the pole/zero 
     locations etc. properties automatically.
 
@@ -1407,40 +1407,108 @@ class State:
 
 
     @property
-    def a(self): return self._a
+    def a(self): 
+        """
+        If this property is called ``G.a`` then returns the matrix data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing system shape and number of states.
+        """
+        return self._a
     
     @property
-    def b(self): return self._b
+    def b(self): 
+        """
+        If this property is called ``G.b`` then returns the matrix data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing system shape and number of states.
+        """        
+        return self._b
 
     @property
-    def c(self): return self._c
+    def c(self): 
+        """
+        If this property is called ``G.c`` then returns the matrix data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing system shape and number of states.
+        """        
+        return self._c
         
     @property
-    def d(self): return self._d
+    def d(self): 
+        """
+        If this property is called ``G.a`` then returns the matrix data. 
+        Alternatively, if this property is set then the provided value is 
+        first validated with the existing system shape.
+        """        
+        return self._d
 
     @property
-    def SamplingPeriod(self): return self._SamplingPeriod
+    def SamplingPeriod(self): 
+        """
+        If this property is called ``G.SamplingPeriod`` then returns the 
+        sampling period data. If this property is set to ``False``, the model
+        is assumed to be a continuous model. Otherwise, a discrete time model
+        is assumed. Upon changing this value, relevant system properties are 
+        recalculated.
+        """
+        return self._SamplingPeriod
         
     @property
-    def SamplingSet(self): return self._SamplingSet
+    def SamplingSet(self): 
+        """
+        If this property is called ``G.SamplingSet`` then returns the 
+        set ``Z`` or ``R`` for discrete and continous models respectively.
+        This is a read only property and cannot be set. Instead an appropriate
+        setting should be given to the ``SamplingPeriod`` property.
+        """
+        return self._SamplingSet
 
     @property
-    def NumberOfStates(self): return self._a.shape[0]
+    def NumberOfStates(self): 
+        """
+        A read only property that holds the number of states.
+        """        
+        return self._a.shape[0]
 
     @property
-    def NumberOfInputs(self): return self._m
+    def NumberOfInputs(self): 
+        """
+        A read only property that holds the number of inputs.
+        """        
+        return self._m
 
     @property
-    def NumberOfOutputs(self): return self._p
+    def NumberOfOutputs(self): 
+        """
+        A read only property that holds the number of outputs.
+        """        
+        return self._p
 
     @property
-    def shape(self): return self._shape
-        
+    def shape(self): 
+        """
+        A read only property that holds the shape of the system as a tuple
+        such that the result is ``(# of inputs , # of outputs)``.
+        """
+        return self._shape
+                
     @property
-    def matrices(self): return self._a,self._b,self._c,self._d 
+    def matrices(self): 
+        """
+        A read only property that returns the model matrices.
+        """        
+        return self._a,self._b,self._c,self._d 
 
     @property
     def DiscretizedWith(self): 
+        """
+        This property is used internally to keep track of (if applicable)
+        the original method used for discretization. It is used by the 
+        ``undiscretize()`` function to reach back to the continous model that
+        would hopefully minimize the discretization errors. It is also 
+        possible to manually set this property such that ``undiscretize``
+        uses the provided method.         
+        """         
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization method associated with it.')
@@ -1453,6 +1521,49 @@ class State:
             
     @property
     def DiscretizationMatrix(self):
+        """
+        This matrix denoted with :math:`Q` is internally used to represent 
+        the upper linear fractional transformation of the operation 
+        :math:`\\frac{1}{s} I = \\frac{1}{z} I \\star Q`. For example, the 
+        typical tustin, forward/backward difference methods can be represented 
+        with 
+        
+        .. math::
+        
+            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & aTI \\end{bmatrix}
+            
+
+        then for different :math:`\\alpha` values corresponds to the 
+        transformation given below:
+        
+            =============== ===========================
+            :math:`\\alpha`  method
+            =============== ===========================
+            :math:`0`       backward difference (euler)
+            :math:`0.5`     tustin
+            :math:`1`       forward difference (euler)
+            =============== ===========================
+        
+        This operation is usually given with a Riemann sum argument however
+        for control theoretical purposes a proper mapping argument immediately
+        suggests a more precise control over the domain the left half plane is 
+        mapped to. For this reason, a discretization matrix option is provided
+        to the user. 
+
+        The available methods (and their aliases) can be accessed via the 
+        internal ``_KnownDiscretizationMethods`` variable. 
+        
+        .. note:: The common discretization techniques can be selected with
+            a keyword argument and this matrix business can safely be 
+            avoided. This is a rather technical issue and it is best to 
+            be used sparingly. For the experts, I have to note that 
+            the transformation is currently not tested for well-posedness.
+            
+        .. note:: SciPy actually uses a variant of this LFT
+            representation as given in the paper of `Zhang et al. 
+            <http://dx.doi.org/10.1080/00207170802247728>`_
+            
+        """        
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization matrix associated with it.')
@@ -1469,6 +1580,12 @@ class State:
 
     @property
     def PrewarpFrequency(self):
+        """
+        If the discretization method is ``tustin`` then a frequency warping
+        correction might be required the match of the discrete time system
+        response at the frequency band of interest. Via this property, the
+        prewarp frequency can be provided. 
+        """        
         if self.SamplingSet == 'R':
             return ('It is a continous-time model hence does not have '
                   'a discretization matrix associated with it.')
@@ -3732,6 +3849,24 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
 #TODO : type checking for both.
 
 def ssconcat(G):
+    """
+    Takes a State() model as input and returns the matrix 
+    
+    .. math::
+    
+        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
+
+    Parameters
+    ----------
+    
+    G : State()
+
+    Returns
+    -------
+    
+    M : 2D Numpy array        
+
+    """
     if not isinstance(G,State):
         raise TypeError('ssconcat() works on state representations, '
         'but I found \"{0}\" object instead.'.format(type(G).__name__))
@@ -3740,10 +3875,79 @@ def ssconcat(G):
 
 # TODO : Add slicing with respect to D matrix
 def ssslice(H,n):
+    """
+    Takes a two dimensional array of size :math:`p\\times m`and slices into 
+    four parts such that 
+    
+        .. math::
+    
+        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
+
+    For non-square slicing, see the method ``matrixslice()``
+    
+    Parameters
+    ----------
+    
+    M : 2D Numpy array
+    
+    n : int
+        For a meaningful output, this number must staisfy :math:`n<p,m`.
+    
+    Returns
+    -------
+    
+    A : 2D Numpy array
+        The upper left :math:`n\\times n` block of :math:`M`
+
+    B : 2D Numpy array
+        The upper right :math:`n\\times (m-n)` block of :math:`M`
+
+    C : 2D Numpy array
+        The lower left :math:`(p-n)\\times n` block of :math:`M`
+        
+    D : 2D Numpy array
+        The lower right :math:`(p-n)\\times (m-n)` block of :math:`M`
+
+    """
 #    return H[:n,:n],H[:n,n:],H[n:,:n],H[n:,n:]
     return matrixslice(H,(n,n))
 
 def matrixslice(M,M11shape):
+    """
+    Takes a two dimensional array of size :math:`p\\times m`and slices into 
+    four parts such that 
+    
+        .. math::
+    
+        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
+
+    where the shape of :math:`A` is determined by `M11shape` tuple, ``(r,q)``.
+
+    Parameters
+    ----------
+    
+    M : 2D Numpy array
+    
+    M11shape : tuple
+        An integer valued 2-tuple for the shape of :math:`(1,1)` block element
+        
+    
+    Returns
+    -------
+    
+    A : 2D Numpy array
+        The upper left :math:`r\\times q` block of :math:`M`
+
+    B : 2D Numpy array
+        The upper right :math:`r\\times (m-q)` block of :math:`M`
+
+    C : 2D Numpy array
+        The lower left :math:`(p-r)\\times q` block of :math:`M`
+        
+    D : 2D Numpy array
+        The lower right :math:`(p-r)\\times (m-q)` block of :math:`M`
+
+    """
     p , m = M11shape
     return M[:p,:m],M[:p,m:],M[p:,:m],M[p:,m:]
 
@@ -3772,6 +3976,11 @@ def blockdiag(*args):
 
 # Returns the nth column of an identity matrix as a 2D numpy array.
 def eyecolumn(width,nth=0):
+    """
+    Returns the ``nth`` column of the identity matrix with shape 
+    ``(width,width)``. Slicing is permitted with the ``nth`` parameter.
+   
+    """
     return np.eye(width)[[nth]].T
 
 # norms, where do these belong? magnets, how do they work? 
@@ -3786,25 +3995,27 @@ def system_norm(state_or_transfer,
     """
     Computes the system p-norm. Currently, no balancing is done on the 
     system, however in the future, a scaling of some sort will be introduced.
-    Another short-coming is that while sounding general, only H2 and Hinf 
+    Another short-coming is that while sounding general, only 
+    :math:`\\mathcal{H}_2` and :math:`\\mathcal{H}_\\infty`
     norm are understood. 
 
-    For H2 norm, the standard grammian definition via controllability 
-    grammian can be found elsewhere is used.
+    For :math:`\\mathcal{H}_2` norm, the standard grammian definition via 
+    controllability grammian, that can be found elsewhere is used.
 
-    Currently, the Hinf norm is computed via so-called Boyd-Balakhrishnan-
-    Bruinsma-Steinbuch algorithm (See e.g. [2]). 
+    Currently, the :math:`\\mathcal{H}_\\infty` norm is computed via 
+    so-called Boyd-Balakhrishnan-Bruinsma-Steinbuch algorithm (See e.g. [2]). 
     
     However, (with kind and generous help of Melina Freitag) the algorithm 
     given in [1] is being implemented and depending on the speed benefit
     might be replaced as the default.
     
-    [1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the $H_\infty$-norm 
-    using the implicit determinant method. SIAM J. Matrix Anal. Appl., 35(2), 
-    619-635, 2014
+    [1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the 
+    :math:`\\mathcal{H}_\\infty`-norm using the implicit determinant method. 
+    SIAM J. Matrix Anal. Appl., 35(2), 619-635, 2014
 
-    [2] N.A. Bruinsma, M. Steinbuch: Fast Computation of $H_\infty$-norm of 
-    transfer function. System and Control Letters, 14, 1990
+    [2] N.A. Bruinsma, M. Steinbuch: Fast Computation of 
+    :math:`\\mathcal{H}_\\infty`-norm of transfer function. System and Control 
+    Letters, 14, 1990
     
     Parameters
     ----------
@@ -4164,7 +4375,7 @@ def haroldgcd(*args):
                     ([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)
                   )
                 )
-        >>>> print(a)
+        >>>> a
              array([ 1.,  2.])
          
     
@@ -4270,7 +4481,7 @@ def haroldgcd(*args):
 
 def haroldcompanion(somearray):
     """
-    Takes an 1D numpy array or list and returns the companion matrix
+    Takes a 1D numpy array or list and returns the companion matrix
     of the monic polynomial of somearray. Hence `[0.5,1,2]` will be first
     converted to `[1,2,4]`
     
@@ -4316,6 +4527,22 @@ def haroldcompanion(somearray):
         return np.vstack((np.hstack((np.zeros((n-1,1)),np.eye(n-1))),ta))
                           
 def haroldtrimleftzeros(somearray):
+    """
+    Trims the insignificant zeros in an array on the left hand side, e.g.,
+    ``[0,0,2,3,1,0]`` becomes ``[2,3,1,0]``.
+
+    Parameters
+    ----------
+
+    somearray : 1D Numpy array
+
+    Returns
+    -------
+
+    anotherarray : 1D Numpy array
+    
+    """
+    
     # We trim the leftmost zero entries modeling the absent high-order terms
     # in an array, i.e., [0,0,2,3,1,0] becomes [2,3,1,0]
 
@@ -4336,6 +4563,9 @@ def haroldtrimleftzeros(somearray):
         
         
 def haroldpoly(rootlist):
+    """
+    Takes a 1D array-like numerical elements as roots and forms the polynomial 
+    """
     if isinstance(rootlist, collections.Iterable):
         r = np.array([x for x in rootlist],dtype=complex)
     else:
