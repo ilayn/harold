@@ -6,7 +6,9 @@ harold
 A systems and controls toolbox for Python3. MIT licensed. See
 ``LICENSE.md`` file for details.
 
-See the `Wiki pages`_ for a brief introduction.
+See the `Wiki pages`_ for a brief introduction or the `Sphinx 
+documentation`_. The command reference is located under the 
+*Module Index* at the bottom of the page. 
 
 Useful Links
 ============
@@ -28,6 +30,7 @@ If you have a question/comment feel free to shoot one to
 
 .. _Wiki pages: https://github.com/ilayn/harold/wiki
 .. _click for the Github page: https://github.com/python-control/python-control
+.. _Sphinx documentation: http://harold.readthedocs.org/en/latest/
 .. _Skogestad-Python: https://github.com/alchemyst/Skogestad-Python
 
 .. |GitHub license| image:: https://img.shields.io/github/license/mashape/apistatus.svg?style=plastic
