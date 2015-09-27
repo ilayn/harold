@@ -4257,13 +4257,13 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     mults : List of 1D Numpy arrays
         The multipliers for each given argument.
     
-    Example: ::
     
-        >>>> a , b = haroldlcm(*map(
-                                np.array,
-                                ([1,3,0,-4],[1,-4,-3,18],[1,-4,3],[1,-2,-8])
-                                )
-                            )
+    
+    Example
+    
+    ::
+    
+        >>>> a , b = haroldlcm(*map(np.array,([1,3,0,-4],[1,-4,-3,18],[1,-4,3],[1,-2,-8])))
         >>>> a 
             (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
     
@@ -4415,13 +4415,11 @@ def haroldgcd(*args):
     
     gcdpoly : 1D Numpy array    
     
-    Example: ::
+    Example
     
-        >>>> a = haroldgcd(*map(
-                    haroldpoly,
-                    ([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)
-                  )
-                )
+    ::
+    
+        >>>> a = haroldgcd(*map(haroldpoly,([-1,-1,-2,-1j,1j],[-2,-3,-4,-5],[-2]*10)))
         >>>> a
              array([ 1.,  2.])
          
