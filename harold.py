@@ -3646,9 +3646,9 @@ def canceldistance(F,G):
 
 def minimal_realization(A,B,C,mu_tol=1e-9):
     """
-    Given state matrices A,B,C computes minimal state matrices 
+    Given state matrices :math:`A,B,C` computes minimal state matrices 
     such that the system is controllable and observable within the
-    given tolerance mu. 
+    given tolerance :math:`\\mu`. 
     
     Implements a basic two pass algorithm : 
      1- First distance to mode cancellation is computed then also 
@@ -3657,16 +3657,17 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
      cancellations but the distance is less than the tolerance, 
      distance wins and the respective mode is removed. 
     
-    Uses canceldistance(), and staircase() for the aforementioned checks. 
+    Uses ``canceldistance()`` and ``staircase()`` for the tests. 
     
     Parameters
     ----------
     
     A,B,C : {(n,n), (n,m), (pxn)} array_like
         System matrices to be checked for minimality
-    mu_tol: float (default 1-e6)
+    mu_tol: float
         The sensitivity threshold for the cancellation to be compared 
-        with the first default output of canceldistance() function.
+        with the first default output of canceldistance() function. The 
+        default value is (default value is :math:`10^{-9}`)
 
     Returns
     -------
@@ -3854,7 +3855,7 @@ def ssconcat(G):
     
     .. math::
     
-        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
+        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
 
     Parameters
     ----------
@@ -3917,7 +3918,7 @@ def matrixslice(M,M11shape):
     Takes a two dimensional array of size :math:`p\\times m`and slices into 
     four parts such that 
     
-        .. math::
+    .. math::
     
         \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
 
@@ -3955,6 +3956,11 @@ def matrixslice(M,M11shape):
 # I don't understand how this is not implemented already
 #TODO : type checking.
 def blockdiag(*args):
+    """
+    Places its arguments on the diagonal of a matrix. Empty matrices are 
+    skipped.
+    """ 
+    
     # Get the size info of the args
     try:
         diags = tuple([m.shape for m in args if m.size > 0])
@@ -4219,6 +4225,36 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     of LCM and a list, of which entries are the polynomial 
     multipliers to arrive at the LCM of each input element. 
     
+    For the multiplier computation, a variant of Karcanias, Mitrouli,
+    *System theoretic based characterisation and computation of the 
+    least common multiple of a set of polynomials*, Lin Alg App, 381, 2004,
+    is used. 
+    
+    
+    Parameters
+    ----------
+    args : 1D Numpy array
+        
+    compute_multipliers : boolean
+        After the computation of the LCM, this switch decides whether the
+        multipliers of the given arguments should be computed or skipped. 
+        A multiplier in this context is ``[1,3]`` for the argument ``[1,2]``
+        if the LCM turns out to be ``[1,5,6]``.
+    
+    cleanup_threshold : float
+        The computed polynomials might contain some numerical noise and after 
+        finishing everything this value is used to clean up the tiny entries.
+        Set this value to zero to turn off this behavior. The default value 
+        is :math:`10^{-9}`.
+    
+    Returns:
+    --------
+    lcmpoly : 1D Numpy array
+        Resulting polynomial coefficients for the LCM.
+        
+    mults : List of 1D Numpy arrays
+        The multipliers for each given argument.
+    
     Example: ::
     
         >>>> a , b = haroldlcm(*map(
@@ -4360,13 +4396,22 @@ def haroldgcd(*args):
     """
     Takes *args-many 1D numpy arrays and computes the numerical 
     greatest common divisor polynomial. The polynomials are
-    assumed to be in decreasing powers, e.g. s^2 + 5 should
-    be given as numpy.array([1,0,5])
+    assumed to be in decreasing powers, e.g. :math:`s^2 + 5` should
+    be given as ``numpy.array([1,0,5])``
     
     Returns a numpy array holding the polynomial coefficients
     of GCD. The GCD does not cancel scalars but returns only monic roots.
-    In other words, the GCD of polynomials 2 and 2s+4 is computed
-    as 1. 
+    In other words, the GCD of polynomials :math:`2` and :math:`2s+4` is 
+    still computed as :math:`1`. 
+
+    Parameters
+    ----------
+    args : 1D Numpy arrays
+
+    Returns:
+    --------
+    
+    gcdpoly : 1D Numpy array    
     
     Example: ::
     
@@ -4382,11 +4427,12 @@ def haroldgcd(*args):
     .. warning:: It uses the LU factorization of the Sylvester matrix.
                  Use responsibly. It does not check any certificate of 
                  success by any means (maybe it will in the future).
-                 I've tried the recent ERES method too. When there is a 
-                 nontrivial GCD it performed satisfactorily however did 
-                 not perform as well when GCD = 1 (maybe due to my 
-                 implementation). Hence I've switched to matrix-based 
-                 methods.
+                 I have played around with ERES method but probably due 
+                 to my implementation, couldn't get satisfactory results.
+                 Hence I've switched to matrix-based methods. I am still 
+                 interested in better methods though, so please contact 
+                 me if you have a working implementation that improves 
+                 over this.
 
     """    
 
@@ -4482,8 +4528,8 @@ def haroldgcd(*args):
 def haroldcompanion(somearray):
     """
     Takes a 1D numpy array or list and returns the companion matrix
-    of the monic polynomial of somearray. Hence `[0.5,1,2]` will be first
-    converted to `[1,2,4]`
+    of the monic polynomial of somearray. Hence ``[0.5,1,2]`` will be first
+    converted to ``[1,2,4]``.
     
     Example: ::
     
