@@ -262,7 +262,8 @@ class Transfer:
         
         .. math::
         
-            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & aTI \\end{bmatrix}
+            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & \\alpha TI 
+            \\end{bmatrix}
             
 
         then for different :math:`\\alpha` values corresponds to the 
@@ -1530,7 +1531,8 @@ class State:
         
         .. math::
         
-            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & aTI \\end{bmatrix}
+            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & \\alpha TI 
+            \\end{bmatrix}
             
 
         then for different :math:`\\alpha` values corresponds to the 
@@ -3877,10 +3879,10 @@ def ssconcat(G):
 # TODO : Add slicing with respect to D matrix
 def ssslice(H,n):
     """
-    Takes a two dimensional array of size :math:`p\\times m`and slices into 
+    Takes a two dimensional array of size :math:`p\\times m` and slices into 
     four parts such that 
     
-        .. math::
+    .. math::
     
         \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
 
@@ -3915,14 +3917,14 @@ def ssslice(H,n):
 
 def matrixslice(M,M11shape):
     """
-    Takes a two dimensional array of size :math:`p\\times m`and slices into 
+    Takes a two dimensional array of size :math:`p\\times m` and slices into 
     four parts such that 
     
     .. math::
     
-        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
+        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
 
-    where the shape of :math:`A` is determined by `M11shape` tuple, ``(r,q)``.
+    where the shape of :math:`A` is determined by ``M11shape=(r,q)``.
 
     Parameters
     ----------
@@ -4247,7 +4249,7 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
         Set this value to zero to turn off this behavior. The default value 
         is :math:`10^{-9}`.
     
-    Returns:
+    Returns
     --------
     lcmpoly : 1D Numpy array
         Resulting polynomial coefficients for the LCM.
@@ -4408,7 +4410,7 @@ def haroldgcd(*args):
     ----------
     args : 1D Numpy arrays
 
-    Returns:
+    Returns
     --------
     
     gcdpoly : 1D Numpy array    
