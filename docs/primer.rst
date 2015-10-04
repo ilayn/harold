@@ -1,4 +1,4 @@
-A primer to harold
+﻿A primer to harold
 ==================
 
 .. todo:: Finish this as soon as possible
@@ -94,42 +94,3 @@ declarations. Here is the boilerplate code to start with::
 
 You can of course extend this to your liking with your own packages. 
 Finally, let's do some control stuff
-
-
-
-Model Objects
--------------
-
-For creating dynamic/static models, harold offers basically two options: 
-A ``State()`` and a ``Transfer()`` object. The initialization of these 
-objects are pretty straightforward. ::
-    
-    G = State([[1,2],[3,4]],[[1],[0]],[1,2],0)
-    H = Transfer([1,2,3],[7,5,3])
-    
-Note that, in Python, the calling order of the arguments are not fixed. 
-You can also use the following 
-
-    G = State(d=0,c=[1,2],[[1,2],[3,4]],[[1],[0]])
-    H = Transfer([1,2,3],[7,5,3])
-
-
-As obvious to everyone who used this syntax even in matlab's convenient
-bracket semicolon notation, creating these 4 individual matrices become
-increasingly annoying. Instead a matrix slicer is available in harold::
-
-    M = np.array([[1,2,1],[3,4,0],[1,2,0]])
-    G = State(*ssslice(M,2))
-    
-
-What happened here is that, first ``ssslice()`` function took the ``M``
-object and sliced it such that its upper left block size is 
-:math:`2\times 2` then when Python encountered the ``*`` notation it 
-grabbed the result of this operation as separate entities and unpacked 
-the arguments as if we have provided four separate arguments. I am 
-sure you will get addicted to this and then we will talk about matlab
-programming a bit better informed.
-
-
- 
-

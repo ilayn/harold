@@ -1721,7 +1721,7 @@ class State:
 
     def _set_stability(self):
         if self._SamplingSet == 'Z':
-            self._isstable = all(1>abs(self.poles))
+            self._isstable = all(1>np.abs(self.poles))
         else:
             self._isstable = all(0>np.real(self.poles))
 
@@ -4260,6 +4260,7 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     
     
     Example
+    -------
     
     ::
     
@@ -4416,6 +4417,7 @@ def haroldgcd(*args):
     gcdpoly : 1D Numpy array    
     
     Example
+    -------
     
     ::
     
