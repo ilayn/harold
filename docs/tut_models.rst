@@ -64,6 +64,26 @@ element. ::
 
     G = State(1,0.001)    # Will lead to error
     G = State(1,dt=0.001) # Will work
+
+After the initialization of the models, we can see the model properties ::
+
+    G.NumberOfStates  # returns the number of rows or cols of A
+    G.NumberOfOutputs # returns the number of rows of C
+    G.NumberOfOutputs # returns the number of cols of B
+    G.shape           # returns a tuple of (# of outs,# of ins)
+    
+    G.matrices        # returns the matrices ala ssdata
+    G.poles           # returns the poles 
+    G.zeros           # returns the zeros
+    G.a,G.b,G.c,G.d   # returns the individual matrices
+    
+If the model is discretized we can also check ::
+
+    G.SamplingPeriod  # returns the sampling period
+    G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
+    G.DiscretizedWith # returns the discretization method if applicable
+    
+    
     
 ``Transfer()`` models
 ^^^^^^^^^^^^^^^^^^^^^
@@ -93,6 +113,23 @@ thus creates the static gain of fractions one, one half, and one third.
 
 Discrete time models are handled similarly. 
 
+After the initialization of the models, we can see the model properties ::
+
+    G.NumberOfOutputs # returns the number of rows of numerator
+    G.NumberOfOutputs # returns the number of cols of numerator
+    G.shape           # returns a tuple of (# of outs,# of ins)
+    
+    G.polynomials     # returns the polynomials ala tfdata
+    G.poles           # returns the poles 
+    G.zeros           # returns the zeros
+    G.num,G.den       # returns the individual polynomials
+    
+If the model is discretized we can also check ::
+
+    G.SamplingPeriod  # returns the sampling period
+    G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
+    G.DiscretizedWith # returns the discretization method if applicable
+    
 
 Context Discovery
 ^^^^^^^^^^^^^^^^^^
@@ -136,37 +173,3 @@ Both the numerator and denominator are converted to list
 of lists. 
 
 Same class method is also available for the ``State()`` class. 
-
-
-Discretization Methods
-----------------------
-
-In harold, a discrete time model can keep the discretization method 
-in mind such that when the occasion arises to convert back to a 
-continuous model the proper method is chosen. 
-
-Currently, the known discretization methods are given as 
-
-======================= ========================
-Method                  Aliases
------------------------ ------------------------
-``bilinear``            ``tustin``
------------------------ ------------------------
-``forward difference``  ``forward rectangular``
-
-                        ``forward euler``
-
-                        ``>>``
------------------------ ------------------------
-``backward difference``  ``backward rectangular``
-
-                         ``backward euler``
-
-                         ``<<``
------------------------ ------------------------
-``zoh``
------------------------ ------------------------
-``lft``
-======================= ========================
-
-.. todo:: Explain these methods!!

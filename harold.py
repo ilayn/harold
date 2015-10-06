@@ -2934,19 +2934,19 @@ def __undiscretize(G):
                               ''.format(1/np.linalg.cond(X)))
 
 
-         iX = 2/dt*np.linalg.inv(np.eye(n)+T.a)
-         Ac = -iX.dot(np.eye(n)-T.a)
-         Bc = iX.dot(T.b)
-         Cc = T.c.dot(np.eye(n)+0.5*dt*iX.dot(np.eye(n)-T.a))
-         Dc = T.d - 0.5*dt*T.c.dot(iX.dot(T.b))
+         iX = dt/2*(np.eye(n)+T.a)
+         Ac = np.linalg.solve(-iX,(np.eye(n)-T.a))
+         Bc = np.linalg.solve(iX,T.b)
+         Cc = T.c.dot(np.eye(n)+0.5*dt*np.linalg.solve(iX,(np.eye(n)-T.a)))
+         Dc = T.d - 0.5*dt*T.c.dot(np.linalg.solve(iX,T.b))
 
     elif (G.DiscretizedWith in ('forward euler', 'forward difference',
                     'forward rectangular','>>')):
-         iX = 1/dt*np.eye(n)
-         Ac = -iX.dot(np.eye(n)-T.a)
-         Bc = iX.dot(T.b)
-         Cc = T.c
-         Dc = T.d
+         # iX = 1/dt*np.eye(n)
+         Ac = -1/dt.dot(np.eye(n)-T.a)
+         Bc =  1/dt.dot(T.b)
+         Cc =  T.c
+         Dc =  T.d
          
     elif (G.DiscretizedWith in ('backward euler','backward difference',
                     'backward rectangular','<<')):
@@ -2957,11 +2957,11 @@ def __undiscretize(G):
                               ''.format(1/np.linalg.cond(X)))
 
 
-         iX = 1/dt*np.linalg.inv(T.a)
-         Ac = -iX.dot(np.eye(n)-T.a)
-         Bc = iX.dot(T.b)
-         Cc = T.c.dot(np.eye(n)+dt*iX.dot(np.eye(n)-T.a))
-         Dc = T.d - dt*T.c.dot(iX.dot(T.b))
+         iX = dt*T.a
+         Ac = np.linalg.solve(-iX,(np.eye(n)-T.a))
+         Bc = np.linalg.solve(iX,T.b)
+         Cc = T.c.dot(np.eye(n)+dt*np.linalg.solve(iX,(np.eye(n)-T.a)))
+         Dc = T.d - dt*T.c.dot(np.linalg.solve(iX,T.b))
 
     return Ac , Bc , Cc , Dc        
         
