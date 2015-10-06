@@ -15,6 +15,7 @@ Contents:
    primer
    tut_models
    tut_convert
+   tut_discrete
 
 
 harold reference
