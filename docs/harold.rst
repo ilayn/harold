@@ -1,5 +1,28 @@
-harold module
-=============
+harold package
+==============
+
+Submodules
+----------
+
+harold.harold module
+--------------------
+
+.. automodule:: harold.harold
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+harold.setup module
+-------------------
+
+.. automodule:: harold.setup
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
 
 .. automodule:: harold
     :members:
