@@ -1,9 +1,0 @@
-numpy
-scipy
-tabulate
-
-[dev]
-check-manifest
-
-[test]
-coverage
