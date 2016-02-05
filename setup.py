@@ -32,7 +32,7 @@ setup(
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1a5',
+    version='0.1.1a6',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',
@@ -42,6 +42,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Intended Audience :: Science/Research',
         'Intended Audience :: Developers',
         'Topic :: Software Development',
@@ -55,7 +56,7 @@ setup(
     install_requires=['numpy','scipy','tabulate'],
     tests_require=['numpy','nose'],
     test_suite = 'nose.collector',
-    keywords='control-theory PID controller design ',
+    keywords='control-theory PID controller design industrial automation',
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:
