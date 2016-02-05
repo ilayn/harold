@@ -32,7 +32,7 @@ setup(
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1a6',
+    version='0.1.1a8',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',
@@ -52,7 +52,7 @@ setup(
         'Operating System :: MacOS'
     ],
     packages=['harold'],
-    package_dir={'harold': '.'},
+    package_dir={'harold': 'harold'},
     install_requires=['numpy','scipy','tabulate'],
     tests_require=['numpy','nose'],
     test_suite = 'nose.collector',
