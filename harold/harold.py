@@ -4801,3 +4801,106 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
                         )
 
     return freq_resp_array , w
+
+
+
+def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
+                         realness_tol=1000):
+    """
+    Given an array-like somearray, it first tests and clears out small
+    imaginary parts via `numpy.real_if_close`. Then pairs complex numbers
+    together as consecutive entries. A real array is returned as is.
+    
+    Parameters
+    ----------
+   
+    somearray : array_like
+        Array like object needs to be paired
+    tol: float
+        The sensitivity threshold for the real and imaginary parts to be 
+        assumed as equal. 
+ 
+    Returns
+    -------
+ 
+    paired_array : array_like
+        The array that is paired
+   
+    """
+ 
+ 
+    try:
+        array_r_j = np.array(somearray,dtype='complex').flatten()
+    except:
+        raise ValueError('Something in the argument array prevents me to '
+                        'convert the entries to complex numbers.')
+ 
+    # is there anything to pair?
+    if array_r_j.size == 0:
+        return np.array([],dtype='complex')
+   
+    # is the array 1D or more?
+    if array_r_j.ndim > 1:
+        raise ValueError('Currently, I can\'t deal with matrices, so I '
+                         'need 1D arrays.')
+   
+    # A shortcut for splitting a complex array into real and imag parts
+    def return_imre(arr):
+        return np.real(arr) , np.imag(arr)
+ 
+    # a close to realness function that operates element-wise
+    real_if_close_array = np.vectorize(np.real_if_close,
+                                       otypes=[np.complex_],
+                                       doc = 'Elementwise numpy.real_if_close'
+                                       )
+   
+    array_r_j = real_if_close_array(array_r_j)
+    array_r , array_j = return_imre(array_r_j)
+   
+    # are there any complex numbers to begin with or all reals?
+    # if not kick the argument back as a real array
+   
+    imagness = abs(array_j) >= tol
+   
+    # perform the imaginary entry separation once
+    array_j_ent = array_r_j[imagness]
+    num_j_ent = array_j_ent.size
+   
+    if num_j_ent == 0:
+        # If no complex entries exist sort and return unstable first
+        return np.sort(array_r)
+ 
+    elif num_j_ent % 2 != 0:
+        # Check to make sure there are even number of complex numbers
+        # Otherwise stop with "odd number --> no pair" error.        
+        raise ValueError('There are odd number of complex numbers to '
+                         'be paired!')
+    else:
+ 
+        # Still doesn't distinguish whether they are pairable or not.
+        sorted_array_r_j = np.sort(array_j_ent)
+        sorted_array_r , sorted_array_j = return_imre(sorted_array_r_j)
+ 
+        # Since the entries are sorted and even numbered 
+        # if summed with the next element the result should be very small
+ 
+        if any(np.abs(# Absolute values of
+                np.subtract(# the difference between consecutive entries
+                    *sorted_array_r.reshape((2,-1),order='F')
+                )
+            ) > tol):# are bigger than the tolerance
+            raise ValueError('Pairing failed for the real parts.')
+        elif any(np.abs(# Absolute values of
+                np.sum(# the difference between consecutive entries
+                    sorted_array_j.reshape(-1,2),axis=1
+                )
+            ) > tol):# are bigger than the tolerance
+            raise ValueError('Pairing failed for the imaginary parts.')
+        else:
+            paired_cmplx_part = np.kron(np.eye(num_j_ent/2),[[1,0],[1,0]]).dot(
+                                                                sorted_array_r
+                                                                ) + \
+                               np.kron(np.eye(num_j_ent/2),[[1,0],[-1,0]]).dot(
+                                                                sorted_array_j
+                                                                )*1j
+            return np.r_[array_r_j[~imagness],np.sort(paired_cmplx_part)]
