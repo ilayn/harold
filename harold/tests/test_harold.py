@@ -234,6 +234,15 @@ def test_haroldsvd():
     r = haroldsvd(testmat,also_rank=True,rank_tol=1.00001e-1)[-1]
     assert_equal(r,5)
 
+def test_haroldker():
+    testmat    = np.array([[1,1,1,1]])
+    testresult_r = haroldker(testmat)
+    testresult_l = haroldker(testmat,side='left')
+    npt.assert_almost_equal(testmat.dot(testresult_r),np.zeros((1,3)))
+    npt.assert_equal(testresult_l,np.array([[0.]]))
+    
+
+
 # %% Polynomial Tests
 def test_haroldgcd():
     a = np.array([1,3,2])

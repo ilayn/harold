@@ -1294,7 +1294,7 @@ class Transfer:
                             kroneckered_den[x].append(
                                     returned_numden_list[1].copy()
                                     )
-                    returned_numden_list[1] = kroneckered_num
+                    returned_numden_list[1] = kroneckered_den
 
                     
         # Finally if both turned out be SISO !
@@ -3848,6 +3848,66 @@ def haroldsvd(D,also_rank=False,rank_tol=None):
         return u,diags,v,r
 
     return u,diags,v
+
+
+def haroldker(N,side='right'):
+    """
+    This function is a straightforward basis computation for the right/left 
+    nullspace for rank deficient or fat/tall matrices. 
+    
+    It simply returns the remaining columns of the right factor of the
+    singular value decomposition whenever applicable. Otherwise returns 
+    a zero vector such that it has the same number of rows as the columns
+    of the argument, hence the dot product makes sense. 
+    
+    The basis columns have unity 2-norm except for the trivial zeros. 
+    
+    Parameters
+    ----------
+    
+    N : (m,n) array_like
+        Matrix for which the nullspace basis to be computed
+    side : {'right','left'} string
+        The switch for the right or left nullspace computation. 
+        
+    Returns
+    -------
+
+    Nn : (n,dim) array_like
+        Basis for the nullspace. dim is the dimension of the nullspace. If 
+        the nullspace is trivial then dim is 1 for consistent 2D array output
+
+    """
+    if not side in ('left','right'):
+        raise ValueError('side keyword only takes "left,right" as arguments')
+
+
+    try:
+        A = np.atleast_2d(np.array(N,dtype='float'))
+    except TypeError:
+        raise TypeError('Incompatible argument, use either list of lists'
+                        'or native numpy arrays for svd.')
+    except ValueError:
+        raise ValueError('The argument cannot be cast as an array with'
+                        '"float" entries')
+
+    if side=='left':
+        A = A.T
+
+    m , n = A.shape
+    
+    if A.size <= 1:
+        # don't bother
+        return np.array([[0]])
+
+    V,r = haroldsvd(A,also_rank=True)[2:]
+    
+    if r == min(m,n) and m >= n:
+        # If full rank and not fat, return trivial zero
+        return np.zeros((A.shape[1],1))
+    else:
+        return V[:,r:]
+    
 
 #TODO : type checking for both.
 
