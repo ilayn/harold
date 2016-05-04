@@ -4864,8 +4864,8 @@ def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
 
 
 
-def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
-                         realness_tol=1000):
+def pair_complex_numbers(somearray , tol = 1e-9 , realness_tol=1e-9 , 
+                         positives_first=False , reals_first = True):
     """
     Given an array-like somearray, it first tests and clears out small
     imaginary parts via `numpy.real_if_close`. Then pairs complex numbers
@@ -4877,8 +4877,17 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
     somearray : array_like
         Array like object needs to be paired
     tol: float
-        The sensitivity threshold for the real and imaginary parts to be 
+        The sensitivity threshold for the real and complex parts to be 
         assumed as equal. 
+    realness_tol: float
+        The sensitivity threshold for the complex parts to be assumed 
+        as zero.
+    positives_first: bool
+        The boolean that defines whether the positive complex part 
+        should come first for the conjugate pairs
+    reals_first: bool
+        The boolean that defines whether the real numbers are at the 
+        beginning or the end of the resulting array. 
  
     Returns
     -------
@@ -4887,7 +4896,6 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
         The array that is paired
    
     """
- 
  
     try:
         array_r_j = np.array(somearray,dtype='complex').flatten()
@@ -4900,7 +4908,7 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
         return np.array([],dtype='complex')
    
     # is the array 1D or more?
-    if array_r_j.ndim > 1:
+    if array_r_j.ndim > 1 and np.min(array_r_j.shape) > 1:
         raise ValueError('Currently, I can\'t deal with matrices, so I '
                          'need 1D arrays.')
    
@@ -4909,10 +4917,12 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
         return np.real(arr) , np.imag(arr)
  
     # a close to realness function that operates element-wise
-    real_if_close_array = np.vectorize(np.real_if_close,
-                                       otypes=[np.complex_],
-                                       doc = 'Elementwise numpy.real_if_close'
-                                       )
+    real_if_close_array = np.vectorize(
+                                lambda x : np.real_if_close(x,realness_tol),
+                                otypes=[np.complex_],
+                                doc = 'Elementwise numpy.real_if_close'
+                                )
+
    
     array_r_j = real_if_close_array(array_r_j)
     array_r , array_j = return_imre(array_r_j)
@@ -4920,12 +4930,12 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
     # are there any complex numbers to begin with or all reals?
     # if not kick the argument back as a real array
    
-    imagness = abs(array_j) >= tol
-   
+    imagness = np.abs(array_j) >= realness_tol
+
     # perform the imaginary entry separation once
     array_j_ent = array_r_j[imagness]
     num_j_ent = array_j_ent.size
-   
+
     if num_j_ent == 0:
         # If no complex entries exist sort and return unstable first
         return np.sort(array_r)
@@ -4938,29 +4948,81 @@ def pair_complex_numbers(somearray,tol=np.spacing(np.float64(1)*100),
     else:
  
         # Still doesn't distinguish whether they are pairable or not.
-        sorted_array_r_j = np.sort(array_j_ent)
+        sorted_array_r_j = np.sort_complex(array_j_ent)
         sorted_array_r , sorted_array_j = return_imre(sorted_array_r_j)
  
-        # Since the entries are sorted and even numbered 
-        # if summed with the next element the result should be very small
+        # Since the entries are now sorted and appear as pairs, 
+        # when summed with the next element the result should 
+        # be very small
  
-        if any(np.abs(# Absolute values of
-                np.subtract(# the difference between consecutive entries
-                    *sorted_array_r.reshape((2,-1),order='F')
-                )
-            ) > tol):# are bigger than the tolerance
+        if any(np.abs(sorted_array_r[:-1:2] - sorted_array_r[1::2]) > tol):
+        # if any difference is bigger than the tolerance
             raise ValueError('Pairing failed for the real parts.')
-        elif any(np.abs(# Absolute values of
-                np.sum(# the difference between consecutive entries
-                    sorted_array_j.reshape(-1,2),axis=1
-                )
-            ) > tol):# are bigger than the tolerance
-            raise ValueError('Pairing failed for the imaginary parts.')
+
+        # Now we have sorted the real parts and they appear in pairs. 
+        # Next, we have to get rid of the repeated imaginary, if any,
+        # parts in the  --... , ++... pattern due to sorting. Note
+        # that the non-repeated imaginary parts now have the pattern
+        # -,+,-,+,-,... and so on. So we can check whether sign is
+        # not alternating for the existence of the repeatedness.
+
+
+        def repeat_sign_test(myarr,mylen):
+        # Since we separated the zero imaginary parts now any sign 
+        # info is either -1 or 1. Hence we can test whether -1,1 
+        # pattern is present. Otherwise we count how many -1s occured
+        # double it for the repeated region. Then repeat until we 
+        # we exhaust the array with a generator. 
+            
+            x = 0
+            myarr_sign = np.sign(myarr).astype(int)
+            while x < mylen:
+                if np.array_equal(myarr_sign[x:x+2],[-1,1]):
+                    x +=2
+                elif np.array_equal(myarr_sign[x:x+2],[1,-1]):
+                    myarr[x:x+2] *= -1
+                    x += 2
+                else:
+                    still_neg = True
+                    xl = x+2
+                    while still_neg:
+                        if myarr_sign[xl] == 1:
+                            still_neg = False
+                        else:
+                            xl += 1
+                    
+                    yield x , xl - x
+                    x += 2*(xl - x)
+                    
+        for ind , l in repeat_sign_test(sorted_array_j,num_j_ent):
+            indices = np.dstack(
+                        (range(ind,ind+l),range(ind+2*l-1,ind+l-1,-1))
+                        )[0].reshape(1,-1)
+            
+            sorted_array_j[ind:ind+2*l] = sorted_array_j[indices]
+
+
+        if any(np.abs(sorted_array_j[:-1:2] + sorted_array_j[1::2]) > tol):
+        # if any difference is bigger than the tolerance
+            raise ValueError('Pairing failed for the complex parts.')
+
+        
+        # Finally we have a properly sorted pairs of complex numbers
+        # We can now combine the real and complex parts depending on 
+        # the choice of postivies_first keyword argument
+
+        # Force entries to be the same for each of the pairs.
+        sorted_array_j = np.repeat(sorted_array_j[::2],2)
+        paired_cmplx_part = np.repeat(sorted_array_r[::2],2).astype(complex)
+        
+        if positives_first:
+            sorted_array_j[::2] *= -1
         else:
-            paired_cmplx_part = np.kron(np.eye(num_j_ent/2),[[1,0],[1,0]]).dot(
-                                                                sorted_array_r
-                                                                ) + \
-                               np.kron(np.eye(num_j_ent/2),[[1,0],[-1,0]]).dot(
-                                                                sorted_array_j
-                                                                )*1j
-            return np.r_[array_r_j[~imagness],np.sort(paired_cmplx_part)]
+            sorted_array_j[1::2] *= -1
+        
+        paired_cmplx_part += sorted_array_j*1j
+
+        if reals_first:
+            return np.r_[array_r_j[~imagness] , paired_cmplx_part]
+        else:
+            return np.r_[paired_cmplx_part , array_r_j[~imagness]]
