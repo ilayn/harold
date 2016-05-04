@@ -5009,7 +5009,7 @@ def pair_complex_numbers(somearray , tol = 1e-9 , realness_tol=1e-9 ,
         
         # Finally we have a properly sorted pairs of complex numbers
         # We can now combine the real and complex parts depending on 
-        # the choice of postivies_first keyword argument
+        # the choice of positives_first keyword argument
 
         # Force entries to be the same for each of the pairs.
         sorted_array_j = np.repeat(sorted_array_j[::2],2)

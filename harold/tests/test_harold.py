@@ -252,3 +252,35 @@ def test_haroldgcd():
     e = np.eye(2)
     f = np.array(1)
 
+# %% Various Tests
+def test_cplxpair():
+    test_array = [
+                            1 + 1j - 0.9e-8 , 
+                            1 + 1j + 0.5e-8 , 
+                            1 - 1j - 1.0e-8j, 
+                            1 - 1j + 0.3e-8j,
+                            2.0             ,
+                            -1.0            ,
+                            -2 - 5j         ,
+                            -2 + 5j         ,
+                            -2 - 4j
+                            -1 - 2j         , # for odd numbered
+                            "some text"     , # for type check
+    ]
+    
+    # Type check
+    assert_raises(ValueError,pair_complex_numbers,test_array)
+    del test_array[-1]
+    # odd numbered complex check
+    assert_raises(ValueError,pair_complex_numbers,test_array)
+    del test_array[-1]
+    # tolerance check
+    assert_raises(ValueError,pair_complex_numbers,test_array)
+    np.random.shuffle(test_array)
+    t1 = pair_complex_numbers(test_array,tol=1e-7)
+    tt1 = np.array([ 2.00000000+0.j, -1.00000000+0.j , 
+                    -2.00000000-5.j, -2.00000000+5.j , 
+                     0.99999999-1.j,  0.99999999+1.j ,  
+                     1.00000000-1.j,  1.00000000+1.j])
+    
+    npt.assert_almost_equal(t1,tt1,decimal=7)    
