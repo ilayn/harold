@@ -2202,7 +2202,7 @@ def statetotransfer(*state_or_abcd,output='system'):
         it_is_gain = state_or_abcd[0]._isgain
         ZR = state_or_abcd[0].SamplingPeriod
     else:
-        A,B,C,D,(p,m),it_is_gain = State.validate_arguments(validated_matrices)
+        A,B,C,D,(p,m),it_is_gain = State.validate_arguments(*validated_matrices)
         
     if it_is_gain:
         return Transfer(D)
@@ -2388,7 +2388,7 @@ def transfertostate(*tf_or_numden,output='system'):
                 B = None
                 C = None
             else:
-                C = np.zeros((1,den.shape[1]-1))
+                C = np.zeros((1,den.size-1))
                 C[0,:datanum.size] = datanum[::-1]
                 
             D = np.atleast_2d(NumOrEmpty).astype(float)
@@ -3394,7 +3394,8 @@ def _state_or_abcd(arg,n=4):
 
     return system_or_not , returned_args
 
-def staircase(A,B,C,compute_T=False,form='c',invert=False):
+def staircase(A,B,C,compute_T=False,form='c',
+              invert=False,block_indices=False):
     """
     The staircase form is used very often to assess system properties. 
     Given a state system matrix triplet A,B,C, this function computes 
@@ -3456,6 +3457,8 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
         For example, the default case returns the B matrix with (if any)
         zero rows at the bottom. invert option flips this choice either in
         B or C matrices depending on the "form" switch. 
+    block_indices : bool, optional
+        
         
     Returns
     -------
@@ -3475,7 +3478,8 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
 
         is in the desired staircase form.
     k: Numpy array
-        Array of controllable block sizes identified during block 
+        If the boolean ``block_indices`` is true, returns the array 
+        of controllable/observable block sizes identified during block 
         diagonalization
         
     """
@@ -3547,6 +3551,7 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
                                     np.c_[sh3.dot(vh3),uh3.T.dot(h4)]
                                     ]
                 A0 = A0.dot(blockdiag(np.eye(n-uh3.shape[1]),uh3))
+                C0 = C0.dot(blockdiag(np.eye(n-uh3.shape[1]),uh3))
                 # Clean up
                 A0[abs(A0) < tol_from_A ] = 0.
                 C0[abs(C0) < tol_from_A ] = 0.                
@@ -3567,9 +3572,15 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
             A0 , B0 , C0 = A0.T , C0.T , B0.T
 
         if compute_T:
-            return A0,B0,C0,P.T,cble_block_indices
+            if block_indices:
+                return A0 , B0 , C0 , P.T , cble_block_indices
+            else:
+                return A0 , B0 , C0 , P.T
         else:
-            return A0,B0,C0,cble_block_indices
+            if block_indices:
+                return A0 , B0 , C0 , cble_block_indices
+            else:
+                A0 , B0 , C0
 
     else: # Square system B full rank ==> trivially controllable
         cble_block_indices = np.array([n])
@@ -3577,9 +3588,15 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False):
             A , B , C = A.T , C.T , B.T
         
         if compute_T:
-            return A,B,C,np.eye(n),cble_block_indices
+            if block_indices:
+                return A,B,C,np.eye(n),cble_block_indices
+            else:
+                return A , B , C , np.eye(n)
         else:
-            return A,B,C,cble_block_indices
+            if block_indices:
+                return A , B , C , cble_block_indices
+            else:
+                return A , B , C
 
 def canceldistance(F,G):
     """
