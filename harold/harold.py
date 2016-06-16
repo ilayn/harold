@@ -30,6 +30,7 @@ THE SOFTWARE.
 # %% Imports/shorthands
 import numpy as np
 import scipy as sp
+import matplotlib.pyplot as plt
 from tabulate import tabulate
 from scipy.signal import deconvolve
 from itertools import zip_longest,chain
@@ -2705,24 +2706,30 @@ def discretize(G,dt,method='tustin',PrewarpAt = 0.,q=None):
     else:
         T = G
 
-    args = __discretize(T,dt,method,PrewarpAt,q)
+    if G._isgain:
+        Gd = G
+        Gd. SamplingPeriod = dt
 
-    if isinstance(G,State):
-        Gd = State(*args)
-        Gd.DiscretizedWith = method
     else:
-        Gss = State(*args)
-        Gd = statetotransfer(Gss)
-        Gd.DiscretizedWith = method        
-
-    if method =='lft':
-        Gd.DiscretizationMatrix = q
-
-    elif method in ('tustin','bilinear','trapezoidal'):
-        Gd.PrewarpFrequency = PrewarpAt
+    
+        discretized_args = __discretize(T,dt,method,PrewarpAt,q)
+    
+        if isinstance(G,State):
+            Gd = State(*discretized_args)
+            Gd.DiscretizedWith = method
+        else:
+            Gss = State(*discretized_args)
+            Gd = statetotransfer(Gss)
+            Gd.DiscretizedWith = method        
+    
+        if method =='lft':
+            Gd.DiscretizationMatrix = q
+    
+        elif method in ('tustin','bilinear','trapezoidal'):
+            Gd.PrewarpFrequency = PrewarpAt
 
     return Gd
-    
+        
 
 def __discretize(T,dt,method,PrewarpAt,q):
     """
@@ -2908,13 +2915,17 @@ def undiscretize(G,OverrideWith = None):
                         'continuous time system.')
 
 
-    args = __undiscretize(G)
-
-    if isinstance(G,State):
-        Gc = State(*args)
+    if G._isgain:
+        Gc = G
+        Gc.SamplingPeriod = None
     else:
-        Gss = State(*args)
-        Gc = statetotransfer(State(Gss))
+        args = __undiscretize(G)
+    
+        if isinstance(G,State):
+            Gc = State(*args)
+        else:
+            Gss = State(*args)
+            Gc = statetotransfer(State(Gss))
         
     return Gc
 
@@ -4799,109 +4810,6 @@ def haroldpolydiv(dividend,divisor):
 
 # %% Frequency Domain
 
-#def frequency_response(G,custom_grid=None,high=None,low=None,samples=None,
-#                       custom_logspace=None,
-#                       input_freq_unit='Hz',output_freq_unit='Hz'):
-#    """
-#    Computes the frequency response matrix of a State() or Transfer()
-#    object. Transfer matrices are converted to state representations
-#    before the computations. The system representations are always 
-#    checked for minimality and, if any, unobservable/uncontrollable 
-#    modes are removed.
-#
-#    """
-#    if not isinstance(G,(State,Transfer)):
-#        raise ValueError('The argument should either be a State() or '
-#                         'Transfer() object. I have found {0}'
-#                         ''.format(type(G).__qualname__))
-#    
-#
-#    for x in (input_freq_unit,output_freq_unit):
-#        if x not in ('Hz','rad/s'):
-#            raise ValueError('I can only handle "Hz" and "rad/s" as '
-#                             'frequency units. "{0}" is not recognized.'
-#                             ''.format(x))
-#
-#    """ If the system has very small or zero poles/zeros then 
-#     the list should be shifted to meaningful region because the result
-#     would either be huge or unpractically small especially in logaritmic
-#     scale, completely useless."""     
-#
-#    if G._isgain:
-#        samples = 2
-#        high = -2
-#        low = 2
-#    else:
-#        pz_list = np.append(G.poles,G.zeros)
-#
-#        if G.SamplingSet == 'Z':
-#            nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
-#        else:
-#            nat_freq = np.abs(pz_list)
-#
-#        smallest_pz = np.max([np.min(nat_freq),1e-7])
-#        largest_pz  = np.max([np.max(nat_freq),smallest_pz+10])
-#
-#    # The order of hierarchy is as follows:
-#    #  - We first check if a custom frequency grid is supplied
-#    #  - If None, then we check if a logspace-like option is given
-#    #  - If that's also None we check whether custom logspace
-#    #       limits are supplied with defaults for missing
-#    #           .. high    --> +2 decade from the fastest pole/zero
-#    #           .. low     --> -3 decade from the slowest pole/zero
-#    #           .. samples --> 1000 points
-#
-#    # TODO: Implement a better/nonuniform algo for discovering new points 
-#    # around  poles and zeros. Right now there is a chance to hit a pole 
-#    # or a zero head on. 
-#    # matlab coarseness stuff is nice but in practice leads to weirdness
-#    # even when granularity = 4.
-#
-#    if custom_grid is None:
-#        if custom_logspace is None:
-#            high = np.ceil(np.log10(largest_pz)) + 1 if high is None else high
-#            low  = np.floor(np.log10(smallest_pz)) - 1 if low  is None else low
-#            samples = 1000 if samples is None else samples
-#        else:
-#            high , low , samples = custom_logspace
-#        w = np.logspace(low,high,samples)
-#    else:
-#        w = np.asarray(custom_grid,dtype='float')
-#
-#    # Convert to Hz if necessary
-#    if not input_freq_unit == 'Hz':
-#        w = np.rad2deg(w)
-#
-#    iw = 1j*w.flatten()
-#
-#    # TODO: This has to be rewritten, currently extremely naive
-#    if G._isSISO:
-#        freq_resp_array = np.empty_like(iw,dtype='complex')
-#        
-#        if isinstance(G,State):
-#            Gtf = statetotransfer(G)
-#        else:
-#            Gtf = G
-#        freq_resp_array = (np.polyval(Gtf.num[0],iw) /
-#                           np.polyval(Gtf.den[0],iw)
-#                           )
-#    else:
-#        p , m = G.shape
-#        freq_resp_array = np.empty((p,m,len(iw)),dtype='complex')
-#        if isinstance(G,State):
-#            Gtf = statetotransfer(G)
-#        else:
-#            Gtf = G
-#        for rows in range(p):
-#            for cols in range(m):
-#                freq_resp_array[rows,cols,:] = (
-#                        np.polyval(Gtf.num[rows][cols][0],iw) /
-#                        np.polyval(Gtf.den[rows][cols][0],iw)
-#                        )
-#
-#    return freq_resp_array , w
-#
-
 def _State_frequency_response_generator(mA,mb,sc,f):
     """
     This is the low level function to generate the frequency response
@@ -5347,3 +5255,66 @@ def matrix_printer(M , num_format="f" , var_name=None):
         mat += "];\n" if m == rowind + 1 else ";\n"
 
     return mat
+    
+    
+def bodeplot(G,w=None,dont_draw=False):
+    """
+    Draws the Bode plot of the system G. As the name implies, this only 
+    creates a plot and for the data that is used `frequency_response()`
+    should be used. 
+    
+    Parameters
+    ----------
+    G : {State,Transfer}
+        The system for which the Bode plot will be drawn
+    w : array_like
+        Range of frequencies
+    dont_draw : bool
+        If True the figure handle is returned instead of directly drawing 
+        to be used in elsewhere. The figure has no applied styles such as
+        title, grid etc. 
+
+    Returns
+    -------
+    plot : matplotlib.figure.Figure
+        If `dont_draw` key is set to True then this returns the figure object.
+        
+    """
+    if not isinstance(G,(State,Transfer)):
+        raise TypeError('The first argument should be a system'
+                        ' representation.')
+    
+    if w is not None:
+        fre , ww = frequency_response(G,w)
+    else:
+        fre , ww = frequency_response(G)
+
+    mag = 20*np.log10(np.abs(fre))
+    pha = np.unwrap(np.angle(fre,deg=True))
+
+    m , p = G.shape
+
+    if G._isSISO:
+        fig, axs = plt.subplots(2, 1, sharex=True)
+        axs[0].semilogx(ww,mag)
+        axs[1].semilogx(ww,pha)
+        if dont_draw:
+            return fig
+
+    # For SIMO systems axs returns a 1D array hence double indices 
+    # lead to errors. Hence the if-switch to detect that. 
+    elif p == 1:
+        fig, axs = plt.subplots(2*m, 1, sharex=True)
+        for x in range(m):
+            axs[2*x].semilogx(ww,mag[x,0,:])
+            axs[2*x+1].semilogx(ww,pha[x,0,:])
+    else:
+        fig, axs = plt.subplots(2*m, p, sharex=True)
+        for y in range(p):
+            for x in range(m):
+                axs[2*x,y].semilogx(ww,mag[x,y,:])
+                axs[2*x+1,y].semilogx(ww,pha[x,y,:])
+    
+    
+    if dont_draw:
+        return fig
