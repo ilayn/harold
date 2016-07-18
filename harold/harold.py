@@ -5318,3 +5318,550 @@ def bodeplot(G,w=None,dont_draw=False):
     
     if dont_draw:
         return fig
+        
+# %% Solvers
+
+def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
+    '''
+    This function solves the Lyapunov and the generalized Lyapunov
+    equations of the forms
+    
+    (1)                X A + A^T X + Y = 0
+    
+    (1')               A^T X A - X + Y = 0
+    
+    and 
+    
+    (2)             E^T X A + A^T X E + Y = 0
+
+    (2')            A^T X A - E^T X E + Y = 0    
+    
+    for the unknown matrix `X` given square matrices A, E, and Y. 
+    The numbered (primed) equations are the so-called continuous 
+    (discrete) time forms. The `form` keyword selects between the 
+    two. 
+    
+    For (1), the function uses `scipy.linalg.solve_lyapunov`. 
+    For (2), it uses a modified implementation of T. Penzl (1998).
+    
+    If the argument `E` is not exactly a `None`-type then (2) is 
+    assumed. Moreover, if (2) is assumed, the constant `Y` term 
+    should be symmetric.
+
+    '''
+    def check_matrices( a , y , e ):
+        arg_names = ['A' , 'Y' , 'E']
+        a = np.atleast_2d( a )
+        y = np.atleast_2d( y )
+        if e is not None:
+            e = np.atleast_2d( e )
+            if e.shape[0] != e.shape[1]:
+                raise ValueError('E matrix is not square. Its shape is'
+                                 '{}'.format(e.shape))
+        
+        for ind , mat in enumerate((a,y)):
+            if mat.shape[0] != mat.shape[1]:
+                raise ValueError('The argument {} must be square. '
+                                 'Its shape is {}'
+                                 ''.format(arg_names[ind],mat.shape))
+        
+        
+        #shapes are square now check compatibility
+        if a.shape != y.shape and (
+                       (E is not None and a.shape != e.shape)
+                       or 
+                       E is None
+                       ):
+            raise ValueError('The sizes of the arguments are not compatible. '
+                             'For convenience I have received A , Y , E ' 
+                             'matrices shaped as {}'.format([a.shape,
+                                                             y.shape,
+                                                 e if e is None else e.shape])
+                             )
+        
+        return a , y , e
+            
+
+
+
+
+    if form not in ('c','continuous','d','discrete'):
+        raise ValueError('The keyword "form" accepts only the '
+                                  'following choices:\n'
+                                  "''c','continuous','d','discrete'")
+
+    A , Y , E = check_matrices( A , Y , E )
+    
+
+        
+    if form in ('c','continuous'):
+        if E is None:
+            X_sol = sp.linalg.solve_lyapunov( A.T , -Y.T )
+        else:
+            X_sol = solve_continuous_generalized_lyapunov( A , E , Y )
+    else:
+        if E is None:
+            X_sol = sp.linalg.solve_discrete_lyapunov( A.T , -Y.T )
+        else:
+            X_sol = solve_discrete_generalized_lyapunov( A , E , Y )
+
+    return X_sol
+
+
+
+
+def solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+    '''
+    A generalized Lyapunov equation 
+
+    (1)             A^T X E + E^T X A + Y = 0
+
+    solver following T. Penzl 1998 with a modified constant term 
+    sweep pattern. 
+
+    The block sizes are defined by the off-diagonal terms found on
+    the subdiagonals of As obtained by the real QZ decomposition of 
+    the matrix pencil A - \lambda E.
+    
+    Note that, (1) has a unique solution if and only if all 
+    eigenvalues of (A - \lambda) E are finite and there are 
+    no pairs of eigenvalues that sum up to zero. 
+    
+    Since the generalized Sylvester equation 
+    
+    (2)             R^T X S + U^T X V + Y = 0 
+    
+    is linear on the entries of X, it can be solved, theoretically,
+    as a system of linear equations 
+    
+    (3)    vec(X) = (kron(S^T,R^T) + kron(V^T,U^T)) \ vec(-Y) 
+
+    however, numerically, this is a very ill-conditioned formulation
+    and only makes sense when the problem is extremely small. That is 
+    the basis of the solution that is to say reducing the problem into 
+    a special structure in which the block sizes are p x m, with 
+    p , m = {1,2}.
+    
+    
+    '''
+
+    # =============================
+    # Declare the inner functions
+    # =============================
+    
+    def sl( p , m , dx = 1 , dy = 1):
+        '''
+        A helper function to provide a shortcut to get the slice of a 
+        particular entry in the block partitioned matrices A , X , E , Y. 
+        '''
+        return np.s_[bs[p]:bs[p+dy]] , np.s_[bs[m]:bs[m+dx]]
+        
+    def X_placer(mat , p , m ):
+        '''
+        A helper function to place the computed data into the corresponding
+        location of the solution matrix X of the sylvester equation
+        '''
+        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
+    
+        if p != m:
+            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
+    
+        
+    def mini_sylvester( R , S , Y , U = None , V = None ):
+        '''
+        A helper function to solve the 1x1 or 2x2 Sylvester equations 
+        arising in the solution of the generalized continuous-time 
+        Lyapunov equations
+        
+        Note that, this doesn't have any protection against LinAlgError
+        hence the caller needs to `try` to see whether it is properly 
+        executed.
+        '''
+        if U is None:
+            U = S
+            V = R
+    
+        if max( *R.shape , *S.shape ) > 1:
+            X = np.linalg.solve(
+                        np.kron(S.T,R.T) + np.kron(V.T,U.T) ,
+                        -Y.reshape(-1,1,order='F')        # equivalent to vec(-Y)
+                    )
+        else:
+            X = -Y / (R * S + U * V)
+    
+        return X.reshape(R.shape[1],-1,order='F')
+    # =============================
+    # Prepare the data
+    # =============================
+
+    # if the problem is small then solve directly 
+    if A.shape[0] < 3:
+        return mini_sylvester( A , E , Y )
+    
+    # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
+    # Based on that we have the block sizes `bz` and starting positions `bs`.
+    As , Es , Q , Z = sp.linalg.qz(A,E)
+    Ys = Z.T @ Y @ Z
+    n = A.shape[0]
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
+    bz = np.ones(n)
+    for x in subdiag_indices:
+        bz[x] = 2
+        bz[x+1] = np.nan
+    
+    bz = bz[~np.isnan(bz)].astype(int)
+    bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
+    total_blk = bz.size
+    Xs = np.zeros_like(Y)
+
+    # =============================
+    #  Main Loop
+    # =============================
+    
+    # Now we know how the matrices should be partitioned. We then start 
+    # from the uppper left corner and alternate between updating the 
+    # Y term and solving the next entry of X. We walk over X row-wise
+    
+    
+    for row in range( total_blk ):
+        # This block is executed at the second and further spins of the 
+        # for loop. Humans should start reading from (**)
+        if row is not 0:
+            Ys[sl(row,row)] +=  \
+                            As[sl( row , row )].T @ \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      Es[sl( 0 , row , dy = row)] + \
+                                                    \
+                            Es[sl( row , row )].T @ \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      As[sl( 0 , row , dy = row)]    
+
+        # (**) Solve for the diagonal via Akk , Ekk , Ykk and place it in Xkk 
+        tempx = mini_sylvester(As[sl(row,row)],Es[sl(row,row)],Ys[sl(row,row)])
+        X_placer( tempx , row , row )
+    
+    
+        tempx = Xs[sl( row , 0 , dx = row +1 )]
+        # Form the common products of X * E and X * A 
+        XE_of_row = tempx @ Es[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+        XA_of_row = tempx @ As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+        
+        # Update Y terms right of the diagonal
+        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XE_of_row + \
+                                           Es[sl( row , row )].T @ XA_of_row
+        # Walk over upper triangular terms 
+        for col in range( row + 1 , total_blk ):
+            # The corresponding Y term has already been updated, solve for X
+            tempx = mini_sylvester(As[sl( row , row )] , Es[sl( col , col )] ,
+                                    Ys[sl( row , col )] , Es[sl( row , row )] ,
+                                    As[sl( col , col )] )
+    
+            # Place it in the data
+            X_placer( tempx , row , col )
+    
+            ## Post column solution Y update
+    
+            # XA and XE terms 
+            tempe = tempx @ Es[sl( col , col , dx = total_blk - col )]
+            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
+            # Update Y towards left
+            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempe + \
+                                                  Es[sl(row,row)].T @ tempa
+            # Update Y downwards
+            XE_of_row[:,( bs[col] - bs[row] ):] += tempe
+            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
+                      
+            ugly_slice = slice(bs[col] - bs[row],
+                        bs[col+1] - bs[row] if bs[col+1] is not None else None
+                        )
+    
+            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
+                     As[sl(row,row+1,dx=col-row)].T @ XE_of_row[:,ugly_slice] + \
+                     Es[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice]
+
+    
+    
+    return Q @ Xs @ Q.T
+
+
+def solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+    
+    def sl( p , m , dx = 1 , dy = 1):
+        '''
+        A helper function to provide a shortcut to get the slice of a 
+        particular entry in the block partitioned matrices A , X , E , Y. 
+        '''
+        return np.s_[bs[p]:bs[p+dy]] , np.s_[bs[m]:bs[m+dx]]
+        
+    def X_placer(mat , p , m ):
+        '''
+        A helper function to place the computed data into the corresponding
+        location of the solution matrix X of the sylvester equation
+        '''
+        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
+    
+        if p != m:
+            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
+
+    def mini_sylvester( Ar , Er , Yt , Al = None , El = None ):
+        '''
+        A helper function to solve the 1x1 or 2x2 Sylvester equations 
+        arising in the solution of the generalized continuous-time 
+        Lyapunov equations
+        
+        Note that, this doesn't have any protection against LinAlgError
+        hence the caller needs to `try` to see whether it is properly 
+        executed.
+        '''
+        if Al is None:
+            Al = Ar
+            El = Er
+    
+        if max( *Al.shape , *Ar.shape ) > 1:
+            Xms = np.linalg.solve(
+                        np.kron(Ar.T,Al.T) + np.kron(-Er.T,El.T) ,
+                        -Yt.reshape(-1,1,order='F')   # equivalent to vec(-Y)
+                    )
+        else:
+            Xms = -Yt / (Ar * Al - El * Er)
+        
+        return Xms.reshape(Al.shape[0],Ar.shape[0],order='F')
+
+    # =============================
+    # Prepare the data
+    # =============================
+    # if the problem is small then solve directly 
+    if A.shape[0] < 3:
+        return mini_sylvester( A , E , Y )
+
+    As , Es , Q , Z = sp.linalg.qz(A,E)
+    Ys = Z.T @ Y @ Z
+    n = As.shape[0]
+    # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
+    # Based on that we have the block sizes `bz` and starting positions `bs`.
+    
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
+    bz = np.ones(n)
+    for x in subdiag_indices:
+        bz[x] = 2
+        bz[x+1] = np.nan
+    
+    bz = bz[~np.isnan(bz)].astype(int)
+    bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
+    total_blk = bz.size
+    Xs = np.zeros_like(Y)
+
+    # =============================
+    #  Main Loop
+    # =============================
+    
+    # Now we know how the matrices should be partitioned. We then start 
+    # from the uppper left corner and alternate between updating the 
+    # Y term and solving the next entry of X. We walk over X row-wise
+    
+    
+    for row in range( total_blk ):
+        # This block is executed at the second and further spins of the 
+        # for loop. Humans should start reading from (**)
+        if row is not 0:
+            Ys[sl(row,row)] +=  \
+                            As[sl( row , row )].T @ \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      As[sl( 0 , row , dy = row)]   \
+                                                  - \
+                            Es[sl( row , row )].T @ \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      Es[sl( 0 , row , dy = row)]    
+
+        # (**) Solve for the diagonal via Akk , Ekk , Ykk and place it in Xkk 
+        tempx = mini_sylvester(As[sl(row,row)],Es[sl(row,row)],Ys[sl(row,row)])
+        X_placer( tempx , row , row )
+    
+    
+        tempx = Xs[sl( row , 0 , dx = row +1 )]
+        # Form the common products of X * E and X * A 
+        XE_of_row = tempx @ Es[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+        XA_of_row = tempx @ As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+        
+        # Update Y terms right of the diagonal
+        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XA_of_row - \
+                                           Es[sl( row , row )].T @ XE_of_row
+        # Walk over upper triangular terms 
+        for col in range( row + 1 , total_blk ):
+            # The corresponding Y term has already been updated, solve for X
+            tempx = mini_sylvester( As[sl( col , col )] , Es[sl( col , col )] ,
+                                    Ys[sl( row , col )] , As[sl( row , row )] ,
+                                    Es[sl( row , row )] )
+    
+            # Place it in the data
+            X_placer( tempx , row , col )
+    
+            ## Post column solution Y update
+    
+            # XA and XE terms 
+            tempe = tempx @ Es[sl( col , col , dx = total_blk - col )]
+            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
+            # Update Y towards left
+            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempa - \
+                                                  Es[sl(row,row)].T @ tempe
+            # Update Y downwards
+            XE_of_row[:,( bs[col] - bs[row] ):] += tempe
+            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
+                      
+            ugly_slice = slice(bs[col] - bs[row],
+                        bs[col+1] - bs[row] if bs[col+1] is not None else None
+                        )
+    
+            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
+                     As[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice] - \
+                     Es[sl(row,row+1,dx=col-row)].T @ XE_of_row[:,ugly_slice]
+
+
+    return Q @ Xs @ Q.T
+
+def solve_continuous_lyapunov( A , Y ):
+    '''
+            Solves A.T X + X A + Y = 0
+    
+    '''
+    # =============================
+    # Declare the inner functions
+    # =============================
+
+    # Some performance tweaks
+    i2 = np.eye(2,dtype=float)
+    z41 = np.zeros((4,4),dtype=float)
+    z42 = np.zeros((4,4),dtype=float)
+
+    def sl( p , m , dx = 1 , dy = 1):
+        '''
+        A helper function to provide a shortcut to get the slice of a 
+        particular entry in the block partitioned matrices A , X , Y. 
+        '''
+        return np.s_[bs[p]:bs[p+dy],bs[m]:bs[m+dx]]
+        
+    def X_placer( mat , p , m ):
+        '''
+        A helper function to place the computed data into the corresponding
+        location of the solution matrix X of the sylvester equation
+        '''
+        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
+    
+        if p != m:
+            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
+    
+        
+    def mini_sylvester( Ar , Y , Al = None):
+        '''
+        A helper function to solve the 1x1 or 2x2 Sylvester equations 
+        arising in the solution of the continuous-time Lyapunov equations
+        
+        Note that, this doesn't have any protection against LinAlgError
+        hence the caller needs to `try` to see whether it is properly 
+        executed.
+        '''
+        if Al is None:
+            Al = Ar
+        if max( *Al.shape , *Ar.shape ) > 1:
+            if min( *Al.shape , *Ar.shape ) > 1:
+                z41[:2,:2] = Al.T
+                z41[2:,2:] = Al.T
+                z42[[0,0,2,2],[0,2,0,2]] = Ar.T[[0,0,1,1],[0,1,0,1]]
+                z42[[1,1,3,3],[1,3,1,3]] = z42[[0,0,2,2],[0,2,0,2]]
+                X = np.linalg.solve(z41 + z42 ,
+                                    -Y.reshape(-1,1,order='F') )
+            else:
+                if Al.shape[0] == 1:
+                    X = np.linalg.solve(i2 * Al + Ar.T ,
+                                    -Y.reshape(-1,1,order='F') )
+                else:
+                    X = np.linalg.solve(Al.T + i2 * Ar ,
+                                    -Y.reshape(-1,1,order='F') )
+
+#            t1 = np.kron(np.eye(Ar.shape[0]),Al.T)
+#            t2 = np.kron(Ar.T,np.eye(Al.shape[1]))
+#            
+#            X = np.linalg.solve( t1 + t2, -Y.reshape(-1,1,order='F'))
+#            X = np.linalg.solve(
+#                        np.kron(np.eye(Ar.shape[0]),Al.T) + 
+#                        np.kron(Ar.T,np.eye(Al.shape[1])) ,
+#                        -Y.reshape(-1,1,order='F')   # equivalent to vec(-Y)
+#                    )
+        else:
+            X = -Y / (Ar + Al)
+    
+        return X.reshape( -1 , Ar.shape[0] , order='F' )
+    
+    # =============================
+    # Prepare the data
+    # =============================
+    # if the problem is small then solve directly 
+    if A.shape[0] < 3:
+        return mini_sylvester( A , Y )
+
+    As , S = sp.linalg.schur( A , output = 'real' )
+    Ys = S.T @ Y @ S
+    n = As.shape[0]
+
+    # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
+    # Based on that we have the block sizes `bz` and starting positions `bs`.
+    
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
+    bz = np.ones(n)
+    for x in subdiag_indices:
+        bz[x] = 2
+        bz[x+1] = np.nan
+    
+    bz = bz[~np.isnan(bz)].astype(int)
+    bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
+    total_blk = bz.size
+    Xs = np.zeros_like(Y)    
+    
+    # =============================
+    #  Main Loop
+    # =============================
+    
+    # Now we know how the matrices should be partitioned. We then start 
+    # from the uppper left corner and alternate between updating the 
+    # Y term and solving the next entry of X. We walk over X row-wise
+    
+    
+    for row in range( total_blk ):
+        # This block is executed at the second and further spins of the 
+        # for loop. Humans should start reading from (**)
+        if row is not 0:
+            Ys[sl(row , row , dx = total_blk - row )] +=  \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      As[sl( 0 , row , dx = total_blk - row , dy = row)]
+
+        # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk 
+        tempx = mini_sylvester( As[sl(row,row)] , Ys[sl(row,row)] )
+        X_placer( tempx , row , row )
+        
+        # Update Y terms right of the diagonal
+        Ys[sl( row , row + 1 , dx = total_blk-row - 1)]+= tempx @ \
+                    As[sl( row , row + 1, dx = total_blk-row - 1)]
+
+        # Walk over upper triangular terms 
+        for col in range( row + 1 , total_blk ):
+            # The corresponding Y term has already been updated, solve for X
+            tempx = mini_sylvester( As[sl( col , col )] ,
+                                    Ys[sl( row , col )] ,
+                                    As[sl( row , row )] )
+    
+            # Place it in the data
+            X_placer( tempx , row , col )
+
+            # Update Y towards left
+            Ys[sl(row , col + 1 , dx = total_blk - col - 1)] += tempx @ \
+                     As[sl( col , col + 1, dx = total_blk - col - 1)]
+                                
+            # Update Y downwards
+            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
+                    As[sl( row , row + 1 , dx = col - row)].T @ tempx
+
+    return S @ Xs @ S.T
+    
