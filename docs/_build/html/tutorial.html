@@ -5,6 +5,7 @@
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
 <head>
   <meta charset="utf-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <title>A primer to harold &mdash; harold 0.1.1a5 documentation</title>
@@ -14,7 +15,6 @@
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -30,12 +30,10 @@
   
 
   
-    <link rel="top" title="harold 0.1.1a5 documentation" href="index.html"/>
-        <link rel="next" title="Frequently Asked Questions" href="faq.html"/>
-        <link rel="prev" title="Getting Started" href="preflight.html"/> 
+    <link rel="top" title="harold 0.1.1a5 documentation" href="index.html"/> 
 
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
@@ -45,11 +43,27 @@
 
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-nav-search">
-        
-          <a href="index.html" class="fa fa-home"> harold</a>
-        
-        
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> harold
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.1
+              </div>
+            
+          
+
+          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -57,46 +71,31 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-      </div>
 
-      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-        
           
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#development">Development</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-scientific-stack">Python and its scientific stack</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-strange-syntax">Python and its strange syntax</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">A primer to harold</a></li>
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
 </ul>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#is-it-really-free">Is it really free?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#how-fast-is-it">How fast is it?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-decibell-not-the-default-unit">Why is deciBell not the default unit?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-there-no-python-2-support">Why is there no Python 2 support?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-it-called-harold">Why is it called harold?</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1">v0.1.1</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a></li>
 </ul>
 
+            
           
-        
+        </div>
       </div>
-      &nbsp;
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
@@ -111,20 +110,29 @@
       
       <div class="wy-nav-content">
         <div class="rst-content">
-          <div role="navigation" aria-label="breadcrumbs navigation">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
     <li>A primer to harold</li>
       <li class="wy-breadcrumbs-aside">
         
-          <a href="_sources/tutorial.txt" rel="nofollow"> View page source</a>
+          
+            <a href="_sources/tutorial.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
   </ul>
   <hr/>
 </div>
-          <div role="main" class="document">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="a-primer-to-harold">
 <h1>A primer to harold<a class="headerlink" href="#a-primer-to-harold" title="Permalink to this headline">¶</a></h1>
@@ -132,20 +140,126 @@
 <p class="first admonition-title">Todo</p>
 <p class="last">Finish this as soon as possible</p>
 </div>
+<div class="section" id="a-humble-advice-to-python-beginners">
+<h2>A humble advice to Python beginners<a class="headerlink" href="#a-humble-advice-to-python-beginners" title="Permalink to this headline">¶</a></h2>
+<p>Since Python is a programming language and not a front-end software, the
+code we write usually needs to be executed somehow. Without going into
+the details, Python code needs to be interpreted (similar to matlab)
+as opposed to compiling C code.</p>
+<p>The native way of doing this is simply typing <code class="docutils literal"><span class="pre">python</span></code> on the command
+line and making it a Python interpreter. However, this is hardly ever
+useful for any practical purposes, let alone resuming or reproducing
+previous work. Having said that, you don&#8217;t need a scary Visual blabla
+suite that looks like an airplane cockpit either. There are many options
+to make your life easier.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The first option is simply working with an editor, e.g., <a class="reference external" href="https://pythonhosted.org/spyder/">Spyder</a>
+(I had a very positive experience with it), Eclipse, PyCharm, vim,
+emacs so on.</li>
+<li>Using the recent and very very powerful <a class="reference external" href="http://jupyter.org">Jupyter</a> (previously known</li>
+</ol>
+<blockquote>
+<div>as IPython) which converts your web browser into a mathematica like
+environment with explicit cells but you can embed even Youtube videos.
+Moreover, it also works on the command window too which is not limited
+to Python, but as the name implies Julia, Python, R and so on.</div></blockquote>
+</div></blockquote>
+<p>I would strongly recommend Jupyter notebook option. It also makes sharing
+your work with others extremely easy. Please follow the link to Jupyter
+and install accordingly to your liking.</p>
+<blockquote>
+<div></div></blockquote>
+</div>
+<div class="section" id="initializing-harold">
+<h2>Initializing harold<a class="headerlink" href="#initializing-harold" title="Permalink to this headline">¶</a></h2>
+<p>Once you have managed to make Jupyter work you will have to import harold
+as a library. And when you do you have to access the function names properly
+depending on how you imported harold.</p>
+<p>This point is a pretty confusing and a source for heated arguments but I&#8217;ll
+just cut to the chase. Almost all proper programming languages involve the
+concept of <strong>namespaces</strong> (you guess correctly, matlab doesn&#8217;t have this).
+Sticking to the part that is relevant for us, this concept actually makes
+it possible to attach all the function names to a particular name family
+which is represented by the dot notation e.g.,
+<code class="docutils literal"><span class="pre">mypackage.myfunction.myattribute</span> <span class="pre">=</span> <span class="pre">45</span></code> etc.</p>
+<p>One obvious reason for this is that separate name families avoid name
+clashes which is a nightmare in matlab if you have two folders on the
+path and both have the variants of the same function. You can never be
+sure which one matlab is going to read if you decide to call this
+function from somewhere else.</p>
+<p>Long story short when you import harold you can simply write on top of
+your notebook</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span>
+</pre></div>
+</div>
+<p>then it is possible to access the functions with the <code class="docutils literal"><span class="pre">harold.</span></code> prefix
+such as, say, for frequency response calculations:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">harold</span><span class="o">.</span><span class="n">frequency_response</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Alternatively, you can use an abbreviation for the package name</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span> <span class="k">as</span> <span class="nn">har</span>
+</pre></div>
+</div>
+<p>and then you can access the functions with <code class="docutils literal"><span class="pre">har.</span></code> prefix. Lastly,
+there is another way which is, as is for almost everything involving
+professional programmers, another battlefield. You can basically decide
+to skip the namespace and import all functions with their original name
+to the parent namespace:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>This will scan the harold library and import every object whose name
+doesn&#8217;t start with <code class="docutils literal"><span class="pre">_</span></code> or <code class="docutils literal"><span class="pre">__</span></code>. For interactive notebooks, this
+is pretty convenient if you are not importing libraries that have
+similar function names (in turn, you can never be sure).</p>
+<p>Conclusion, if you don&#8217;t have any worries about name clashes use the
+last syntax. The typical first cell of the notebook is the importing
+declarations. Here is the boilerplate code to start with:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>You can of course extend this to your liking with your own packages.
+Finally, let&#8217;s do some control stuff</p>
+</div>
+<div class="section" id="model-objects">
+<h2>Model Objects<a class="headerlink" href="#model-objects" title="Permalink to this headline">¶</a></h2>
+<p>For creating dynamic/static models, harold offers basically two options:
+A <code class="docutils literal"><span class="pre">State()</span></code> and a <code class="docutils literal"><span class="pre">Transfer()</span></code> object. The initialization of these
+objects are pretty straightforward.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]],[[</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">]],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">H</span> <span class="o">=</span> <span class="n">Transfer</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],[</span><span class="mi">7</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Note that, in Python, the calling order of the arguments are not fixed.
+You can also use the following</p>
+<blockquote>
+<div>G = State(d=0,c=[1,2],[[1,2],[3,4]],[[1],[0]])
+H = Transfer([1,2,3],[7,5,3])</div></blockquote>
+<p>As obvious to everyone who used this syntax even in matlab&#8217;s convenient
+bracket semicolon notation, creating these 4 individual matrices become
+increasingly annoying. Instead a matrix slicer is available in harold:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="o">*</span><span class="n">ssslice</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>What happened here is that, first <code class="docutils literal"><span class="pre">ssslice()</span></code> function took the <code class="docutils literal"><span class="pre">M</span></code>
+object and sliced it such that its upper left block size is
+<span class="math">\(2\times 2\)</span> then when Python encountered the <code class="docutils literal"><span class="pre">*</span></code> notation it
+grabbed the result of this operation as separate entities and unpacked
+the arguments as if we have provided four separate arguments. I am
+sure you will get addicted to this and then we will talk about matlab
+programming a bit better informed.</p>
+</div>
 </div>
 
 
+           </div>
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="faq.html" class="btn btn-neutral float-right" title="Frequently Asked Questions">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="preflight.html" class="btn btn-neutral" title="Getting Started"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
@@ -153,12 +267,13 @@
   <div role="contentinfo">
     <p>
         &copy; Copyright 2015, Ilhan Polat.
+
     </p>
   </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
-  
 </footer>
+
         </div>
       </div>
 

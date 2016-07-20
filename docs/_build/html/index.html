@@ -5,6 +5,7 @@
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
 <head>
   <meta charset="utf-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <title>Welcome to harold’s documentation! &mdash; harold 0.1.1a5 documentation</title>
@@ -14,7 +15,6 @@
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -34,7 +34,7 @@
         <link rel="next" title="Introduction" href="intro.html"/> 
 
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
@@ -44,11 +44,27 @@
 
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-nav-search">
-        
-          <a href="#" class="fa fa-home"> harold</a>
-        
-        
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> harold
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.1
+              </div>
+            
+          
+
+          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -56,46 +72,31 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-      </div>
 
-      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-        
           
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
-              <ul>
-<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="intro.html#development">Development</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-scientific-stack">Python and its scientific stack</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-strange-syntax">Python and its strange syntax</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">A primer to harold</a></li>
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
 </ul>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#is-it-really-free">Is it really free?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#how-fast-is-it">How fast is it?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-decibell-not-the-default-unit">Why is deciBell not the default unit?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-there-no-python-2-support">Why is there no Python 2 support?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="faq.html#why-is-it-called-harold">Why is it called harold?</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1">v0.1.1</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a></li>
 </ul>
 
+            
           
-        
+        </div>
       </div>
-      &nbsp;
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
@@ -110,20 +111,29 @@
       
       <div class="wy-nav-content">
         <div class="rst-content">
-          <div role="navigation" aria-label="breadcrumbs navigation">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="#">Docs</a> &raquo;</li>
       
     <li>Welcome to harold&#8217;s documentation!</li>
       <li class="wy-breadcrumbs-aside">
         
-          <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+          
+            <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
   </ul>
   <hr/>
 </div>
-          <div role="main" class="document">
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="welcome-to-harold-s-documentation">
 <h1>Welcome to harold&#8217;s documentation!<a class="headerlink" href="#welcome-to-harold-s-documentation" title="Permalink to this headline">¶</a></h1>
@@ -143,12 +153,28 @@
 <li class="toctree-l2"><a class="reference internal" href="preflight.html#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">A primer to harold</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="primer.html#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primer.html#initializing-harold">Initializing harold</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tut_models.html#dealing-with-models">Dealing with models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tut_models.html#state-models"><code class="docutils literal"><span class="pre">State()</span></code> models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tut_models.html#transfer-models"><code class="docutils literal"><span class="pre">Transfer()</span></code> models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tut_models.html#context-discovery">Context Discovery</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tut_convert.html#from-state-to-transfer">From State() to Transfer()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tut_convert.html#from-transfer-to-state">From <code class="docutils literal"><span class="pre">Transfer()</span></code> to <code class="docutils literal"><span class="pre">State()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
 </ul>
 </div>
-</div>
-<div class="section" id="harold-reference">
-<h2>harold Reference<a class="headerlink" href="#harold-reference" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="additional-information">
 <h2>Additional Information<a class="headerlink" href="#additional-information" title="Permalink to this headline">¶</a></h2>
@@ -170,22 +196,23 @@
 </div>
 </div>
 </div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="indices">
+<h1>Indices<a class="headerlink" href="#indices" title="Permalink to this headline">¶</a></h1>
 <ul class="simple">
-<li><a class="reference internal" href="genindex.html"><span>Index</span></a></li>
-<li><a class="reference internal" href="py-modindex.html"><span>Module Index</span></a></li>
-<li><a class="reference internal" href="search.html"><span>Search Page</span></a></li>
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
 </ul>
 </div>
 
 
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="intro.html" class="btn btn-neutral float-right" title="Introduction">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="intro.html" class="btn btn-neutral float-right" title="Introduction" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>
@@ -196,12 +223,13 @@
   <div role="contentinfo">
     <p>
         &copy; Copyright 2015, Ilhan Polat.
+
     </p>
   </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
-  
 </footer>
+
         </div>
       </div>
 

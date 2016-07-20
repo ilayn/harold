@@ -12,14 +12,6 @@ harold.harold module
     :undoc-members:
     :show-inheritance:
 
-harold.setup module
--------------------
-
-.. automodule:: harold.setup
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

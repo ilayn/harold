@@ -17,12 +17,6 @@ Contents:
    tut_convert
    tut_discrete
 
-
-harold reference
-----------------
-
-    aut_gen_ref
-
    
 Additional Information
 ----------------------
@@ -34,8 +28,8 @@ Additional Information
    changelog
    
 
-Indices and tables
-==================
+Indices 
+=======
 
 * :ref:`genindex`
 * :ref:`modindex`

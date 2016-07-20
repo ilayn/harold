@@ -1808,7 +1808,7 @@ class State:
                 # Now, we are sure that there are no empty arrays in the 
                 # system matrices hence concatenation should be OK. 
 
-                adda = blockdiag(self._a,other.a)
+                adda = sp.linalg.block_diag(self._a,other.a)
                 addb = np.vstack((self._b,other.b))
                 addc = np.hstack((self._c,other.c))
                 addd = self._d + other.d
@@ -1911,7 +1911,7 @@ class State:
                 # Now, we are sure that there are no empty arrays in the 
                 # system matrices hence concatenation should be OK. 
 
-                multa = blockdiag(self._a,other.a)
+                multa = sp.linalg.block_diag(self._a,other.a)
                 multa[self._a.shape[1]:,:other.a.shape[0]] = self._b.dot(
                                                                     other.c)
                 multb = np.vstack((self._b.dot(other.d),other.b))
@@ -2485,8 +2485,8 @@ def transfertostate(*tf_or_numden,output='system'):
             t1 , t2 = A , B
 
             for x in range(m-1):
-                A = blockdiag(A,t1)
-                B = blockdiag(B,t2)
+                A = sp.linalg.block_diag(A,t1)
+                B = sp.linalg.block_diag(B,t2)
             n = A.shape[0]
             C = np.zeros((p,n))
             k = 0
@@ -2535,8 +2535,8 @@ def transfertostate(*tf_or_numden,output='system'):
                 Atemp = haroldcompanion(den[0][x])
                 Btemp = eyecolumn(Atemp.shape[0],-1)
 
-                A = blockdiag(A,Atemp)
-                B = blockdiag(B,Btemp)
+                A = sp.linalg.block_diag(A,Atemp)
+                B = sp.linalg.block_diag(B,Btemp)
 
             n = A.shape[0]
             C = np.zeros((p,n))
@@ -2653,10 +2653,10 @@ def _tzeros_reduce(A,B,C,D):
         vc , mm = haroldsvd(Ct,also_rank=True)[2:]
         T = np.roll(vc.T,-mm,axis=1)
         
-        Sysmat = blockdiag(T,u).T.dot(
+        Sysmat = sp.linalg.block_diag(T,u).T.dot(
             np.vstack((
                 np.hstack((A,B)),np.hstack((C,D))
-            )).dot(blockdiag(T,np.eye(m)))
+            )).dot(sp.linalg.block_diag(T,np.eye(m)))
             )
 
         Sysmat = np.delete(Sysmat,np.s_[r-p:],0)
@@ -2681,7 +2681,7 @@ def _tzeros_final_compress(A,B,C,D,n,p,m):
 
     v = haroldsvd(np.hstack((D,C)))[-1]
     T = np.hstack((A,B)).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
-    S = blockdiag(
+    S = sp.linalg.block_diag(
             np.eye(n),
             np.zeros((p,m))
             ).dot(np.roll(np.roll(v.T,-m,axis=0),-m,axis=1))
@@ -3246,7 +3246,7 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
     if do_separate_obsv:
         To_co = kalman_observability((aco,cco))[1]
         To_uco = kalman_observability((auco,cuco))[1]
-        To = blockdiag(To_co,To_uco)
+        To = sp.linalg.block_diag(To_co,To_uco)
     else:
         if not is_kalman_observable((ac,cc)):
             To , r = kalman_observability((ac,cc))[1:]
@@ -3548,7 +3548,7 @@ def staircase(A,B,C,compute_T=False,form='c',
         cble_block_indices = np.append(cble_block_indices,m0)
 
         if compute_T:
-            P = blockdiag(np.eye(n-ub.T.shape[0]),ub.T)
+            P = sp.linalg.block_diag(np.eye(n-ub.T.shape[0]),ub.T)
 
         # Since we deal with submatrices, we need to increase the
         # default tolerance to reasonably high values that are 
@@ -3577,13 +3577,13 @@ def staircase(A,B,C,compute_T=False,form='c',
             if 0 < m < h3.shape[0]:
                 cble_block_indices = np.append(cble_block_indices,m)
                 if compute_T:
-                    P = blockdiag(np.eye(n-uh3.shape[1]),uh3.T).dot(P)
+                    P = sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3.T).dot(P)
                 A0[ROI_start:,ROI_start:] = np.r_[
                                     np.c_[h1,h2],
                                     np.c_[sh3.dot(vh3),uh3.T.dot(h4)]
                                     ]
-                A0 = A0.dot(blockdiag(np.eye(n-uh3.shape[1]),uh3))
-                C0 = C0.dot(blockdiag(np.eye(n-uh3.shape[1]),uh3))
+                A0 = A0.dot(sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3))
+                C0 = C0.dot(sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3))
                 # Clean up
                 A0[abs(A0) < tol_from_A ] = 0.
                 C0[abs(C0) < tol_from_A ] = 0.                
@@ -4064,36 +4064,8 @@ def matrixslice(M,M11shape):
     p , m = M11shape
     return M[:p,:m],M[:p,m:],M[p:,:m],M[p:,m:]
 
-    
-# I don't understand how this is not implemented already
-#TODO : type checking.
-def blockdiag(*args):
-    """
-    Places its arguments on the diagonal of a matrix. Empty matrices are 
-    skipped.
-    """ 
-    
-    # Get the size info of the args
-    try:
-        diags = tuple([m.shape for m in args if m.size > 0])
-    except AttributeError:
-        args = [np.atleast_2d(x) for x in args]
-        diags = tuple([m.shape for m in args if m.size > 0])
-    
-    poppedargs = tuple([x for x in args if x.size >0])
-    tot = np.zeros(tuple(map(sum,zip(*diags))))# Sum shapes for the final size
-    rind,cind=(0,0)
-
-    # Place each of them and move the index to the next diag pos
-    for ind,mat in enumerate(poppedargs):
-        tot[rind:rind+diags[ind][0], cind:cind+diags[ind][1]] = mat
-        rind += diags[ind][0]
-        cind += diags[ind][1]
-    return tot
-
-
 # Returns the nth column of an identity matrix as a 2D numpy array.
-def eyecolumn(width,nth=0):
+def eyecolumn( width , nth=0 ):
     """
     Returns the ``nth`` column of the identity matrix with shape 
     ``(width,width)``. Slicing is permitted with the ``nth`` parameter.
@@ -4205,11 +4177,11 @@ def system_norm(state_or_transfer,
             
         if now_state.SamplingSet == 'R':
             a , b , c = now_state.matrices[:3]
-            x = sp.linalg.solve_sylvester(a,a.T,-b.dot(b.T))
+            x = lyapunov_eq_solver( a , b.dot(b.T) )
             return np.sqrt(np.trace(c.dot(x.dot(c.T))))
         else:
             a , b , c , d = now_state.matrices
-            x = sp.linalg.solve_discrete_lyapunov(a,-b.dot(b.T))
+            x = lyapunov_eq_solver( a , b.dot(b.T) , form = 'd' )
             return np.sqrt(np.trace(c.dot(x.dot(c.T))+d.dot(d.T)))
 
 
@@ -4399,10 +4371,10 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     poppedargs = tuple([x for x in args if x.size>1])
     # Get the index number of the ones that are popped
     poppedindex = tuple([ind for ind,x in enumerate(args) if x.size==1])
-    a = blockdiag(*tuple(map(haroldcompanion,poppedargs))) # Companion A
+    a = sp.linalg.block_diag(*tuple(map(haroldcompanion,poppedargs))) # Companion A
     b = np.concatenate(tuple(map(lambda x: eyecolumn(x-1,-1),
                                  [z.size for z in poppedargs])))# Companion B
-    c = blockdiag(*tuple(map(lambda x: eyecolumn(x-1,0).T,
+    c = sp.linalg.block_diag(*tuple(map(lambda x: eyecolumn(x-1,0).T,
                                  [z.size for z in poppedargs])))
     n = a.shape[0]
 
@@ -4422,7 +4394,7 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     if i-1==n:# Relatively coprime
         temp2 =  np.linalg.inv(temp[:,:-1])# Every col until the last
     else:
-        temp2 = blockdiag(np.linalg.inv(temp[:i-1,:i-1]),np.eye(n+1-i))
+        temp2 = sp.linalg.block_diag(np.linalg.inv(temp[:i-1,:i-1]),np.eye(n+1-i))
     
 
     lcmpoly= temp2.dot(-temp)[:i-1,-1]
@@ -4507,10 +4479,9 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
 
 def haroldgcd(*args):
     """
-    Takes *args-many 1D numpy arrays and computes the numerical 
-    greatest common divisor polynomial. The polynomials are
-    assumed to be in decreasing powers, e.g. :math:`s^2 + 5` should
-    be given as ``numpy.array([1,0,5])``
+    Takes 1D numpy arrays and computes the numerical greatest common 
+    divisor polynomial. The polynomials are assumed to be in decreasing 
+    powers, e.g. :math:`s^2 + 5` should be given as ``numpy.array([1,0,5])``.
     
     Returns a numpy array holding the polynomial coefficients
     of GCD. The GCD does not cancel scalars but returns only monic roots.
@@ -5341,12 +5312,29 @@ def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
     (discrete) time forms. The `form` keyword selects between the 
     two. 
     
-    For (1), the function uses `scipy.linalg.solve_lyapunov`. 
-    For (2), it uses a modified implementation of T. Penzl (1998).
+    For (1), (1'), the `A` matrix is brought to real Schur form 
+    and for (2), (2') QZ decomposition is used. Then all have a similar 
+    forward substitution step. The method is a a modified implementation 
+    of T. Penzl (1998).
     
     If the argument `E` is not exactly a `None`-type then (2) is 
     assumed. Moreover, if (2) is assumed, the constant `Y` term 
     should be symmetric.
+
+    Parameters
+    ----------
+    A , Y , E: nxn array_like
+        Data matrices for the equation. Y is a symmetric matrix. 
+        
+    form : 'c' , 'continuous' , 'd' , 'discrete'
+        The string selector to define which form of Lyapunov equation is 
+        going to be used. 
+
+    Returns
+    -------
+
+    X : nxn numpy array
+        Computed norm. In NumPy, infinity is also float-type
 
     '''
     def check_matrices( a , y , e ):
@@ -5396,21 +5384,21 @@ def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
         
     if form in ('c','continuous'):
         if E is None:
-            X_sol = sp.linalg.solve_lyapunov( A.T , -Y.T )
+            X_sol = _solve_continuous_lyapunov( A , Y )
         else:
-            X_sol = solve_continuous_generalized_lyapunov( A , E , Y )
+            X_sol = _solve_continuous_generalized_lyapunov( A , E , Y )
     else:
         if E is None:
-            X_sol = sp.linalg.solve_discrete_lyapunov( A.T , -Y.T )
+            X_sol = _solve_discrete_lyapunov( A , Y )
         else:
-            X_sol = solve_discrete_generalized_lyapunov( A , E , Y )
+            X_sol = _solve_discrete_generalized_lyapunov( A , E , Y )
 
     return X_sol
 
 
 
 
-def solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+def _solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     '''
     A generalized Lyapunov equation 
 
@@ -5585,7 +5573,7 @@ def solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     return Q @ Xs @ Q.T
 
 
-def solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     
     def sl( p , m , dx = 1 , dy = 1):
         '''
@@ -5721,7 +5709,7 @@ def solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
 
     return Q @ Xs @ Q.T
 
-def solve_continuous_lyapunov( A , Y ):
+def _solve_continuous_lyapunov( A , Y ):
     '''
             Solves A.T X + X A + Y = 0
     
@@ -5865,3 +5853,129 @@ def solve_continuous_lyapunov( A , Y ):
 
     return S @ Xs @ S.T
     
+def _solve_discrete_lyapunov( A , Y ):
+    '''
+                 Solves     A.T X A - X + Y = 0
+    '''
+    tol = 1e-12
+    i2 = np.eye(2)
+    i4 = np.eye(4)
+    def sl( p , m , dx = 1 , dy = 1):
+        '''
+        A helper function to provide a shortcut to get the slice of a 
+        particular entry in the block partitioned matrices A , X , Y. 
+        '''
+        return np.s_[bs[p]:bs[p+dy],bs[m]:bs[m+dx]]
+        
+    def X_placer( mat , p , m ):
+        '''
+        A helper function to place the computed data into the corresponding
+        location of the solution matrix X of the sylvester equation
+        '''
+        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
+    
+        if p != m:
+            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
+            
+
+    def mini_sylvester( Al , Yt , Ar = None):
+        '''
+        A helper function to solve the 1x1 or 2x2 Sylvester equations 
+        arising in the solution of the continuous-time Lyapunov equations
+        
+        Note that, this doesn't have any protection against LinAlgError
+        hence the caller needs to `try` to see whether it is properly 
+        executed.
+        '''
+        if Ar is None:
+            Ar = Al
+
+        if max( Al.size , Ar.size ) > 1:
+            Xms = np.linalg.solve(
+                        np.kron(Ar.T,Al.T) - np.kron(np.eye(Ar.shape[0]),np.eye(Al.shape[1])) ,
+                        -Yt.reshape(-1,1,order='F')   # equivalent to vec(-Y)
+                    )
+        else:
+            Xms = -Yt / (Ar * Al - 1)
+        
+        return Xms.reshape(Al.shape[0],Ar.shape[0],order='F')
+
+    #=====================================
+
+
+    if A.shape[0] < 3:
+        return mini_sylvester( A , Y )
+
+    As , S  = sp.linalg.schur( A , output='real' )
+    Ys = S.T @ Y @ S
+
+    # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
+    # Based on that we have the block sizes `bz` and starting positions `bs`.
+    n = As.shape[0]    
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
+    bz = np.ones(n)
+    for x in subdiag_indices:
+        bz[x] = 2
+        bz[x+1] = np.nan
+    
+    bz = bz[~np.isnan(bz)].astype(int)
+    bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
+    total_blk = bz.size
+    Xs = np.zeros_like(Y)
+
+    # =============================
+    #  Main Loop
+    # =============================
+    
+    # Now we know how the matrices should be partitioned. We then start 
+    # from the uppper left corner and alternate between updating the 
+    # Y term and solving the next entry of X. We walk over X row-wise
+    
+    
+    for row in range( total_blk ):
+        if row is not 0:
+            Ys[sl(row,row)] +=  \
+                            As[sl( row , row )].T @ \
+                      Xs[sl( row , 0 , dx = row)] @ \
+                      As[sl( 0 , row , dy = row)]
+
+        # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk 
+        tempx = mini_sylvester( As[sl(row,row)] , Ys[sl(row,row)] )
+        Xs[bs[row]:bs[row+1],bs[row]:bs[row+1]] = tempx
+#        X_placer( tempx , row , row )
+        XA_of_row = Xs[sl( row , 0 , dx = row +1 )] @ \
+             As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+
+        # Update Y terms right of the diagonal
+        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XA_of_row
+
+        # Walk over upper triangular terms 
+        for col in range( row + 1 , total_blk ):
+            # The corresponding Y term has already been updated, solve for X
+            tempx = mini_sylvester( As[sl( row , row )] , 
+                                    Ys[sl( row , col )] , 
+                                    As[sl( col , col )] )
+    
+            # Place it in the data
+#            X_placer( tempx , row , col )
+            Xs[bs[row]:bs[row+1],bs[col]:bs[col+1]] = tempx
+            Xs[bs[col]:bs[col+1],bs[row]:bs[row+1]] = tempx.T
+            ## Post column solution Y update
+            # XA terms 
+            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
+            # Update Y towards left
+            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempa
+            # Update Y downwards
+
+            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
+                      
+            ugly_slice = slice(bs[col] - bs[row],
+                        bs[col+1] - bs[row] if bs[col+1] is not None else None
+                        )
+    
+            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
+                     As[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice] 
+
+    return S @ Xs @ S.T
+

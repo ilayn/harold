@@ -8,19 +8,16 @@ Contents:
 ---------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    intro
    preflight
-   tutorial
+   primer
+   tut_models
+   tut_convert
+   tut_discrete
 
-harold Reference
-----------------
-
-.. automodule:: harold.
-   :members:
-   :undoc-members:
- 
+   
 Additional Information
 ----------------------
 
@@ -31,10 +28,11 @@ Additional Information
    changelog
    
 
-Indices and tables
-==================
+Indices 
+=======
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
 

@@ -205,25 +205,25 @@ def test_State_algebra():
 
 
 # %% LinAlg Tests 
-def test_blockdiag():
-    
-    a = blockdiag([1,2],[3],[[4],[5]],[[6,7],[8,9]]) - np.array([
-                                                        [1,2,0,0,0,0.],
-                                                        [0,0,3,0,0,0],
-                                                        [0,0,0,4,0,0],
-                                                        [0,0,0,5,0,0],
-                                                        [0,0,0,0,6,7],
-                                                        [0,0,0,0,8,9]
-                                                        ])
-    b = blockdiag(1,[1],[[1]]) - np.eye(3) 
-    
-    npt.assert_allclose(a,np.zeros((6,6)))
-    npt.assert_allclose(b,np.zeros((3,3)))
+#def test_blockdiag():
+#    
+#    a = blockdiag([1,2],[3],[[4],[5]],[[6,7],[8,9]]) - np.array([
+#                                                        [1,2,0,0,0,0.],
+#                                                        [0,0,3,0,0,0],
+#                                                        [0,0,0,4,0,0],
+#                                                        [0,0,0,5,0,0],
+#                                                        [0,0,0,0,6,7],
+#                                                        [0,0,0,0,8,9]
+#                                                        ])
+#    b = blockdiag(1,[1],[[1]]) - np.eye(3) 
+#    
+#    npt.assert_allclose(a,np.zeros((6,6)))
+#    npt.assert_allclose(b,np.zeros((3,3)))
     
 
 def test_haroldsvd():
     
-    blkdiag_mat = blockdiag(*tuple([10 ** x for x in range(-4,5)]))
+    blkdiag_mat = sp.linalg.block_diag(*tuple([10 ** x for x in range(-4,5)]))
     shuffler = np.linalg.qr(np.random.rand(9,9),mode='complete')[0]
     testmat = np.linalg.solve(shuffler,blkdiag_mat).dot(shuffler)
     u,s,v,r = haroldsvd(testmat,also_rank=True)
