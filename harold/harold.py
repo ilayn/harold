@@ -4479,10 +4479,9 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
 
 def haroldgcd(*args):
     """
-    Takes *args-many 1D numpy arrays and computes the numerical 
-    greatest common divisor polynomial. The polynomials are
-    assumed to be in decreasing powers, e.g. :math:`s^2 + 5` should
-    be given as ``numpy.array([1,0,5])``
+    Takes 1D numpy arrays and computes the numerical greatest common 
+    divisor polynomial. The polynomials are assumed to be in decreasing 
+    powers, e.g. :math:`s^2 + 5` should be given as ``numpy.array([1,0,5])``.
     
     Returns a numpy array holding the polynomial coefficients
     of GCD. The GCD does not cancel scalars but returns only monic roots.
@@ -5715,34 +5714,11 @@ def _solve_continuous_lyapunov( A , Y ):
             Solves A.T X + X A + Y = 0
     
     '''
-    # =============================
-    # Declare the inner functions
-    # =============================
-
-    # Some performance tweaks
+    mat33 = np.zeros((3,3),dtype=float)
+    mat44 = np.zeros((4,4),dtype=float)
     i2 = np.eye(2,dtype=float)
-    z41 = np.zeros((4,4),dtype=float)
-    z42 = np.zeros((4,4),dtype=float)
-
-    def sl( p , m , dx = 1 , dy = 1):
-        '''
-        A helper function to provide a shortcut to get the slice of a 
-        particular entry in the block partitioned matrices A , X , Y. 
-        '''
-        return np.s_[bs[p]:bs[p+dy],bs[m]:bs[m+dx]]
         
-    def X_placer( mat , p , m ):
-        '''
-        A helper function to place the computed data into the corresponding
-        location of the solution matrix X of the sylvester equation
-        '''
-        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
-    
-        if p != m:
-            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
-    
-        
-    def mini_sylvester( Ar , Y , Al = None):
+    def mini_sylvester( Ar , Yt , Al = None):
         '''
         A helper function to solve the 1x1 or 2x2 Sylvester equations 
         arising in the solution of the continuous-time Lyapunov equations
@@ -5751,37 +5727,57 @@ def _solve_continuous_lyapunov( A , Y ):
         hence the caller needs to `try` to see whether it is properly 
         executed.
         '''
-        if Al is None:
-            Al = Ar
-        if max( *Al.shape , *Ar.shape ) > 1:
-            if min( *Al.shape , *Ar.shape ) > 1:
-                z41[:2,:2] = Al.T
-                z41[2:,2:] = Al.T
-                z42[[0,0,2,2],[0,2,0,2]] = Ar.T[[0,0,1,1],[0,1,0,1]]
-                z42[[1,1,3,3],[1,3,1,3]] = z42[[0,0,2,2],[0,2,0,2]]
-                X = np.linalg.solve(z41 + z42 ,
-                                    -Y.reshape(-1,1,order='F') )
-            else:
-                if Al.shape[0] == 1:
-                    X = np.linalg.solve(i2 * Al + Ar.T ,
-                                    -Y.reshape(-1,1,order='F') )
-                else:
-                    X = np.linalg.solve(Al.T + i2 * Ar ,
-                                    -Y.reshape(-1,1,order='F') )
 
-#            t1 = np.kron(np.eye(Ar.shape[0]),Al.T)
-#            t2 = np.kron(Ar.T,np.eye(Al.shape[1]))
-#            
-#            X = np.linalg.solve( t1 + t2, -Y.reshape(-1,1,order='F'))
-#            X = np.linalg.solve(
-#                        np.kron(np.eye(Ar.shape[0]),Al.T) + 
-#                        np.kron(Ar.T,np.eye(Al.shape[1])) ,
-#                        -Y.reshape(-1,1,order='F')   # equivalent to vec(-Y)
-#                    )
-        else:
-            X = -Y / (Ar + Al)
+        # The symmetric problem
+        if Al is None:
+            if Ar.size==1:
+                return - Yt / ( Ar * 2 )
+            else:
+            # 2a_{00}  & 2a_{10}         & 0         \\
+            # a_{01}   & a_{00} + a_{11} & a_{10}    \\
+            # 0        & 2a_{01}         & 2a_{11} 
+                a , b , c , d = *Ar[0] , *Ar[1]
+
+                mat33[0, : ] = [2*a , 2*c   , 0   ]
+                mat33[1, : ] = [b   , a + d , c   ]
+                mat33[2, : ] = [0   , 2*b   , 2*d ]
+                a , b , c = np.linalg._umath_linalg.solve(mat33,
+                                        -Yt.reshape(-1,1)[[0,1,3],:]
+                                        ).flatten()
+
+                return np.array([[a,b],[b,c]])
+
+        # Nonsymmetric  
+        elif Ar.size == 4:
+            if Al.size == 4:
+            # a_{00} + b_{00}  & b_{10}          &  a_{10}         & 0         \\
+            # b_{01}           & a_{00} + b_{11} & 0               & a_{10}    \\
+            # a_{01}           & 0               & a_{11} + b_{00} & b_{10}    \\
+            # 0                & a_{01}          & b_{01}          & a_{11} + b_{11}
+
+                a00 , a01 , a10 , a11 = *Al[0] , *Al[1]
+                b00 , b01 , b10 , b11 = *Ar[0] , *Ar[1]
     
-        return X.reshape( -1 , Ar.shape[0] , order='F' )
+                mat44[0,:] = [a00+b00 , b10     , a10     , 0       ]
+                mat44[1,:] = [b01     , a00+b11 , 0       , a10     ]
+                mat44[2,:] = [a01     , 0       , a11+b00 , b10     ]
+                mat44[3,:] = [0       , a01     , b01     , a11+b11 ]
+    
+                return np.linalg._umath_linalg.solve(
+                                         mat44,-Yt.reshape(-1,1)).reshape(2,2)
+
+            # Ar is 2x2 , Al is scalar
+            else:
+            #b_{00} + a & b_{10} \\
+            #b_{01} & b_{11} + a \\
+                return np.linalg._umath_linalg.solve(Ar.T + Al[0,0] * i2 ,-Yt.T).T
+
+        elif Al.size == 4:
+            #a_{00} + b & a_{10}    \\
+            #a_{01}     & a_{11} + b 
+            return np.linalg._umath_linalg.solve(Al.T + Ar[0,0] * i2 , -Yt)
+        else:
+            return -Yt / (Ar + Al)
     
     # =============================
     # Prepare the data
@@ -5797,7 +5793,7 @@ def _solve_continuous_lyapunov( A , Y ):
     # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
     # Based on that we have the block sizes `bz` and starting positions `bs`.
     
-    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > 0
     subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
     bz = np.ones(n)
     for x in subdiag_indices:
@@ -5816,41 +5812,45 @@ def _solve_continuous_lyapunov( A , Y ):
     # Now we know how the matrices should be partitioned. We then start 
     # from the uppper left corner and alternate between updating the 
     # Y term and solving the next entry of X. We walk over X row-wise
-    
-    
     for row in range( total_blk ):
+        thisr = bs[row]
+        nextr = bs[row+1]
+        
         # This block is executed at the second and further spins of the 
         # for loop. Humans should start reading from (**)
         if row is not 0:
-            Ys[sl(row , row , dx = total_blk - row )] +=  \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      As[sl( 0 , row , dx = total_blk - row , dy = row)]
+            Ys[ thisr:nextr , thisr: ] +=  \
+                      Xs[ thisr:nextr , 0:thisr ] @ As[ 0:thisr , thisr: ]
 
         # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk 
-        tempx = mini_sylvester( As[sl(row,row)] , Ys[sl(row,row)] )
-        X_placer( tempx , row , row )
-        
+        tempx = mini_sylvester( As[ thisr:nextr , thisr:nextr ],
+                                Ys[ thisr:nextr , thisr:nextr ])
+
+#        X_placer( tempx , row , row )
+        Xs[ thisr:nextr , thisr:nextr ] = tempx
         # Update Y terms right of the diagonal
-        Ys[sl( row , row + 1 , dx = total_blk-row - 1)]+= tempx @ \
-                    As[sl( row , row + 1, dx = total_blk-row - 1)]
+        Ys[thisr:nextr , nextr: ]+= tempx @ As[thisr:nextr , nextr: ]
 
         # Walk over upper triangular terms 
         for col in range( row + 1 , total_blk ):
+            thisc = bs[col]
+            nextc = bs[col+1]
+
             # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester( As[sl( col , col )] ,
-                                    Ys[sl( row , col )] ,
-                                    As[sl( row , row )] )
+            tempx = mini_sylvester( As[ thisc:nextc , thisc:nextc ],
+                                    Ys[ thisr:nextr , thisc:nextc ],
+                                    As[ thisr:nextr , thisr:nextr ])
     
             # Place it in the data
-            X_placer( tempx , row , col )
+            Xs[ thisr:nextr , thisc:nextc ] = tempx
+            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
 
             # Update Y towards left
-            Ys[sl(row , col + 1 , dx = total_blk - col - 1)] += tempx @ \
-                     As[sl( col , col + 1, dx = total_blk - col - 1)]
+            Ys[ thisr:nextr , nextc: ] += tempx @ As[ thisc:nextc , nextc: ]
                                 
             # Update Y downwards
-            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
-                    As[sl( row , row + 1 , dx = col - row)].T @ tempx
+            Ys[ nextr:nextc , thisc:nextc ] += \
+                    As[ thisr:nextr , nextr:nextc].T @ tempx
 
     return S @ Xs @ S.T
     
