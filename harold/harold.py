@@ -4479,9 +4479,10 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
 
 def haroldgcd(*args):
     """
-    Takes 1D numpy arrays and computes the numerical greatest common 
-    divisor polynomial. The polynomials are assumed to be in decreasing 
-    powers, e.g. :math:`s^2 + 5` should be given as ``numpy.array([1,0,5])``.
+    Takes *args-many 1D numpy arrays and computes the numerical 
+    greatest common divisor polynomial. The polynomials are
+    assumed to be in decreasing powers, e.g. :math:`s^2 + 5` should
+    be given as ``numpy.array([1,0,5])``
     
     Returns a numpy array holding the polynomial coefficients
     of GCD. The GCD does not cancel scalars but returns only monic roots.
@@ -5857,26 +5858,10 @@ def _solve_discrete_lyapunov( A , Y ):
     '''
                  Solves     A.T X A - X + Y = 0
     '''
-    tol = 1e-12
+    mat33 = np.zeros((3,3),dtype=float)
+    mat44 = np.zeros((4,4),dtype=float)
     i2 = np.eye(2)
-    i4 = np.eye(4)
-    def sl( p , m , dx = 1 , dy = 1):
-        '''
-        A helper function to provide a shortcut to get the slice of a 
-        particular entry in the block partitioned matrices A , X , Y. 
-        '''
-        return np.s_[bs[p]:bs[p+dy],bs[m]:bs[m+dx]]
-        
-    def X_placer( mat , p , m ):
-        '''
-        A helper function to place the computed data into the corresponding
-        location of the solution matrix X of the sylvester equation
-        '''
-        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
-    
-        if p != m:
-            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
-            
+
 
     def mini_sylvester( Al , Yt , Ar = None):
         '''
@@ -5887,18 +5872,54 @@ def _solve_discrete_lyapunov( A , Y ):
         hence the caller needs to `try` to see whether it is properly 
         executed.
         '''
+        # The symmetric problem
         if Ar is None:
-            Ar = Al
+            if Al.size==1: 
+                return - Yt / ( Al ** 2 - 1)
+            else:
+            #a_{00}^2 - 1 & 2a_{00}a_{10}                  &     a_{10}^2 \\
+            #a_{00}a_{01} & a_{00}a_{11} -1 + a_{10}a_{01} & a_{10}a_{11} \\
+            #a_{01}^2     & 2a_{01}a_{11}                  &     a_{11}^2 -1
+                a , b , c , d = *Al[0] , *Al[1]
 
-        if max( Al.size , Ar.size ) > 1:
-            Xms = np.linalg.solve(
-                        np.kron(Ar.T,Al.T) - np.kron(np.eye(Ar.shape[0]),np.eye(Al.shape[1])) ,
-                        -Yt.reshape(-1,1,order='F')   # equivalent to vec(-Y)
-                    )
+                mat33[0,:] = [a**2 - 1 , 2*a*c         , c ** 2     ]
+                mat33[1,:] = [a*b      , a*d + b*c - 1 , c*d        ]
+                mat33[2,:] = [b ** 2   , 2*b*d         , d ** 2 - 1 ]
+                res = np.linalg._umath_linalg.solve(mat33,
+                                        -Yt.reshape(-1,1)[[0,1,3],:])
+
+                return np.array([[res[0,0],res[1,0]],[res[1,0],res[2,0]]])
+
+        # Nonsymmetric  
+        elif Al.size == 4:
+            if Ar.size == 4:
+            #a_{00}b_{00} - 1 & a_{00}b_{10}   & a_{10}b_{00}    & a_{10}b_{10}
+            #a_{00}b_{01}     & a_{00}b_{11}-1 & a_{10}b_{01}    & a_{10}b_{11}
+            #a_{01}b_{00}     & a_{01}b_{10}   & a_{11}b_{00} -1 & a_{11}b_{10}
+            #a_{01}b_{01}     & a_{01}b_{11}   & a_{11}b_{01}    & a_{11}b_{11}
+                a00 , a01 , a10 , a11 = *Al[0] , *Al[1]
+                b00 , b01 , b10 , b11 = *Ar[0] , *Ar[1]
+    
+                mat44[0,:] = [a00*b00 - 1, a00*b10    , a10*b00   , a10*b10   ]
+                mat44[1,:] = [a00*b01    , a00*b11 - 1, a10*b01   , a10*b11   ]
+                mat44[2,:] = [a01*b00    , a01*b10    , a11*b00 -1, a11*b10   ]
+                mat44[3,:] = [a01*b01    , a01*b11    , a11*b01   , a11*b11-1 ]
+    
+                return np.linalg._umath_linalg.solve(
+                                         mat44,-Yt.reshape(-1,1)).reshape(2,2)
+
+            # Al is 2x2 , Ar is scalar
+            else:
+                #a_{11}b - 1 & a_{21}b     \\
+                #a_{12}b     & a_{22}b - 1 \\    
+                return np.linalg._umath_linalg.solve( Al.T * Ar[0,0] - i2,-Yt)
+
+        elif Ar.size == 4:
+            #b_{11}a -1 & b_{21}a    \\
+            #b_{12}a    & b_{22}a - 1 \\
+            return np.linalg._umath_linalg.solve(Ar.T * Al[0,0] - i2,-Yt.T).T
         else:
-            Xms = -Yt / (Ar * Al - 1)
-        
-        return Xms.reshape(Al.shape[0],Ar.shape[0],order='F')
+            return -Yt / (Ar * Al - 1)
 
     #=====================================
 
@@ -5912,7 +5933,7 @@ def _solve_discrete_lyapunov( A , Y ):
     # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
     # Based on that we have the block sizes `bz` and starting positions `bs`.
     n = As.shape[0]    
-    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > tol
+    subdiag_entries = np.abs(As[range(1,n),range(0,n-1)]) > 0
     subdiag_indices = [ind for ind, x in enumerate(subdiag_entries) if x]
     bz = np.ones(n)
     for x in subdiag_indices:
@@ -5931,51 +5952,57 @@ def _solve_discrete_lyapunov( A , Y ):
     # Now we know how the matrices should be partitioned. We then start 
     # from the uppper left corner and alternate between updating the 
     # Y term and solving the next entry of X. We walk over X row-wise
-    
-    
+
     for row in range( total_blk ):
+        thisr = bs[row]
+        nextr = bs[row+1]
+
         if row is not 0:
-            Ys[sl(row,row)] +=  \
-                            As[sl( row , row )].T @ \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      As[sl( 0 , row , dy = row)]
+            Ys[ thisr:nextr , thisr:nextr ] +=  \
+                            As[ thisr:nextr , thisr:nextr ].T @ \
+                                  Xs[ thisr:nextr , 0:thisr ] @ \
+                                  As[ 0:thisr , thisr:nextr ]
 
         # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk 
-        tempx = mini_sylvester( As[sl(row,row)] , Ys[sl(row,row)] )
-        Xs[bs[row]:bs[row+1],bs[row]:bs[row+1]] = tempx
-#        X_placer( tempx , row , row )
-        XA_of_row = Xs[sl( row , 0 , dx = row +1 )] @ \
-             As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
+        tempx = mini_sylvester( As[ thisr:nextr , thisr:nextr ],
+                                Ys[ thisr:nextr , thisr:nextr ] )
+        
+        Xs[ thisr:nextr , thisr:nextr ] = tempx
+
+
+
+        XA_of_row = Xs[ thisr:nextr ,  0:nextr ] @ As[ 0:nextr , thisr: ]
 
         # Update Y terms right of the diagonal
-        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XA_of_row
+        Ys[thisr:nextr , thisr:] += As[thisr:nextr,thisr:nextr ].T @ XA_of_row
 
         # Walk over upper triangular terms 
         for col in range( row + 1 , total_blk ):
+            thisc = bs[col]
+            nextc = bs[col+1]
+
             # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester( As[sl( row , row )] , 
-                                    Ys[sl( row , col )] , 
-                                    As[sl( col , col )] )
+            tempx = mini_sylvester( As[ thisr:nextr , thisr:nextr ] , 
+                                    Ys[ thisr:nextr , thisc:nextc ] , 
+                                    As[ thisc:nextc , thisc:nextc ] )
     
             # Place it in the data
-#            X_placer( tempx , row , col )
-            Xs[bs[row]:bs[row+1],bs[col]:bs[col+1]] = tempx
-            Xs[bs[col]:bs[col+1],bs[row]:bs[row+1]] = tempx.T
+            Xs[ thisr:nextr , thisc:nextc ] = tempx
+            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
+
             ## Post column solution Y update
             # XA terms 
-            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
+            tempa = tempx @ As[ thisc:nextc , thisc: ]
             # Update Y towards left
-            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempa
+            Ys[ thisr:nextr , thisc:] += As[thisr:nextr,thisr:nextr].T @ tempa
             # Update Y downwards
-
-            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
+            XA_of_row[: , thisc - thisr:] += tempa
                       
             ugly_slice = slice(bs[col] - bs[row],
                         bs[col+1] - bs[row] if bs[col+1] is not None else None
                         )
     
-            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
-                     As[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice] 
+            Ys[ nextr:nextc , thisc:nextc ] += \
+                     As[thisr:nextr , nextr:nextc].T @ XA_of_row[:,ugly_slice] 
 
     return S @ Xs @ S.T
-
