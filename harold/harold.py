@@ -5307,19 +5307,19 @@ def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
 
     (2')            A^T X A - E^T X E + Y = 0    
     
-    for the unknown matrix `X` given square matrices A, E, and Y. 
-    The numbered (primed) equations are the so-called continuous 
-    (discrete) time forms. The `form` keyword selects between the 
-    two. 
+    for the unknown matrix `X` given square matrices A, E, and 
+    symmetric Y with compatible sizes. The numbered (primed) equations 
+    are the so-called continuous (discrete) time forms. The `form` 
+    keyword selects between the two. 
     
     For (1), (1'), the `A` matrix is brought to real Schur form 
     and for (2), (2') QZ decomposition is used. Then all have a similar 
     forward substitution step. The method is a a modified implementation 
-    of T. Penzl (1998).
+    of T. Penzl (1998) which is essentially a modification of Bartels - 
+    Stewart method.
     
     If the argument `E` is not exactly a `None`-type then (2) is 
-    assumed. Moreover, if (2) is assumed, the constant `Y` term 
-    should be symmetric.
+    assumed. 
 
     Parameters
     ----------
@@ -5334,7 +5334,7 @@ def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
     -------
 
     X : nxn numpy array
-        Computed norm. In NumPy, infinity is also float-type
+        Solution to the selected Lyapunov equation.
 
     '''
     def check_matrices( a , y , e ):
@@ -5400,62 +5400,20 @@ def lyapunov_eq_solver( A , Y , E = None , form = 'c' ):
 
 def _solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     '''
-    A generalized Lyapunov equation 
-
-    (1)             A^T X E + E^T X A + Y = 0
-
-    solver following T. Penzl 1998 with a modified constant term 
-    sweep pattern. 
-
-    The block sizes are defined by the off-diagonal terms found on
-    the subdiagonals of As obtained by the real QZ decomposition of 
-    the matrix pencil A - \lambda E.
+    Solves 
     
-    Note that, (1) has a unique solution if and only if all 
-    eigenvalues of (A - \lambda) E are finite and there are 
-    no pairs of eigenvalues that sum up to zero. 
-    
-    Since the generalized Sylvester equation 
-    
-    (2)             R^T X S + U^T X V + Y = 0 
-    
-    is linear on the entries of X, it can be solved, theoretically,
-    as a system of linear equations 
-    
-    (3)    vec(X) = (kron(S^T,R^T) + kron(V^T,U^T)) \ vec(-Y) 
-
-    however, numerically, this is a very ill-conditioned formulation
-    and only makes sense when the problem is extremely small. That is 
-    the basis of the solution that is to say reducing the problem into 
-    a special structure in which the block sizes are p x m, with 
-    p , m = {1,2}.
-    
-    
+                A.T X E + E.T X A + Y = 0
+            
+    for symmetric Y
     '''
+    mat33 = np.zeros((3,3),dtype=float)
+    mat44 = np.zeros((4,4),dtype=float)
 
     # =============================
     # Declare the inner functions
     # =============================
     
-    def sl( p , m , dx = 1 , dy = 1):
-        '''
-        A helper function to provide a shortcut to get the slice of a 
-        particular entry in the block partitioned matrices A , X , E , Y. 
-        '''
-        return np.s_[bs[p]:bs[p+dy]] , np.s_[bs[m]:bs[m+dx]]
-        
-    def X_placer(mat , p , m ):
-        '''
-        A helper function to place the computed data into the corresponding
-        location of the solution matrix X of the sylvester equation
-        '''
-        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
-    
-        if p != m:
-            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
-    
-        
-    def mini_sylvester( R , S , Y , U = None , V = None ):
+    def mini_sylvester( R , S , Yt , U = None , V = None ):
         '''
         A helper function to solve the 1x1 or 2x2 Sylvester equations 
         arising in the solution of the generalized continuous-time 
@@ -5466,18 +5424,45 @@ def _solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
         executed.
         '''
         if U is None:
-            U = S
-            V = R
+            if R.size == 1:
+                return -Yt / (2 * R * S )
+            else:
+                a , b , c , d = R.ravel().tolist()
+                e , f , g , h = S.ravel().tolist()
+
+                mat33[0, : ] = [2*a*e     ,     2*(a*g + e*c)     , 2*c*g    ]
+                mat33[1, : ] = [a*f + e*b , a*h + e*d +c*f + b*g  , c*h + g*d]
+                mat33[2, : ] = [2*b*f     ,     2*(b*h + f*d)     , 2*d*h    ]
+
+                a , b , c = np.linalg._umath_linalg.solve(mat33,
+                                        -Yt.reshape(-1,1)[[0,1,3],:]
+                                        ).ravel().tolist()
+
+                return np.array([[a,b],[b,c]],dtype=float)
     
-        if max( *R.shape , *S.shape ) > 1:
-            X = np.linalg.solve(
-                        np.kron(S.T,R.T) + np.kron(V.T,U.T) ,
-                        -Y.reshape(-1,1,order='F')        # equivalent to vec(-Y)
-                    )
+        elif R.size==4:
+            if S.size==4:
+                a , b , c , d = R.reshape(1,4).tolist()[0]
+                e , f , g , h = S.reshape(1,4).tolist()[0]
+                k , l , m , n = U.reshape(1,4).tolist()[0]
+                p , q , r , s = V.reshape(1,4).tolist()[0]
+
+                mat44[0,:] = [ a*e + k*p , a*g + k*r , c*e + m*p , c*g + m*r ]
+                mat44[1,:] = [ a*f + k*q , a*h + k*s , c*f + m*q , c*h + m*s ]
+                mat44[2,:] = [ b*e + l*p , b*g + l*r , d*e + n*p , d*g + n*r ]
+                mat44[3,:] = [ b*f + l*q , b*h + l*s , d*f + n*q , d*h + n*s ]
+
+                return np.linalg._umath_linalg.solve(
+                                         mat44,-Yt.reshape(-1,1)).reshape(2,2)
+            else:
+                return np.linalg._umath_linalg.solve(
+                                            S[0,0]*R.T + V[0,0]*U.T, -Yt )
+        elif S.size==4:
+            return np.linalg._umath_linalg.solve(R[0,0]*S.T+U[0,0]*V.T,-Yt.T).T
         else:
-            X = -Y / (R * S + U * V)
+            return -Yt / (R * S + U * V)
     
-        return X.reshape(R.shape[1],-1,order='F')
+
     # =============================
     # Prepare the data
     # =============================
@@ -5501,7 +5486,7 @@ def _solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     bz = bz[~np.isnan(bz)].astype(int)
     bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
     total_blk = bz.size
-    Xs = np.zeros_like(Y)
+    Xs = np.empty_like(Y)
 
     # =============================
     #  Main Loop
@@ -5511,88 +5496,91 @@ def _solve_continuous_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     # from the uppper left corner and alternate between updating the 
     # Y term and solving the next entry of X. We walk over X row-wise
     
-    
     for row in range( total_blk ):
+        thisr = bs[row]
+        nextr = bs[row+1]
         # This block is executed at the second and further spins of the 
         # for loop. Humans should start reading from (**)
         if row is not 0:
-            Ys[sl(row,row)] +=  \
-                            As[sl( row , row )].T @ \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      Es[sl( 0 , row , dy = row)] + \
-                                                    \
-                            Es[sl( row , row )].T @ \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      As[sl( 0 , row , dy = row)]    
+            Ys[ thisr:nextr , thisr:nextr ] +=  \
+                            As[ thisr:nextr , thisr:nextr ].T @ \
+                                   Xs[ thisr:nextr , :thisr ] @ \
+                                   Es[ :thisr , thisr:nextr ] + \
+                                                                \
+                            Es[ thisr:nextr , thisr:nextr ].T @ \
+                                   Xs[ thisr:nextr , :thisr ] @ \
+                                   As[ :thisr , thisr:nextr ]
 
         # (**) Solve for the diagonal via Akk , Ekk , Ykk and place it in Xkk 
-        tempx = mini_sylvester(As[sl(row,row)],Es[sl(row,row)],Ys[sl(row,row)])
-        X_placer( tempx , row , row )
-    
-    
-        tempx = Xs[sl( row , 0 , dx = row +1 )]
+        tempx = mini_sylvester(As[ thisr:nextr , thisr:nextr ],
+                               Es[ thisr:nextr , thisr:nextr ],
+                               Ys[ thisr:nextr , thisr:nextr ])
+
+        # Place it in the data
+        Xs[ thisr:nextr , thisr:nextr ] = tempx
+
         # Form the common products of X * E and X * A 
-        XE_of_row = tempx @ Es[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
-        XA_of_row = tempx @ As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
-        
+        tempx = Xs[ thisr:nextr , :nextr ]
+        XE_of_row = tempx @ Es[ :nextr , thisr: ]
+        XA_of_row = tempx @ As[ :nextr , thisr: ]
+
         # Update Y terms right of the diagonal
-        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XE_of_row + \
-                                           Es[sl( row , row )].T @ XA_of_row
+        Ys[thisr:nextr,thisr:]+= As[thisr:nextr,thisr:nextr].T @ XE_of_row + \
+                                 Es[thisr:nextr,thisr:nextr].T @ XA_of_row
+
         # Walk over upper triangular terms 
         for col in range( row + 1 , total_blk ):
+            thisc = bs[col]
+            nextc = bs[col+1]
             # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester(As[sl( row , row )] , Es[sl( col , col )] ,
-                                    Ys[sl( row , col )] , Es[sl( row , row )] ,
-                                    As[sl( col , col )] )
+            tempx = mini_sylvester(As[ thisr:nextr , thisr:nextr ], 
+                                   Es[ thisc:nextc , thisc:nextc ],
+                                   Ys[ thisr:nextr , thisc:nextc ],
+                                   Es[ thisr:nextr , thisr:nextr ],
+                                   As[ thisc:nextc , thisc:nextc ])
     
             # Place it in the data
-            X_placer( tempx , row , col )
-    
-            ## Post column solution Y update
-    
-            # XA and XE terms 
-            tempe = tempx @ Es[sl( col , col , dx = total_blk - col )]
-            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
-            # Update Y towards left
-            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempe + \
-                                                  Es[sl(row,row)].T @ tempa
-            # Update Y downwards
-            XE_of_row[:,( bs[col] - bs[row] ):] += tempe
-            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
-                      
-            ugly_slice = slice(bs[col] - bs[row],
-                        bs[col+1] - bs[row] if bs[col+1] is not None else None
-                        )
-    
-            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
-                     As[sl(row,row+1,dx=col-row)].T @ XE_of_row[:,ugly_slice] + \
-                     Es[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice]
+            Xs[ thisr:nextr , thisc:nextc ] = tempx
+            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
 
     
+            ## Post column solution Y update
+           
+            # XA and XE terms 
+            tempe = tempx @ Es[ thisc:nextc , thisc: ]
+            tempa = tempx @ As[ thisc:nextc , thisc: ]
+
+            # Update Y towards left
+            Ys[ thisr:nextr, thisc: ] += As[ thisr:nextr , thisr:nextr ].T @ tempe + \
+                                         Es[ thisr:nextr , thisr:nextr ].T @ tempa
+            # Update Y downwards
+            XE_of_row[:,( thisc - thisr ):] += tempe
+            XA_of_row[:,( thisc - thisr ):] += tempa
+                      
+            ugly_slice = slice(thisc - thisr,
+                        nextc - thisr if nextc is not None else None
+                        )
     
+            Ys[ nextr:nextc , thisc:nextc ] += \
+                     As[ thisr:nextr , nextr:nextc ].T @ XE_of_row[:,ugly_slice] + \
+                     Es[ thisr:nextr , nextr:nextc ].T @ XA_of_row[:,ugly_slice]
+
     return Q @ Xs @ Q.T
 
 
 def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+    '''
+    Solves 
     
-    def sl( p , m , dx = 1 , dy = 1):
-        '''
-        A helper function to provide a shortcut to get the slice of a 
-        particular entry in the block partitioned matrices A , X , E , Y. 
-        '''
-        return np.s_[bs[p]:bs[p+dy]] , np.s_[bs[m]:bs[m+dx]]
-        
-    def X_placer(mat , p , m ):
-        '''
-        A helper function to place the computed data into the corresponding
-        location of the solution matrix X of the sylvester equation
-        '''
-        Xs[bs[p]:bs[p+1],bs[m]:bs[m+1]] = mat
+                A.T X A - E.T X E + Y = 0
+            
+    for symmetric Y
     
-        if p != m:
-            Xs[bs[m]:bs[m+1],bs[p]:bs[p+1]] = mat.T
+    '''
+    mat33 = np.zeros((3,3),dtype=float)
+    mat44 = np.zeros((4,4),dtype=float)
 
-    def mini_sylvester( Ar , Er , Yt , Al = None , El = None ):
+    def mini_sylvester( S , V , Yt , R = None , U = None ):
         '''
         A helper function to solve the 1x1 or 2x2 Sylvester equations 
         arising in the solution of the generalized continuous-time 
@@ -5602,19 +5590,45 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
         hence the caller needs to `try` to see whether it is properly 
         executed.
         '''
-        if Al is None:
-            Al = Ar
-            El = Er
-    
-        if max( *Al.shape , *Ar.shape ) > 1:
-            Xms = np.linalg.solve(
-                        np.kron(Ar.T,Al.T) + np.kron(-Er.T,El.T) ,
-                        -Yt.reshape(-1,1,order='F')   # equivalent to vec(-Y)
-                    )
+        if R is None:
+            if S.size == 1:
+                return -Yt / ( S ** 2 - V ** 2 )
+            else:
+                a , b , c , d = S.ravel().tolist()
+                e , f , g , h = V.ravel().tolist()
+
+                mat33[0,:] = [a*a - e*e ,     2 * ( a*c - e*g )  , c*c - g*g ] 
+                mat33[1,:] = [a*b - e*f ,  a*d - e*h + c*b - g*f , c*d - g*h ] 
+                mat33[2,:] = [b*b - f*f ,     2 * ( b*d - f*h )  , d*d - h*h ]
+
+                a , b , c = np.linalg._umath_linalg.solve(mat33,
+                                        -Yt.reshape(-1,1)[[0,1,3],:]
+                                        ).ravel().tolist()
+
+                return np.array([[a,b],[b,c]],dtype=float)
+
+        elif S.size==4:
+            if R.size==4:
+                a , b , c , d = R.ravel().tolist()
+                e , f , g , h = S.ravel().tolist()
+                k , l , m , n = U.ravel().tolist()
+                p , q , r , s = V.ravel().tolist()
+
+                mat44[0,:] = [ a*e - k*p , a*g - k*r , c*e - m*p , c*g - m*r ]
+                mat44[1,:] = [ a*f - k*q , a*h - k*s , c*f - m*q , c*h - m*s ]
+                mat44[2,:] = [ b*e - l*p , b*g - l*r , d*e - n*p , d*g - n*r ]
+                mat44[3,:] = [ b*f - l*q , b*h - l*s , d*f - n*q , d*h - n*s ]
+
+                return np.linalg._umath_linalg.solve(
+                                         mat44,-Yt.reshape(-1,1)).reshape(2,2)
+                
+            else:
+                return np.linalg._umath_linalg.solve(
+                                            R[0,0]*S.T - U[0,0]*V.T, -Yt.T ).T
+        elif R.size==4:
+            return np.linalg._umath_linalg.solve(S[0,0]*R.T-V[0,0]*U.T,-Yt)
         else:
-            Xms = -Yt / (Ar * Al - El * Er)
-        
-        return Xms.reshape(Al.shape[0],Ar.shape[0],order='F')
+            return -Yt / (R * S - U * V)
 
     # =============================
     # Prepare the data
@@ -5623,7 +5637,7 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     if A.shape[0] < 3:
         return mini_sylvester( A , E , Y )
 
-    As , Es , Q , Z = sp.linalg.qz(A,E)
+    As , Es , Q , Z = sp.linalg.qz(A,E,overwrite_a=True,overwrite_b=True)
     Ys = Z.T @ Y @ Z
     n = As.shape[0]
     # If there are nontrivial entries on the subdiagonal, we have a 2x2 block. 
@@ -5639,7 +5653,7 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     bz = bz[~np.isnan(bz)].astype(int)
     bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
     total_blk = bz.size
-    Xs = np.zeros_like(Y)
+    Xs = np.empty_like(Y)
 
     # =============================
     #  Main Loop
@@ -5651,61 +5665,75 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     
     
     for row in range( total_blk ):
+
+        thisr = bs[row]
+        nextr = bs[row+1]
+
         # This block is executed at the second and further spins of the 
         # for loop. Humans should start reading from (**)
         if row is not 0:
-            Ys[sl(row,row)] +=  \
-                            As[sl( row , row )].T @ \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      As[sl( 0 , row , dy = row)]   \
-                                                  - \
-                            Es[sl( row , row )].T @ \
-                      Xs[sl( row , 0 , dx = row)] @ \
-                      Es[sl( 0 , row , dy = row)]    
+            Ys[ thisr:nextr , thisr:nextr ] +=  \
+                            As[ thisr:nextr , thisr:nextr ].T @ \
+                                   Xs[ thisr:nextr , :thisr ] @ \
+                                   As[ :thisr , thisr:nextr ] - \
+                                                                \
+                            Es[ thisr:nextr , thisr:nextr ].T @ \
+                                   Xs[ thisr:nextr , :thisr ] @ \
+                                   Es[ :thisr , thisr:nextr ] 
 
         # (**) Solve for the diagonal via Akk , Ekk , Ykk and place it in Xkk 
-        tempx = mini_sylvester(As[sl(row,row)],Es[sl(row,row)],Ys[sl(row,row)])
-        X_placer( tempx , row , row )
+        tempx = mini_sylvester(As[ thisr:nextr , thisr:nextr ],
+                               Es[ thisr:nextr , thisr:nextr ],
+                               Ys[ thisr:nextr , thisr:nextr ])
+
+        # Place it in the data
+        Xs[ thisr:nextr , thisr:nextr ] = tempx
     
-    
-        tempx = Xs[sl( row , 0 , dx = row +1 )]
         # Form the common products of X * E and X * A 
-        XE_of_row = tempx @ Es[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
-        XA_of_row = tempx @ As[sl( 0 , row , dx = total_blk-row , dy = row + 1)]
-        
+        tempx = Xs[ thisr:nextr , :nextr ]
+        XE_of_row = tempx @ Es[ :nextr , thisr: ]
+        XA_of_row = tempx @ As[ :nextr , thisr: ]                               
+                               
         # Update Y terms right of the diagonal
-        Ys[sl(row,row,dx=total_blk-row)]+= As[sl( row , row )].T @ XA_of_row - \
-                                           Es[sl( row , row )].T @ XE_of_row
+        Ys[thisr:nextr,thisr:]+= As[thisr:nextr,thisr:nextr].T @ XA_of_row - \
+                                 Es[thisr:nextr,thisr:nextr].T @ XE_of_row
+
         # Walk over upper triangular terms 
         for col in range( row + 1 , total_blk ):
-            # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester( As[sl( col , col )] , Es[sl( col , col )] ,
-                                    Ys[sl( row , col )] , As[sl( row , row )] ,
-                                    Es[sl( row , row )] )
+            
+            thisc = bs[col]
+            nextc = bs[col+1]
     
+            # The corresponding Y term has already been updated, solve for X
+            tempx = mini_sylvester(As[ thisc:nextc , thisc:nextc ], 
+                                   Es[ thisc:nextc , thisc:nextc ],
+                                   Ys[ thisr:nextr , thisc:nextc ],
+                                   As[ thisr:nextr , thisr:nextr ],
+                                   Es[ thisr:nextr , thisr:nextr ])
+
             # Place it in the data
-            X_placer( tempx , row , col )
+            Xs[ thisr:nextr , thisc:nextc ] = tempx
+            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
     
             ## Post column solution Y update
     
             # XA and XE terms 
-            tempe = tempx @ Es[sl( col , col , dx = total_blk - col )]
-            tempa = tempx @ As[sl( col , col , dx = total_blk - col )]
+            tempe = tempx @ Es[ thisc:nextc , thisc: ]
+            tempa = tempx @ As[ thisc:nextc , thisc: ]
             # Update Y towards left
-            Ys[sl(row,col,dx = total_blk-col)] += As[sl(row,row)].T @ tempa - \
-                                                  Es[sl(row,row)].T @ tempe
+            Ys[ thisr:nextr, thisc: ] += As[ thisr:nextr , thisr:nextr ].T @ tempa - \
+                                         Es[ thisr:nextr , thisr:nextr ].T @ tempe
             # Update Y downwards
-            XE_of_row[:,( bs[col] - bs[row] ):] += tempe
-            XA_of_row[:,( bs[col] - bs[row] ):] += tempa
+            XE_of_row[:,( thisc - thisr ):] += tempe
+            XA_of_row[:,( thisc - thisr ):] += tempa
                       
-            ugly_slice = slice(bs[col] - bs[row],
-                        bs[col+1] - bs[row] if bs[col+1] is not None else None
+            ugly_slice = slice(thisc - thisr,
+                        nextc - thisr if nextc is not None else None
                         )
     
-            Ys[bs[row+1]:bs[col+1],bs[col]:bs[col+1]] += \
-                     As[sl(row,row+1,dx=col-row)].T @ XA_of_row[:,ugly_slice] - \
-                     Es[sl(row,row+1,dx=col-row)].T @ XE_of_row[:,ugly_slice]
-
+            Ys[ nextr:nextc , thisc:nextc ] += \
+                     As[ thisr:nextr , nextr:nextc ].T @ XA_of_row[:,ugly_slice] - \
+                     Es[ thisr:nextr , nextr:nextc ].T @ XE_of_row[:,ugly_slice]
 
     return Q @ Xs @ Q.T
 
@@ -5736,16 +5764,16 @@ def _solve_continuous_lyapunov( A , Y ):
             # 2a_{00}  & 2a_{10}         & 0         \\
             # a_{01}   & a_{00} + a_{11} & a_{10}    \\
             # 0        & 2a_{01}         & 2a_{11} 
-                a , b , c , d = *Ar[0] , *Ar[1]
+                a , b , c , d = Ar.reshape(1,4).tolist()[0]
 
                 mat33[0, : ] = [2*a , 2*c   , 0   ]
                 mat33[1, : ] = [b   , a + d , c   ]
                 mat33[2, : ] = [0   , 2*b   , 2*d ]
                 a , b , c = np.linalg._umath_linalg.solve(mat33,
                                         -Yt.reshape(-1,1)[[0,1,3],:]
-                                        ).flatten()
+                                        ).ravel().tolist()
 
-                return np.array([[a,b],[b,c]])
+                return np.array([[a,b],[b,c]],dtype=float)
 
         # Nonsymmetric  
         elif Ar.size == 4:
@@ -5755,13 +5783,13 @@ def _solve_continuous_lyapunov( A , Y ):
             # a_{01}           & 0               & a_{11} + b_{00} & b_{10}    \\
             # 0                & a_{01}          & b_{01}          & a_{11} + b_{11}
 
-                a00 , a01 , a10 , a11 = *Al[0] , *Al[1]
-                b00 , b01 , b10 , b11 = *Ar[0] , *Ar[1]
+                a00 , a01 , a10 , a11 = Al.reshape(1,4).tolist()[0]
+                b00 , b01 , b10 , b11 = Ar.reshape(1,4).tolist()[0]
     
-                mat44[0,:] = [a00+b00 , b10     , a10     , 0       ]
-                mat44[1,:] = [b01     , a00+b11 , 0       , a10     ]
-                mat44[2,:] = [a01     , 0       , a11+b00 , b10     ]
-                mat44[3,:] = [0       , a01     , b01     , a11+b11 ]
+                mat44[0,:] = [ a00+b00 , b10     , a10     , 0       ]
+                mat44[1,:] = [ b01     , a00+b11 , 0       , a10     ]
+                mat44[2,:] = [ a01     , 0       , a11+b00 , b10     ]
+                mat44[3,:] = [ 0       , a01     , b01     , a11+b11 ]
     
                 return np.linalg._umath_linalg.solve(
                                          mat44,-Yt.reshape(-1,1)).reshape(2,2)
@@ -5803,7 +5831,7 @@ def _solve_continuous_lyapunov( A , Y ):
     bz = bz[~np.isnan(bz)].astype(int)
     bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
     total_blk = bz.size
-    Xs = np.zeros_like(Y)    
+    Xs = np.empty_like(Y)    
     
     # =============================
     #  Main Loop
@@ -5849,8 +5877,7 @@ def _solve_continuous_lyapunov( A , Y ):
             Ys[ thisr:nextr , nextc: ] += tempx @ As[ thisc:nextc , nextc: ]
                                 
             # Update Y downwards
-            Ys[ nextr:nextc , thisc:nextc ] += \
-                    As[ thisr:nextr , nextr:nextc].T @ tempx
+            Ys[ nextr:nextc , thisc:nextc ] += As[ thisr:nextr , nextr:nextc ].T @ tempx
 
     return S @ Xs @ S.T
     
@@ -5880,15 +5907,16 @@ def _solve_discrete_lyapunov( A , Y ):
             #a_{00}^2 - 1 & 2a_{00}a_{10}                  &     a_{10}^2 \\
             #a_{00}a_{01} & a_{00}a_{11} -1 + a_{10}a_{01} & a_{10}a_{11} \\
             #a_{01}^2     & 2a_{01}a_{11}                  &     a_{11}^2 -1
-                a , b , c , d = *Al[0] , *Al[1]
+                a , b , c , d = Al.reshape(1,4).tolist()[0]
 
                 mat33[0,:] = [a**2 - 1 , 2*a*c         , c ** 2     ]
                 mat33[1,:] = [a*b      , a*d + b*c - 1 , c*d        ]
                 mat33[2,:] = [b ** 2   , 2*b*d         , d ** 2 - 1 ]
-                res = np.linalg._umath_linalg.solve(mat33,
-                                        -Yt.reshape(-1,1)[[0,1,3],:])
+                a , b , c = np.linalg._umath_linalg.solve(mat33,
+                                        -Yt.reshape(-1,1)[[0,1,3],:]
+                                         ).ravel().tolist()
 
-                return np.array([[res[0,0],res[1,0]],[res[1,0],res[2,0]]])
+                return np.array([[a,b],[b,c]],dtype=float)
 
         # Nonsymmetric  
         elif Al.size == 4:
@@ -5897,8 +5925,8 @@ def _solve_discrete_lyapunov( A , Y ):
             #a_{00}b_{01}     & a_{00}b_{11}-1 & a_{10}b_{01}    & a_{10}b_{11}
             #a_{01}b_{00}     & a_{01}b_{10}   & a_{11}b_{00} -1 & a_{11}b_{10}
             #a_{01}b_{01}     & a_{01}b_{11}   & a_{11}b_{01}    & a_{11}b_{11}
-                a00 , a01 , a10 , a11 = *Al[0] , *Al[1]
-                b00 , b01 , b10 , b11 = *Ar[0] , *Ar[1]
+                a00 , a01 , a10 , a11 = Al.ravel().tolist()
+                b00 , b01 , b10 , b11 = Ar.ravel().tolist()
     
                 mat44[0,:] = [a00*b00 - 1, a00*b10    , a10*b00   , a10*b10   ]
                 mat44[1,:] = [a00*b01    , a00*b11 - 1, a10*b01   , a10*b11   ]
@@ -5943,7 +5971,7 @@ def _solve_discrete_lyapunov( A , Y ):
     bz = bz[~np.isnan(bz)].astype(int)
     bs = [0] + np.cumsum(bz[:-1]).tolist() + [None]
     total_blk = bz.size
-    Xs = np.zeros_like(Y)
+    Xs = np.empty_like(Y)
 
     # =============================
     #  Main Loop
@@ -5998,8 +6026,8 @@ def _solve_discrete_lyapunov( A , Y ):
             # Update Y downwards
             XA_of_row[: , thisc - thisr:] += tempa
                       
-            ugly_slice = slice(bs[col] - bs[row],
-                        bs[col+1] - bs[row] if bs[col+1] is not None else None
+            ugly_slice = slice(thisc - thisr,
+                        nextc - thisr if nextc is not None else None
                         )
     
             Ys[ nextr:nextc , thisc:nextc ] += \

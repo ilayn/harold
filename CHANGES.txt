@@ -1,8 +1,21 @@
 ﻿ChangeLog
 ============
 
+v0.1.1b2
+--------
++ Added Riccati solvers
++ More documentation
++ Added safety net for lyapunov solvers 
+  in case there is no solution. 
 
-v0.1.1
+
+v0.1.1b1
+--------
++ Added Lyapunov solvers
++ Fixed many bugs
+- Removed block diag and switched to scipy version
+
+v0.1.1a
 -------
 + Initial versioning and packaging.
 + Adding documentation and Sphinx integration.
