@@ -3,7 +3,7 @@ dependencies:
 - numpy>=1.11
 - scipy>=0.17.1
 - matplotlib>=1.5
-- tabulate>=0.7.5
+- tabulate>=0.7
 - openssl=1.0.2g=0
 - pip=8.1.1=py35_0
 - python=3.5.1=0
