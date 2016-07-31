@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Introduction &mdash; harold 0.1.1a5 documentation</title>
+  <title>Introduction &mdash; harold 0.1.1b1 documentation</title>
   
 
   
@@ -30,7 +30,7 @@
   
 
   
-    <link rel="top" title="harold 0.1.1a5 documentation" href="index.html"/>
+    <link rel="top" title="harold 0.1.1b1 documentation" href="index.html"/>
         <link rel="next" title="Getting Started" href="preflight.html"/>
         <link rel="prev" title="Welcome to harold’s documentation!" href="index.html"/> 
 
@@ -89,10 +89,15 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Frequency Domain Computations</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
@@ -144,7 +149,7 @@
   <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
 <p>This is the documentation for the harold control systems toolbox.
-harold is a library for Python3 that is designed to be completely open-source
+<cite>harold</cite> is a library for Python3 that is designed to be completely open-source
 to serve the mantra <em>reproducible research</em>.</p>
 <p>The main goal of harold is to provide accessible computation algorithms for
 common control engineering tasks. For the academic use, the functions are
@@ -161,8 +166,8 @@ measurements are taken, and harold will try to fill the gaps for you (this
 is currently being tested on a real experiment).</p>
 <div class="section" id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
-<p>harold works with Python &gt;= 3.4.  It uses the packages NumPy, SciPy, <cite>tabulate</cite>
-and also relies on <cite>itertools</cite>, <cite>collections</cite>, and <cite>copy</cite> modules. It uses
+<p>harold works with Python &gt;= 3.5.  It uses the packages NumPy, SciPy, <cite>tabulate</cite>
+and also relies on <cite>itertools</cite>, <cite>collections</cite> modules. Formally, it uses
 Bokeh as the main graphical framework for plots and so on. However, currently
 for the terminal use and simpler manipulation a <cite>matplotlib</cite> frontend is
 experimented with.</p>
@@ -170,11 +175,12 @@ experimented with.</p>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <p>Installing harold is a straightforward package installation: you can install
-the most recent harold version using <a class="reference external" href="http://peak.telecommunity.com/DevCenter/EasyInstall">easy_install</a> or <a class="reference external" href="http://pypi.python.org/pypi/pip">pip</a>:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">easy_install</span> <span class="n">harold</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="n">harold</span>
+the most recent harold version using <a class="reference external" href="http://pypi.python.org/pypi/pip">pip</a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">harold</span> <span class="o">--</span><span class="n">pre</span>
 </pre></div>
 </div>
+<p>The <cite>&#8211;pre</cite> switch makes it possible to install the beta or development version
+as it is still in the early stages.</p>
 </div>
 <div class="section" id="development">
 <h2>Development<a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h2>
@@ -202,7 +208,7 @@ the most recent harold version using <a class="reference external" href="http://
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2015, Ilhan Polat.
+        &copy; Copyright 2016, Ilhan Polat.
 
     </p>
   </div>
@@ -224,7 +230,7 @@ the most recent harold version using <a class="reference external" href="http://
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.1a5',
+            VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

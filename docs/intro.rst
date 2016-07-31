@@ -2,7 +2,7 @@
 ============
 
 This is the documentation for the harold control systems toolbox.
-harold is a library for Python3 that is designed to be completely open-source
+`harold` is a library for Python3 that is designed to be completely open-source
 to serve the mantra *reproducible research*.
 
 The main goal of harold is to provide accessible computation algorithms for
@@ -23,8 +23,8 @@ is currently being tested on a real experiment).
 Prerequisites
 -------------
 
-harold works with Python >= 3.4.  It uses the packages NumPy, SciPy, `tabulate`
-and also relies on `itertools`, `collections`, and `copy` modules. It uses 
+harold works with Python >= 3.5.  It uses the packages NumPy, SciPy, `tabulate`
+and also relies on `itertools`, `collections` modules. Formally, it uses 
 Bokeh as the main graphical framework for plots and so on. However, currently
 for the terminal use and simpler manipulation a `matplotlib` frontend is 
 experimented with. 
@@ -34,12 +34,14 @@ Installation
 ------------
 
 Installing harold is a straightforward package installation: you can install 
-the most recent harold version using `easy_install`_ or `pip`_::
+the most recent harold version using `pip`_::
 
-    easy_install harold
-    pip install harold
+    pip install harold --pre
 
-.. _easy_install: http://peak.telecommunity.com/DevCenter/EasyInstall
+	
+The `--pre` switch makes it possible to install the beta or development version
+as it is still in the early stages. 
+
 .. _pip: http://pypi.python.org/pypi/pip
 
 Development

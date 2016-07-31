@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Welcome to harold’s documentation! &mdash; harold 0.1.1a5 documentation</title>
+  <title>Welcome to harold’s documentation! &mdash; harold 0.1.1b1 documentation</title>
   
 
   
@@ -30,7 +30,7 @@
   
 
   
-    <link rel="top" title="harold 0.1.1a5 documentation" href="#"/>
+    <link rel="top" title="harold 0.1.1b1 documentation" href="#"/>
         <link rel="next" title="Introduction" href="intro.html"/> 
 
   
@@ -83,10 +83,15 @@
                 <ul>
 <li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
@@ -151,20 +156,18 @@
 <li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-scientific-stack">Python and its scientific stack</a></li>
 <li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-strange-syntax">Python and its strange syntax</a></li>
 <li class="toctree-l2"><a class="reference internal" href="preflight.html#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#initializing-harold">Initializing harold</a></li>
+<li class="toctree-l2"><a class="reference internal" href="preflight.html#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="preflight.html#initializing-harold">Initializing harold</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tut_models.html#dealing-with-models">Dealing with models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tut_models.html#creating-models">Creating models</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="tut_models.html#state-models"><code class="docutils literal"><span class="pre">State()</span></code> models</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tut_models.html#transfer-models"><code class="docutils literal"><span class="pre">Transfer()</span></code> models</a></li>
-<li class="toctree-l3"><a class="reference internal" href="tut_models.html#context-discovery">Context Discovery</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="tut_models.html#model-arithmetic">Model Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tut_models.html#context-discovery">Context Discovery</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a><ul>
@@ -173,6 +176,19 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tut_kalman.html#kalman-tests">Kalman-tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tut_kalman.html#cancellation-distance">Cancellation Distance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tut_solvers.html#lyapunov-equation">Lyapunov Equation</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -189,7 +205,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1">v0.1.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b2">v0.1.1b2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b1">v0.1.1b1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1a">v0.1.1a</a></li>
 </ul>
 </li>
 </ul>
@@ -222,7 +240,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2015, Ilhan Polat.
+        &copy; Copyright 2016, Ilhan Polat.
 
     </p>
   </div>
@@ -244,7 +262,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.1a5',
+            VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

@@ -2529,11 +2529,11 @@ def transfertostate(*tf_or_numden,output='system'):
             coldegrees = [x.size-1 for x in den[0]]
 
             A = haroldcompanion(den[0][0])
-            B = eyecolumn(A.shape[0],-1)
+            B = e_i(A.shape[0],-1)
 
             for x in range(1,m):
                 Atemp = haroldcompanion(den[0][x])
-                Btemp = eyecolumn(Atemp.shape[0],-1)
+                Btemp = e_i(Atemp.shape[0],-1)
 
                 A = sp.linalg.block_diag(A,Atemp)
                 B = sp.linalg.block_diag(B,Btemp)
@@ -2662,7 +2662,7 @@ def _tzeros_reduce(A,B,C,D):
         Sysmat = np.delete(Sysmat,np.s_[r-p:],0)
         Sysmat = np.delete(Sysmat,np.s_[n-mm:n],1)
 
-        A,B,C,D = matrixslice(Sysmat,(n-mm,n-mm))
+        A,B,C,D = matrix_slice(Sysmat,(n-mm,n-mm))
         if A.size==0 or np.count_nonzero(np.c_[C,D])==0:
             break
     return A,B,C,D
@@ -2825,7 +2825,7 @@ def __discretize(T,dt,method,PrewarpAt,q):
         # Copy n times for n integrators
         q11 , q12 , q21 , q22 = (
                     sp.linalg.kron(np.eye(n),x) for x in 
-                    ssslice(q,-1)                    
+                    matrix_slice(q,(-1,-1))
                     )
 
         # Compute the star product
@@ -2899,11 +2899,19 @@ def __discretize(T,dt,method,PrewarpAt,q):
     return Ad , Bd , Cd , Dd , dt
 
 
-def undiscretize(G,OverrideWith = None):
+def undiscretize( G , use_method = None ):
     """
     Converts a discrete time system model continuous system model. 
     If the model has the Discretization Method set, then uses that 
     discretization method to reach back to the continous system model.
+    
+    Parameters
+    ----------
+    G : State() 
+        System to be undiscretized 
+    use_method : str
+        The method to use for converting discrete model to continous. 
+
     """
     if not isinstance(G,(Transfer,State)):
         raise TypeError('The argument is not transfer '
@@ -2919,18 +2927,17 @@ def undiscretize(G,OverrideWith = None):
         Gc = G
         Gc.SamplingPeriod = None
     else:
-        args = __undiscretize(G)
-    
+        args = __undiscretize( G , use_method )
         if isinstance(G,State):
             Gc = State(*args)
         else:
             Gss = State(*args)
-            Gc = statetotransfer(State(Gss))
+            Gc = statetotransfer(Gss)
         
     return Gc
 
 
-def __undiscretize(G):
+def __undiscretize( G , method_to_use ):
 
     if isinstance(G,Transfer):
         T = transfertostate(G)
@@ -2940,12 +2947,14 @@ def __undiscretize(G):
     (p,m),n = T.shape,T.NumberOfStates
     dt = G.SamplingPeriod
     
-    missing_method = False
-    if 'with it' in G.DiscretizedWith:# Check if warning comes back
-        missing_method = True
-        
+
+    if method_to_use is None:
+        if 'with it' in G.DiscretizedWith:# Check if warning comes back
+            missing_method = True
+        else:
+            method_to_use = G.DiscretizedWith
     
-    if G.DiscretizedWith == 'zoh':
+    if method_to_use == 'zoh':
         M = np.r_[
                    np.c_[T.a,T.b],
                    np.c_[np.zeros((m,n)),np.eye(m)]
@@ -2953,7 +2962,7 @@ def __undiscretize(G):
         eM = sp.linalg.logm(M)*(1/T.SamplingPeriod)
         Ac , Bc , Cc , Dc = eM[:n,:n] , eM[:n,n:] , T.c , T.d
         
-    elif (G.DiscretizedWith in ('bilinear','tustin','trapezoidal')
+    elif (method_to_use in ('bilinear','tustin','trapezoidal')
             or
           missing_method# Manually created DT system
          ):
@@ -2972,15 +2981,15 @@ def __undiscretize(G):
          Cc = T.c.dot(np.eye(n)+0.5*dt*np.linalg.solve(iX,(np.eye(n)-T.a)))
          Dc = T.d - 0.5*dt*T.c.dot(np.linalg.solve(iX,T.b))
 
-    elif (G.DiscretizedWith in ('forward euler', 'forward difference',
+    elif (method_to_use in ('forward euler', 'forward difference',
                     'forward rectangular','>>')):
          # iX = 1/dt*np.eye(n)
-         Ac = -1/dt.dot(np.eye(n)-T.a)
-         Bc =  1/dt.dot(T.b)
+         Ac = -1/dt * (np.eye(n)-T.a)
+         Bc =  1/dt * (T.b)
          Cc =  T.c
          Dc =  T.d
          
-    elif (G.DiscretizedWith in ('backward euler','backward difference',
+    elif (method_to_use in ('backward euler','backward difference',
                     'backward rectangular','<<')):
          X = T.a
          if 1/np.linalg.cond(X) < 1e-8: # TODO: Totally psychological limit
@@ -2996,7 +3005,7 @@ def __undiscretize(G):
          Dc = T.d - dt*T.c.dot(np.linalg.solve(iX,T.b))
 
     return Ac , Bc , Cc , Dc        
-        
+
         
 
 def rediscretize(G,dt,method='tustin',alpha=0.5):
@@ -3127,7 +3136,7 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
     resulting decomposition might miss some 'almost' pole-zero cancellations.
     Hence, this should be used as a rough assesment tool but not as
     actual minimality check or maybe to demonstrate the concepts academic
-    purposes to show the modal decomposition. Use canceldistance() and
+    purposes to show the modal decomposition. Use cancellation_distance() and
     minimal_realization() functions instead with better numerical properties.
 
     Example usage and verification : ::
@@ -3564,7 +3573,7 @@ def staircase(A,B,C,compute_T=False,form='c',
             ROI_start += ROI_size
             ROI_size = m
 #            print(ROI_start,ROI_size)
-            h1,h2,h3,h4 = matrixslice(
+            h1,h2,h3,h4 = matrix_slice(
                                 A0[ROI_start:,ROI_start:],
                                 (ROI_size,ROI_size)
                                 )
@@ -3630,7 +3639,7 @@ def staircase(A,B,C,compute_T=False,form='c',
             else:
                 return A , B , C
 
-def canceldistance(F,G):
+def cancellation_distance(F,G):
     """
     Given matrices :math:`F,G`, computes the upper and lower bounds of 
     the perturbation needed to render the pencil :math:`\\left[
@@ -3671,8 +3680,8 @@ def canceldistance(F,G):
     """
     A = np.c_[F,G].T
     n , m = A.shape
-    B = eyecolumn(n,np.s_[:m])
-    D = eyecolumn(n,np.s_[m:])
+    B = e_i(n,np.s_[:m])
+    D = e_i(n,np.s_[m:])
     C = sp.linalg.qr(2*np.random.rand(n,n-m) - 1,mode='economic')[0]
     evals , V = sp.linalg.eig(np.c_[A,C])
     K = np.linalg.cond(V)
@@ -3708,7 +3717,7 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
      cancellations but the distance is less than the tolerance, 
      distance wins and the respective mode is removed. 
     
-    Uses ``canceldistance()`` and ``staircase()`` for the tests. 
+    Uses ``cancellation_distance()`` and ``staircase()`` for the tests. 
     
     Parameters
     ----------
@@ -3717,7 +3726,7 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
         System matrices to be checked for minimality
     mu_tol: float
         The sensitivity threshold for the cancellation to be compared 
-        with the first default output of canceldistance() function. The 
+        with the first default output of cancellation_distance() function. The 
         default value is (default value is :math:`10^{-9}`)
 
     Returns
@@ -3739,8 +3748,8 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
             A , B , C = [(np.empty((1,0)))]*3
             break
         
-        kc = canceldistance(A,B)[0]
-        ko = canceldistance(A.T,C.T)[0]
+        kc = cancellation_distance(A,B)[0]
+        ko = cancellation_distance(A.T,C.T)[0]
 
         if min(kc,ko) > mu_tol: # no cancellation
             keep_looking= False
@@ -3784,7 +3793,7 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
                             run_out_of_states = True
                             break
                         else:
-                            kc_mod = canceldistance(Ac_mod,Bc_mod)[0]
+                            kc_mod = cancellation_distance(Ac_mod,Bc_mod)[0]
     
                     kc = kc_mod
                     # Fake an iterable to fool the sum below
@@ -3805,7 +3814,7 @@ def minimal_realization(A,B,C,mu_tol=1e-9):
                         run_out_of_states = True
                         break
                     else:
-                        ko_mod = canceldistance(Ao_mod,Bo_mod)[0]
+                        ko_mod = cancellation_distance(Ao_mod,Bo_mod)[0]
 
                 
                 ko = ko_mod
@@ -3961,7 +3970,7 @@ def haroldker(N,side='right'):
 
 #TODO : type checking for both.
 
-def ssconcat(G):
+def concatenate_state_matrices(G):
     """
     Takes a State() model as input and returns the matrix 
     
@@ -3981,51 +3990,13 @@ def ssconcat(G):
 
     """
     if not isinstance(G,State):
-        raise TypeError('ssconcat() works on state representations, '
+        raise TypeError('concatenate_state_matrices() works on state representations, '
         'but I found \"{0}\" object instead.'.format(type(G).__name__))
     H = np.vstack((np.hstack((G.a,G.b)),np.hstack((G.c,G.d))))
     return H
 
-# TODO : Add slicing with respect to D matrix
-def ssslice(H,n):
-    """
-    Takes a two dimensional array of size :math:`p\\times m` and slices into 
-    four parts such that 
-    
-    .. math::
-    
-        \\left[\\begin{array}{c|c}A&B\\\\C&D\\end{array}\\right]
 
-    For non-square slicing, see the method ``matrixslice()``
-    
-    Parameters
-    ----------
-    
-    M : 2D Numpy array
-    
-    n : int
-        For a meaningful output, this number must staisfy :math:`n<p,m`.
-    
-    Returns
-    -------
-    
-    A : 2D Numpy array
-        The upper left :math:`n\\times n` block of :math:`M`
-
-    B : 2D Numpy array
-        The upper right :math:`n\\times (m-n)` block of :math:`M`
-
-    C : 2D Numpy array
-        The lower left :math:`(p-n)\\times n` block of :math:`M`
-        
-    D : 2D Numpy array
-        The lower right :math:`(p-n)\\times (m-n)` block of :math:`M`
-
-    """
-#    return H[:n,:n],H[:n,n:],H[n:,:n],H[n:,n:]
-    return matrixslice(H,(n,n))
-
-def matrixslice(M,M11shape):
+def matrix_slice(M,M11shape):
     """
     Takes a two dimensional array of size :math:`p\\times m` and slices into 
     four parts such that 
@@ -4065,7 +4036,7 @@ def matrixslice(M,M11shape):
     return M[:p,:m],M[:p,m:],M[p:,:m],M[p:,m:]
 
 # Returns the nth column of an identity matrix as a 2D numpy array.
-def eyecolumn( width , nth=0 ):
+def e_i( width , nth=0 ):
     """
     Returns the ``nth`` column of the identity matrix with shape 
     ``(width,width)``. Slicing is permitted with the ``nth`` parameter.
@@ -4372,9 +4343,9 @@ def haroldlcm(*args,compute_multipliers=True,cleanup_threshold=1e-9):
     # Get the index number of the ones that are popped
     poppedindex = tuple([ind for ind,x in enumerate(args) if x.size==1])
     a = sp.linalg.block_diag(*tuple(map(haroldcompanion,poppedargs))) # Companion A
-    b = np.concatenate(tuple(map(lambda x: eyecolumn(x-1,-1),
+    b = np.concatenate(tuple(map(lambda x: e_i(x-1,-1),
                                  [z.size for z in poppedargs])))# Companion B
-    c = sp.linalg.block_diag(*tuple(map(lambda x: eyecolumn(x-1,0).T,
+    c = sp.linalg.block_diag(*tuple(map(lambda x: e_i(x-1,0).T,
                                  [z.size for z in poppedargs])))
     n = a.shape[0]
 
@@ -5193,7 +5164,7 @@ def matrix_printer(M , num_format="f" , var_name=None):
     output string. 
     
     This function is inspired by 
-    [Lee Archer's gist](https://gist.github.com/lbn/836313e283f5d47d2e4e)
+    `Lee Archer's gist <https://gist.github.com/lbn/836313e283f5d47d2e4e>`__
     
     Parameters
     ----------

@@ -12,10 +12,14 @@ Contents:
 
    intro
    preflight
-   primer
    tut_models
    tut_convert
    tut_discrete
+   tut_kalman
+   tut_model_props
+   tut_polyfuncs
+   tut_freq_domain
+   tut_solvers
 
    
 Additional Information

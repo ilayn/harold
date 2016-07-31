@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Getting Started &mdash; harold 0.1.1a5 documentation</title>
+  <title>Getting Started &mdash; harold 0.1.1b1 documentation</title>
   
 
   
@@ -30,8 +30,8 @@
   
 
   
-    <link rel="top" title="harold 0.1.1a5 documentation" href="index.html"/>
-        <link rel="next" title="A primer to harold" href="primer.html"/>
+    <link rel="top" title="harold 0.1.1b1 documentation" href="index.html"/>
+        <link rel="next" title="Model Objects" href="tut_models.html"/>
         <link rel="prev" title="Introduction" href="intro.html"/> 
 
   
@@ -87,12 +87,19 @@
 <li class="toctree-l2"><a class="reference internal" href="#python-and-its-scientific-stack">Python and its scientific stack</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-and-its-strange-syntax">Python and its strange syntax</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#initializing-harold">Initializing harold</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">A primer to harold</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Polynomial Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Frequency Domain Computations</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
@@ -291,6 +298,95 @@ some matlab too.</p>
 <p>Now assuming that you have mastered the art of finding your way through
 gazillion of blogs, filtering StackOverflow nerd anger, decrypting the
 documentation of Numpy, let&#8217;s start doing some familiar things in harold.</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Finish this as soon as possible</p>
+</div>
+</div>
+<div class="section" id="a-humble-advice-to-python-beginners">
+<h2>A humble advice to Python beginners<a class="headerlink" href="#a-humble-advice-to-python-beginners" title="Permalink to this headline">¶</a></h2>
+<p>Since Python is a programming language and not a front-end software, the
+code we write usually needs to be executed somehow. Without going into
+the details, Python code needs to be interpreted (similar to matlab)
+as opposed to compiling C code.</p>
+<p>The native way of doing this is simply typing <code class="docutils literal"><span class="pre">python</span></code> on the command
+line and making it a Python interpreter. However, this is hardly ever
+useful for any practical purposes, let alone resuming or reproducing
+previous work. Having said that, you don&#8217;t need a scary Visual blabla
+suite that looks like an airplane cockpit either. There are many options
+to make your life easier.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The first option is simply working with an editor, e.g., <a class="reference external" href="https://pythonhosted.org/spyder/">Spyder</a>
+(I had a very positive experience with it), Eclipse, PyCharm, vim,
+emacs so on.</li>
+<li>Using the recent and very very powerful <a class="reference external" href="http://jupyter.org">Jupyter</a> (previously known</li>
+</ol>
+<blockquote>
+<div>as IPython) which converts your web browser into a mathematica like
+environment with explicit cells but you can embed even Youtube videos.
+Moreover, it also works on the command window too which is not limited
+to Python, but as the name implies Julia, Python, R and so on.</div></blockquote>
+</div></blockquote>
+<p>I would strongly recommend Jupyter notebook option. It also makes sharing
+your work with others extremely easy. Please follow the link to Jupyter
+and install accordingly to your liking.</p>
+<blockquote>
+<div></div></blockquote>
+</div>
+<div class="section" id="initializing-harold">
+<h2>Initializing harold<a class="headerlink" href="#initializing-harold" title="Permalink to this headline">¶</a></h2>
+<p>Once you have managed to make Jupyter work you will have to import harold
+as a library. And when you do you have to access the function names properly
+depending on how you imported harold.</p>
+<p>This point is a pretty confusing and a source for heated arguments but I&#8217;ll
+just cut to the chase. Almost all proper programming languages involve the
+concept of <strong>namespaces</strong> (you guess correctly, matlab doesn&#8217;t have this).
+Sticking to the part that is relevant for us, this concept actually makes
+it possible to attach all the function names to a particular name family
+which is represented by the dot notation e.g.,
+<code class="docutils literal"><span class="pre">mypackage.myfunction.myattribute</span> <span class="pre">=</span> <span class="pre">45</span></code> etc.</p>
+<p>One obvious reason for this is that separate name families avoid name
+clashes which is a nightmare in matlab if you have two folders on the
+path and both have the variants of the same function. You can never be
+sure which one matlab is going to read if you decide to call this
+function from somewhere else.</p>
+<p>Long story short when you import harold you can simply write on top of
+your notebook</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span>
+</pre></div>
+</div>
+<p>then it is possible to access the functions with the <code class="docutils literal"><span class="pre">harold.</span></code> prefix
+such as, say, for frequency response calculations:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">harold</span><span class="o">.</span><span class="n">frequency_response</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Alternatively, you can use an abbreviation for the package name</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span> <span class="k">as</span> <span class="nn">har</span>
+</pre></div>
+</div>
+<p>and then you can access the functions with <code class="docutils literal"><span class="pre">har.</span></code> prefix. Lastly,
+there is another way which is, as is for almost everything involving
+professional programmers, another battlefield. You can basically decide
+to skip the namespace and import all functions with their original name
+to the parent namespace:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>This will scan the harold library and import every object whose name
+doesn&#8217;t start with <code class="docutils literal"><span class="pre">_</span></code> or <code class="docutils literal"><span class="pre">__</span></code>. For interactive notebooks, this
+is pretty convenient if you are not importing libraries that have
+similar function names (in turn, you can never be sure).</p>
+<p>Conclusion, if you don&#8217;t have any worries about name clashes use the
+last syntax. The typical first cell of the notebook is the importing
+declarations. Here is the boilerplate code to start with:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>You can of course extend this to your liking with your own packages.
+Finally, let&#8217;s do some control stuff</p>
 </div>
 </div>
 
@@ -301,7 +397,7 @@ documentation of Numpy, let&#8217;s start doing some familiar things in harold.<
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="primer.html" class="btn btn-neutral float-right" title="A primer to harold" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tut_models.html" class="btn btn-neutral float-right" title="Model Objects" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="intro.html" class="btn btn-neutral" title="Introduction" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -313,7 +409,7 @@ documentation of Numpy, let&#8217;s start doing some familiar things in harold.<
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2015, Ilhan Polat.
+        &copy; Copyright 2016, Ilhan Polat.
 
     </p>
   </div>
@@ -335,7 +431,7 @@ documentation of Numpy, let&#8217;s start doing some familiar things in harold.<
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.1.1a5',
+            VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

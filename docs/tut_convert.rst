@@ -1,6 +1,11 @@
 Conversion of Dynamic Models
 ============================
 
+.. warning:: The naming convention of these functions has not been 
+    settled yet. So some underscores might go in and the names can 
+    change until the release. 
+
+
 From State() to Transfer()
 --------------------------
 Suppose we are given a ``State()`` model and we would like 
@@ -16,10 +21,13 @@ Let's take the conversion example from
 
 We first define the state model::
 
-    G = State([[0,1,0,0],[0,-0.1818,2.6727,0],[0,0,0,1],[0,-4.545,31.1818,0]],
-              [[0],[1.8182],[0],[4.5455]],
-              eyecolumn(4,[0,2]).T # takes the first and third column of I
-            )# zero D matrix is implied if omitted
+    G = State([[0,    1  ,   0   ,0],
+               [0,-0.1818,2.6727 ,0],
+               [0,    0  ,   0   ,1],
+               [0, -4.545,31.1818,0]],
+              [[0],[1.8182],[0],[4.5455]], # B matrix
+              eyecolumn(4,[0,2]).T # the first and third column of 4x4 identity matrix
+            )
 
 Then we use the conversion function ::
 
@@ -53,9 +61,6 @@ instead of a model.
     general, this problem is numerically very rich with strange pathological
     cases hence a post-inspection is always a good idea. 
 
-.. warning:: The naming convention of these functions has not been 
-    settled yet. So some underscores might go in and the names can 
-    change until the proper release is published. 
     
 
 From ``Transfer()`` to ``State()``
@@ -73,7 +78,7 @@ of a full state model::
 
 If we actually check the resulting state model matrices, ::
 
-    ssconcat(H)# Combines the state matrices into a larger matrix
+    concatenate_state_matrices(H)# Combines the state matrices into a larger matrix
 
     array([[  0.        ,   1.        ,   0.        ,   0.        ,   0.        ],
            [  0.        ,   0.        ,   1.        ,   0.        ,   0.        ],
@@ -84,8 +89,7 @@ If we actually check the resulting state model matrices, ::
 
 we can get a hint about the methodology from the companion matrix structure. 
 For SISO models, the procedure is given elsewhere in most textbooks. For the 
-MIMO models, the procedure is a variant of the method given in  
-W. A. Wolowich, *Linear Multivariable Systems*, Springer, 1974 (Section 4.4). 
+MIMO models, the procedure is a variant of the method given in [#f1]_
 
 The minimality of the resulting model is guaranteed for the SISO and single
 row/column models. If the model has more inputs **and** ouputs than one then
@@ -102,4 +106,4 @@ in practice.
 .. note:: For both conversion functions, the discretization information is 
     preserved on the resulting model. 
 
-
+.. [#f1] W.A. Wolowich, *Linear Multivariable Systems*, Springer, 1974 (Section 4.4). 
