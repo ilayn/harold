@@ -18,7 +18,7 @@ import os
 import shlex
 import mock
 
-MOCK_MODULES = ['tabulate', 'scipy']
+MOCK_MODULES = ['tabulate']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
