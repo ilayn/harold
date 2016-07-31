@@ -1,5 +1,6 @@
 name: py35
 dependencies:
+- matplotlib>=1.4
 - pip=8.1.1=py35_0
 - python=3.5.1=0
 - readline=6.2=2
@@ -8,4 +9,4 @@ dependencies:
 - pip:
   - momoko>=2.2.3
   - psycopg2>=2.6.1
-  - tornado==4.3
+  - tornado>=4.1
