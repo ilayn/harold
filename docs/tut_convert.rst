@@ -26,7 +26,7 @@ We first define the state model::
                [0,    0  ,   0   ,1],
                [0, -4.545,31.1818,0]],
               [[0],[1.8182],[0],[4.5455]], # B matrix
-              eyecolumn(4,[0,2]).T # the first and third column of 4x4 identity matrix
+              e_i(4,[0,2]).T # the first and third column of 4x4 identity matrix
             )
 
 Then we use the conversion function ::

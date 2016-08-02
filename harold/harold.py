@@ -5164,7 +5164,7 @@ def matrix_printer(M , num_format="f" , var_name=None):
     output string. 
     
     This function is inspired by 
-    `Lee Archer's gist <https://gist.github.com/lbn/836313e283f5d47d2e4e>`
+    `Lee Archer's gist <https://gist.github.com/lbn/836313e283f5d47d2e4e>`__
     
     Parameters
     ----------
@@ -6096,12 +6096,12 @@ def _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m ):
 
     P = np.empty(( 2*n+m , 2*n + m),dtype=float)
     P[ :n    , :n    ] = A
-    P[ :n    , n:2*n ] = np.zeros(( n , n ))
+    P[ :n    , n:2*n ] = 0.
     P[ :n    , 2*n:  ] = B
     P[ n:2*n , :n    ] = Q
     P[ n:2*n , n:2*n ] = A.T
-    P[ n:2*n , 2*n:  ] = np.zeros_like(B) if S is None else S.T
-    P[ 2*n:  , :n    ] = np.zeros_like(B) if S is None else S
+    P[ n:2*n , 2*n:  ] = 0. if S is None else S.T
+    P[ 2*n:  , :n    ] = 0. if S is None else S
     P[ 2*n:  , n:2*n ] = B.T
     P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
     
@@ -6111,8 +6111,8 @@ def _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m ):
         Q = sp.linalg.block_diag( E , -E.T , np.zeros_like(R) )
 
     Pd , Qd , a , b , V , U = sp.linalg.ordqz( P , Q , sort = 'lhp' ,
-                                              overwrite_a=True,
-                                              overwrite_b=True,
+                                              overwrite_a=True ,
+                                              overwrite_b=True ,
                                               check_finite=False )
     
     # U , V is given such that P , Q = V ( Pd , Pd ) U.T 
@@ -6133,13 +6133,13 @@ def _solve_discrete_generalized_riccati( A , B , Q , R , E , S , n , m):
 
     P = np.empty(( 2*n+m , 2*n + m),dtype=float)
     P[ :n    , :n    ] = A
-    P[ :n    , n:2*n ] = np.zeros(( n , n ))
+    P[ :n    , n:2*n ] = 0.
     P[ :n    , 2*n:  ] = B
     P[ n:2*n , :n    ] = Q
     P[ n:2*n , n:2*n ] = np.eye(n) if E is None else E.T
-    P[ n:2*n , 2*n:  ] = np.zeros_like(B) if S is None else S.T
-    P[ 2*n:  , :n    ] = np.zeros_like(B) if S is None else S
-    P[ 2*n:  , n:2*n ] = np.zeros_like(B)
+    P[ n:2*n , 2*n:  ] = 0. if S is None else S.T
+    P[ 2*n:  , :n    ] = 0. if S is None else S
+    P[ 2*n:  , n:2*n ] = 0.
     P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
     
     Q = np.zeros_like(P)
