@@ -5164,7 +5164,7 @@ def matrix_printer(M , num_format="f" , var_name=None):
     output string. 
     
     This function is inspired by 
-    `Lee Archer's gist <https://gist.github.com/lbn/836313e283f5d47d2e4e>`__
+    `Lee Archer's gist <https://gist.github.com/lbn/836313e283f5d47d2e4e>`
     
     Parameters
     ----------
@@ -6005,3 +6005,155 @@ def _solve_discrete_lyapunov( A , Y ):
                      As[thisr:nextr , nextr:nextc].T @ XA_of_row[:,ugly_slice] 
 
     return S @ Xs @ S.T
+
+def riccati_eq_solver( A , B , Q , R = None , E = None , S = None , 
+                      form = 'c'):
+    '''
+    This function solves the Riccati and the generalized Riccati 
+    equations of the form
+    
+    (1)                 X A + A^T X + Q - X B R^(-1) B.T X = 0
+     
+    (1')       A^T X A - X + Q - A^T X B (R + B^T X B)^(-1) B^T X A = 0
+
+    and 
+    
+    (2)    A^T X E + E^T X A − ( E^T X B + S^T ) R^(−1) (B^T X E + S) + Q = 0
+
+    (2') A^T X A − E^T X E − ( A^T X B + S^T ) (BTXB+R)^(−1) (B^T X A + S) + Q = 0
+    
+    for the unknown matrix `X`. The numbered (primed) equations are the 
+    so-called continuous (discrete) time forms. The `form` keyword selects 
+    between the two. 
+    
+
+    Parameters
+    ----------
+    A , B , Q , R , E , S: 
+        #FIXME Missing documentation
+        
+        
+    form : 'c' , 'continuous' , 'd' , 'discrete'
+        The string selector to define which form of Lyapunov equation is 
+        going to be used. 
+
+    Returns
+    -------
+
+    X : nxn numpy array
+        Solution to the selected Riccati equation.
+    '''
+    
+    # Type, size checking
+    A = np.atleast_2d(A).astype(float)
+    B = np.atleast_2d(B).astype(float)
+    Q = np.atleast_2d(Q).astype(float)
+    R = None if R is None else np.atleast_2d(R).astype(float)
+    E = None if E is None else np.atleast_2d(E).astype(float)
+    S = None if S is None else np.atleast_2d(S).astype(float)
+
+    if form not in ('c','continuous','d','discrete'):
+        raise ValueError('The keyword "form" accepts only the '
+                                  'following choices:\n'
+                                  "''c','continuous','d','discrete'")
+            
+    if not np.equal(*A.shape):
+        raise ValueError('A matrix should be square but has '
+                         'the shape {}'.format(A.shape))
+
+    if not np.equal(*Q.shape):
+        raise ValueError('Q matrix should be square but has '
+                     'the shape {}'.format(Q.shape))
+    
+    n , m = A.shape[0] , B.shape[1]
+
+    if B.shape[0] != n:
+        raise ValueError('A and B matrices should have the same number '
+                         'of rows. However A has {} and B has {} columns.'
+                         ''.format(A.shape[0],B.shape[0]))
+    
+    if Q.shape[0] != n:
+        raise ValueError('A and Q must have identical shape however '
+                         'A has the shape {} and Q has {}.'
+                         ''.format(A.shape,Q.shape))
+
+
+    if form in ('c','continuous'):
+        X_sol = _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m)
+    else:
+        X_sol = _solve_discrete_generalized_riccati( A , B , Q , R , E , S , n , m )
+
+    return X_sol
+
+
+def _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m ):
+    '''
+     Forms the continuous time Extended Hamiltonian pencil
+                        [ A   0    B ]             [ E   0    0 ]
+        P - \lambda Q = [ Q  A.T  S.T] - \lambda * [ 0  E.T   0 ]
+                        [ S  B.T   R ]             [ 0   0    0 ]
+     '''
+
+    P = np.empty(( 2*n+m , 2*n + m),dtype=float)
+    P[ :n    , :n    ] = A
+    P[ :n    , n:2*n ] = np.zeros(( n , n ))
+    P[ :n    , 2*n:  ] = B
+    P[ n:2*n , :n    ] = Q
+    P[ n:2*n , n:2*n ] = A.T
+    P[ n:2*n , 2*n:  ] = np.zeros_like(B) if S is None else S.T
+    P[ 2*n:  , :n    ] = np.zeros_like(B) if S is None else S
+    P[ 2*n:  , n:2*n ] = B.T
+    P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
+    
+    if E is None:
+        Q = sp.linalg.block_diag( np.eye(n) , -np.eye(n) , np.zeros_like(R) )
+    else:
+        Q = sp.linalg.block_diag( E , -E.T , np.zeros_like(R) )
+
+    Pd , Qd , a , b , V , U = sp.linalg.ordqz( P , Q , sort = 'lhp' ,
+                                              overwrite_a=True,
+                                              overwrite_b=True,
+                                              check_finite=False )
+    
+    # U , V is given such that P , Q = V ( Pd , Pd ) U.T 
+    if E is None:
+        X = np.linalg._umath_linalg.solve( U[ :n , :n ].T , U[ n:2*n , :n ].T )
+    else:
+        X = np.linalg._umath_linalg.solve( E.T @ U[ :n , :n ].T,U[ n:2*n , :n ].T)
+    
+    return X
+
+def _solve_discrete_generalized_riccati( A , B , Q , R , E , S , n , m):
+    '''
+     Discrete time Extended Hamiltonian pencil
+                        [ A   0    B ]             [ E   0    0 ]
+        M - \lambda N = [ Q  E.T  S.T] - \lambda * [ 0  A.T   0 ]
+                        [ S   0    R ]             [ 0  B.T   0 ]
+    '''
+
+    P = np.empty(( 2*n+m , 2*n + m),dtype=float)
+    P[ :n    , :n    ] = A
+    P[ :n    , n:2*n ] = np.zeros(( n , n ))
+    P[ :n    , 2*n:  ] = B
+    P[ n:2*n , :n    ] = Q
+    P[ n:2*n , n:2*n ] = np.eye(n) if E is None else E.T
+    P[ n:2*n , 2*n:  ] = np.zeros_like(B) if S is None else S.T
+    P[ 2*n:  , :n    ] = np.zeros_like(B) if S is None else S
+    P[ 2*n:  , n:2*n ] = np.zeros_like(B)
+    P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
+    
+    Q = np.zeros_like(P)
+    Q[ :n    , :n   ] = E
+    Q[ n:2*n , n:2*n] = A.T
+    Q[ 2*n:  , n:2*n] = B.T
+
+    # U , V is given such that P , Q = V ( Pd , Pd ) U.T 
+    Pd , Qd , a , b , V , U = sp.linalg.ordqz( P , Q , sort = 'iuc' ,
+                                              overwrite_a=True,
+                                              overwrite_b=True,
+                                              check_finite=False )
+    
+
+    return np.linalg._umath_linalg.solve( U[ :n , :n ] , U[ :n , n:2*n ] )
+
+    
