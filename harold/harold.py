@@ -4,7 +4,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015 Ilhan Polat
+Copyright (c) 2015,2016 Ilhan Polat
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -6007,7 +6007,7 @@ def _solve_discrete_lyapunov( A , Y ):
     return S @ Xs @ S.T
 
 def riccati_eq_solver( A , B , Q , R = None , E = None , S = None , 
-                      form = 'c'):
+                      form = 'c' , balance = True ):
     '''
     This function solves the Riccati and the generalized Riccati 
     equations of the form
@@ -6052,11 +6052,11 @@ def riccati_eq_solver( A , B , Q , R = None , E = None , S = None ,
     E = None if E is None else np.atleast_2d(E).astype(float)
     S = None if S is None else np.atleast_2d(S).astype(float)
 
-    if form not in ('c','continuous','d','discrete'):
+    if form.lower() not in ('c','continuous','d','discrete'):
         raise ValueError('The keyword "form" accepts only the '
                                   'following choices:\n'
                                   "''c','continuous','d','discrete'")
-            
+    
     if not np.equal(*A.shape):
         raise ValueError('A matrix should be square but has '
                          'the shape {}'.format(A.shape))
@@ -6078,82 +6078,323 @@ def riccati_eq_solver( A , B , Q , R = None , E = None , S = None ,
                          ''.format(A.shape,Q.shape))
 
 
-    if form in ('c','continuous'):
-        X_sol = _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m)
+    if form.lower() in ('c','continuous'):
+        X_sol = _solve_continuous_generalized_riccati( A , B , Q , R , E , S , 
+                                                      n , m , balance)
     else:
-        X_sol = _solve_discrete_generalized_riccati( A , B , Q , R , E , S , n , m )
+        X_sol = _solve_discrete_generalized_riccati( A , B , Q , R , E , S , 
+                                                    n , m , balance)
 
     return X_sol
 
-
-def _solve_continuous_generalized_riccati( A , B , Q , R , E , S , n , m ):
+def _solve_continuous_generalized_riccati( A , B , Q , R , E , S , 
+                                          n , m , balanced = True ):
     '''
      Forms the continuous time Extended Hamiltonian pencil
-                        [ A   0    B ]             [ E   0    0 ]
-        P - \lambda Q = [ Q  A.T  S.T] - \lambda * [ 0  E.T   0 ]
-                        [ S  B.T   R ]             [ 0   0    0 ]
+                        [ A    0    B ]             [ E   0    0 ]
+        H - \lambda J = [-Q  -A.T   S ] - \lambda * [ 0  E.T   0 ]
+                        [ S.T B.T   R ]             [ 0   0    0 ]
      '''
 
-    P = np.empty(( 2*n+m , 2*n + m),dtype=float)
-    P[ :n    , :n    ] = A
-    P[ :n    , n:2*n ] = 0.
-    P[ :n    , 2*n:  ] = B
-    P[ n:2*n , :n    ] = Q
-    P[ n:2*n , n:2*n ] = A.T
-    P[ n:2*n , 2*n:  ] = 0. if S is None else S.T
-    P[ 2*n:  , :n    ] = 0. if S is None else S
-    P[ 2*n:  , n:2*n ] = B.T
-    P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
+    H = np.empty(( 2*n+m , 2*n + m),dtype=float)
+    H[ :n    , :n    ] =  A
+    H[ :n    , n:2*n ] =  0.
+    H[ :n    , 2*n:  ] =  B
+    H[ n:2*n , :n    ] = -Q
+    H[ n:2*n , n:2*n ] = -A.T
+    H[ n:2*n , 2*n:  ] =  0. if S is None else - S.T
+    H[ 2*n:  , :n    ] =  0. if S is None else S
+    H[ 2*n:  , n:2*n ] =  B.T
+    H[ 2*n:  , 2*n:  ] =  np.eye(m) if R is None else R
     
     if E is None:
-        Q = sp.linalg.block_diag( np.eye(n) , -np.eye(n) , np.zeros_like(R) )
+        J = sp.linalg.block_diag( np.eye(2 * n) , np.zeros_like(R) )
     else:
-        Q = sp.linalg.block_diag( E , -E.T , np.zeros_like(R) )
+        J = sp.linalg.block_diag( E , E.T , np.zeros_like(R) )
 
-    Pd , Qd , a , b , V , U = sp.linalg.ordqz( P , Q , sort = 'lhp' ,
-                                              overwrite_a=True ,
-                                              overwrite_b=True ,
-                                              check_finite=False )
-    
+        
+    if balanced:
+        
+        # Crossweight them approximately if E is present. 
+        
+        # xGEBAL does not remove the diagonals before scaling hence
+        # we remove manually and get a cross weighting. Also to avoid
+        # scaling destroying the Hamiltonian structure, we follow 
+        # Peter Benner, "Symplectic Balancing of Hamiltonian Matrices"
+        if E is None:
+            M = np.abs(H - np.diag(np.diag(H)))
+        else:
+            H_skew = H - np.diag(np.diag(H))
+            norm_h = np.linalg.norm(A,1) + np.linalg.norm(A,np.inf)
+            J_skew = J - np.diag(np.diag(J))
+            norm_j = np.linalg.norm(E,1) + np.linalg.norm(E,np.inf)
+            if norm_h > 0. and norm_j > 0.:
+                M = norm_j * abs(H_skew) + norm_h * abs(J_skew);
+            else:
+                M = abs(H_skew) + abs(J_skew);
+
+        _ , sca , perm = balance(M,separate=1)
+        #Only permute the 2*n x 2*n parts
+        perm = perm[perm<2*n]
+
+        # do we need to bother? 
+        if not np.allclose(sca,np.ones_like(sca)):
+            # Now impose diag(D,inv(D)) from Benner where D is 
+            # square root of s_i/s_(n+i) for i=0,.... 
+            sca = np.log2(sca)
+            s = np.round((sca[n:2*n] - sca[:n])/2)
+            sca = 2 ** np.r_[s , -s , sca[2*n:]]
+            # Elementwise multiplication. 
+            elwisescale = sca[:,np.newaxis] @ np.reciprocal(sca)[np.newaxis,:]
+
+            H *= elwisescale
+            J *= elwisescale
+
+    # Deflate the pencil to 2n x 2n ala van Dooren's compression eq.(55)
+    # in DOI:10.1137/0902010
+    q , r = sp.linalg.qr(H[:,-m:])
+    H = q[:,m:].T @ H[:,:2*n]
+    J = q[:2*n,m:].T @ J[:2*n,:2*n]
+
+#    with np.errstate(divide='ignore'):
+#        with np.errstate(invalid='ignore'):
+    Pd , Qd , *_ , V , U = sp.linalg.ordqz( H , J , sort = 'lhp' ,
+                                      overwrite_a=True ,
+                                      overwrite_b=True ,
+                                      check_finite=True )
     # U , V is given such that P , Q = V ( Pd , Pd ) U.T 
-    if E is None:
-        X = np.linalg._umath_linalg.solve( U[ :n , :n ].T , U[ n:2*n , :n ].T )
-    else:
-        X = np.linalg._umath_linalg.solve( E.T @ U[ :n , :n ].T,U[ n:2*n , :n ].T)
-    
-    return X
+    U00 = U[  :n   , :n ]
+    U10 = U[ n:2*n , :n ]
 
-def _solve_discrete_generalized_riccati( A , B , Q , R , E , S , n , m):
+    if E is None:
+        up , ul , uu = sp.linalg.lu(U00)
+#        X = U10 @ np.linalg.inv(uu) @ np.linalg.inv(ul) @ up.T
+        X = np.linalg._umath_linalg.solve(
+                    ul.T,np.linalg._umath_linalg.solve(uu.T,U10.T)).T @ up.T
+        if balanced:
+            X *= sca[:n,np.newaxis] @ sca[np.newaxis,:n]
+
+    else:
+        # TODO add QR decomp of E
+        X = np.linalg._umath_linalg.solve( E.T @ U00.T , U10.T )
+    
+    return (X + X.T)/2
+
+def _solve_discrete_generalized_riccati( A , B , Q , R , E , S , 
+                                        n , m , balanced = True):
     '''
      Discrete time Extended Hamiltonian pencil
                         [ A   0    B ]             [ E   0    0 ]
-        M - \lambda N = [ Q  E.T  S.T] - \lambda * [ 0  A.T   0 ]
-                        [ S   0    R ]             [ 0  B.T   0 ]
+        H - \lambda J = [-Q  E.T  -S ] - \lambda * [ 0  A.T   0 ]
+                        [ S   0    R ]             [ 0 -B.T   0 ]
     '''
-
-    P = np.empty(( 2*n+m , 2*n + m),dtype=float)
-    P[ :n    , :n    ] = A
-    P[ :n    , n:2*n ] = 0.
-    P[ :n    , 2*n:  ] = B
-    P[ n:2*n , :n    ] = Q
-    P[ n:2*n , n:2*n ] = np.eye(n) if E is None else E.T
-    P[ n:2*n , 2*n:  ] = 0. if S is None else S.T
-    P[ 2*n:  , :n    ] = 0. if S is None else S
-    P[ 2*n:  , n:2*n ] = 0.
-    P[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
     
-    Q = np.zeros_like(P)
-    Q[ :n    , :n   ] = E
-    Q[ n:2*n , n:2*n] = A.T
-    Q[ 2*n:  , n:2*n] = B.T
+    H = np.empty(( 2*n + m , 2*n + m ),dtype=float)
+    H[ :n    , :n    ] = A
+    H[ :n    , n:2*n ] = 0.
+    H[ :n    , 2*n:  ] = B
+    H[ n:2*n , :n    ] = -Q
+    H[ n:2*n , n:2*n ] = np.eye(n) if E is None else E.T
+    H[ n:2*n , 2*n:  ] = 0. if S is None else -S
+    H[ 2*n:  , :n    ] = 0. if S is None else S.T
+    H[ 2*n:  , n:2*n ] = 0.
+    H[ 2*n:  , 2*n:  ] = np.eye(m) if R is None else R
+    
+    J = np.zeros_like(H)
+    J[ :n    , :n   ] = np.eye(n) if E is None else E
+    J[ n:2*n , n:2*n] = A.T
+    J[ 2*n:  , n:2*n] = -B.T
 
-    # U , V is given such that P , Q = V ( Pd , Pd ) U.T 
-    Pd , Qd , a , b , V , U = sp.linalg.ordqz( P , Q , sort = 'iuc' ,
-                                              overwrite_a=True,
-                                              overwrite_b=True,
-                                              check_finite=False )
+
+
+    if balanced:
+        
+        # Crossweight them approximately if E is present. 
+        
+        # xGEBAL does not remove the diagonals before scaling hence
+        # we remove manually and get a cross weighting. Also to avoid
+        # scaling destroying the Hamiltonian structure, we follow 
+        # Peter Benner, "Symplectic Balancing of Hamiltonian Matrices"
+        if E is None:
+            M = np.abs(H - np.diag(np.diag(H)))
+        else:
+            H_skew = H - np.diag(np.diag(H))
+            norm_h = np.linalg.norm(A,1) + np.linalg.norm(E,np.inf)
+            J_skew = J - np.diag(np.diag(J))
+            norm_j = np.linalg.norm(E,1) + np.linalg.norm(A,np.inf)
+            if norm_h > 0. and norm_j > 0.:
+                M = norm_j * abs(H_skew) + norm_h * abs(J_skew);
+            else:
+                M = abs(H_skew) + abs(J_skew);
+
+        _ , sca , perm = balance(M,separate=1)
+        #Only permute the 2*n x 2*n parts
+        perm = perm[perm<2*n]
+
+        # do we need to bother? 
+        if not np.allclose(sca,np.ones_like(sca)):
+            # Now impose diag(D,inv(D)) from Benner where D is 
+            # square root of s_i/s_(n+i) for i=0,.... 
+            sca = np.log2(sca)
+            s = np.round((sca[n:2*n] - sca[:n])/2)
+            sca = 2 ** np.r_[s , -s , sca[2*n:]]
+            # Elementwise multiplication. 
+            elwisescale = sca[:,np.newaxis] @ np.reciprocal(sca)[np.newaxis,:]
+
+            H *= elwisescale
+            J *= elwisescale
+        
+    # Deflate the pencil to 2n x 2n ala van Dooren's compression eq.(55)
+    # in DOI:10.1137/0902010
+    q , r = sp.linalg.qr(H[:,-m:])
+    H = q[:,m:].T @ H[:,:2*n]
+    J = q[:,m:].T @ J[:,:2*n]
+
+    *_ , U = sp.linalg.ordqz( H , J , sort = 'iuc' ,
+                                      overwrite_a=True,
+                                      overwrite_b=True,
+                                      check_finite=False )
+    U00 = U[  :n   , :n ]
+    U10 = U[ n:2*n , :n ]    
+
+    if E is None:
+        up , ul , uu = sp.linalg.lu(U00)
+        X = np.linalg._umath_linalg.solve(
+                    ul.T,np.linalg._umath_linalg.solve(uu.T,U10.T)).T @ up.T
+        if balanced:
+            X *= sca[:n,np.newaxis] @ sca[np.newaxis,:n]
+    else:
+        # TODO add QR decomp of E
+        X = np.linalg._umath_linalg.solve( E.T @ U00.T , U10.T )        
+
+    return (X + X.T) / 2
+
+
+
+def balance( A , permute=True , separate = False , 
+                 silent=False , overwrite_a=False, scaled_block=False ):
+    """
+    A wrapper around LAPACK's xGEBAL family. The balancing provides a norm
+    reduction via a similarity transformation. Moreover, if selected, the 
+    matrix is first permuted to isolate the upper triangular parts and only 
+    the full part is scaled. 
+    
+    The output argument satisfies the equality ba = T^{-1} * A * T unless
+    the scale and the permutation is requested separately. 
+                    
+    
+    Parameters
+    ----------
+    A : nxn array_like
+        Square data matrix for the balancing.
+        
+    permute : bool
+        The selector to define whether permutation of A is also performed
+        prior to scaling. This swithces between LAPACK string options `B` and
+        `S` in the `xGEBAL` call.
+        
+    separate : bool
+        This switches from returning a full matrix of the transformation
+        to a tuple of two separate 1D permutation and scaling arrays. The 
+        transformation matrix can still be constructed as ::
+            
+            numpy.diag(scale)[perm,:]
+    
+    silent : bool
+        If the keyword argument `silent` is set to True then instead of raising
+        a `ValueError` exception, the info code reported by xGEBAL is 
+        appended to the returned arguments.
+    
+    overwrite_a : bool
+        This is passed to xGEBAL directly. Essentially, overwrites the result
+        to the data. It might increase the space efficiency. See LAPACK manual 
+        for details. This is False by default. 
+        
+    scaled_block : bool
+        This switch adds a tuple of the range of the scaled (sub)block to the 
+        output arguments. Technically, this is the range defined by the 
+        ILO and IHI values of `xGEBAL` (see LAPACK documentation)
+        
+
+
+    Returns
+    -------
+
+    ba : nxn numpy array
+        Balanced matrix 
+    
+    T : nxn numpy array
+        A possibly permuted diagonal matrix whose nonzero entries are signed 
+        integer powers of two to avoid numerical truncation errors. 
+    
+    s , p : 1D numpy arrays
+        If `separate` keyword is set to True then instead of the matrix T,
+        the scaling and the permutation vector is given. 
+        
+    c : tuple
+        The start and the end position of the scaled subblock. The indices 
+        obey the Python slicing rules (first index inclusive, second exclusive). 
+        
+    """
+
+    try:
+        if A.ndim != 2:
+            raise ValueError('{}-dimensional array given. Array must be '
+                             'two-dimensional'.format(A.ndim))
+    except AttributeError:
+        raise ValueError('The argument must be a square 2D numpy array. '
+                         'Instead I got {} object.'
+                         ''.format(type(A).__qualname__))
+                
+    
+    if not np.equal(*A.shape):
+        raise ValueError('The data matrix for balancing should be square.')
     
 
-    return np.linalg._umath_linalg.solve( U[ :n , :n ] , U[ :n , n:2*n ] )
-
     
+    gebal = sp.linalg.get_lapack_funcs(('gebal'),(A,))
+    ba, lo, hi, pp , info = gebal(A, scale=1 , 
+                                     permute=permute , 
+                                     overwrite_a=overwrite_a)
+
+    if info < 0:
+        if not silent:
+            raise ValueError('illegal value in %d-th argument of'
+                             'internal gebal '.format(-info))
+    
+        
+    # Separate the permutations from the scalings and then convert to int
+    s = np.ones_like( pp , dtype=float )
+    s[lo:hi+1] = pp[lo:hi+1]
+
+    pp -= 1
+    pp = pp.astype(int,copy=False)
+    n = A.shape[0]
+    perm = np.arange(n)
+    
+    if hi < n:
+        for ind , x in enumerate(pp[hi+1:][::-1],1):
+            if n-ind == x :
+                continue
+            perm[[x,n-ind]] = perm[[n-ind,x]]
+    
+    if lo > 0:
+        for ind , x in enumerate(pp[:lo]):
+            if ind == x :
+                continue
+            perm[[x,ind]] = perm[[ind,x]]
+
+    s = s[perm]
+
+    if separate :
+        output_args = ( ba , s , perm )
+    else:
+        output_args = ( ba , np.diag(s)[np.argsort(perm),:] )
+        
+    if silent:
+        output_args += tuple(info)
+        
+    if scaled_block:
+        output_args += ((lo,hi+1),)
+        
+    return output_args
