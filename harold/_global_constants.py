@@ -1,4 +1,4 @@
-﻿"""
+"""
 The MIT License (MIT)
 
 Copyright (c) 2016 Ilhan Polat
@@ -21,12 +21,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from ._global_constants import *
-from ._aux_linalg import *
-from ._polynomial_ops import *
-from ._classes import *
-from ._system_funcs import *
-from ._solvers import *
-from ._discrete_funcs import *
-from ._frequency_domain import *
-from ._kalman_ops import *
+_KnownDiscretizationMethods = ('bilinear',
+                               'tustin',
+                               'zoh',
+                               'forward difference',
+                               'forward euler',
+                               'forward rectangular',
+                               'backward difference',
+                               'backward euler',
+                               'backward rectangular',
+                               'lft', '>>', '<<'
+                               )
+
+harold_plot_backend = 'bokeh'
