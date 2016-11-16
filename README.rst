@@ -1,4 +1,4 @@
-|GitHub license| |Join the chat at https://gitter.im/ilayn/harold| 
+[![Build Status](https://travis-ci.org/ilayn/harold.svg?branch=master)](https://travis-ci.org/ilayn/harold) |GitHub license| |Join the chat at https://gitter.im/ilayn/harold| 
 
 harold
 ======
