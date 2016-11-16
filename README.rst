@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ilayn/harold.svg?branch=master)](https://travis-ci.org/ilayn/harold) |GitHub license| |Join the chat at https://gitter.im/ilayn/harold| 
+|Travis-CI| |GitHub license| |Join the chat at https://gitter.im/ilayn/harold| 
 
 harold
 ======
@@ -37,4 +37,5 @@ If you have a question/comment feel free to shoot one to
    :target: https://github.com/ilayn/harold/blob/master/LICENSE
 .. |Join the chat at https://gitter.im/ilayn/harold| image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-
+.. |Travis-CI| image:: https://travis-ci.org/ilayn/harold.svg?branch=master
+    :target: https://travis-ci.org/ilayn/harold
