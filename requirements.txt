@@ -1,3 +1,5 @@
 numpy>=1.8.2
 nose
 scipy>=0.18
+tabulate
+matplotlib
