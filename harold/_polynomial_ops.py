@@ -260,7 +260,7 @@ def haroldgcd(*args):
                       'the dimensions being 1 e.g., (n,1) or (1,n)\narrays.')
     try:
         regular_args = [haroldtrimleftzeros(
-                            np.atleast_1d(np.squeeze(x)).astype(float)
+                            np.atleast_1d(np.squeeze(x))
                             ) for x in args]
     except:
         raise ValueError(not_1d_err_msg)
@@ -404,7 +404,7 @@ def haroldtrimleftzeros(somearray):
     # We trim the leftmost zero entries modeling the absent high-order terms
     # in an array, i.e., [0,0,2,3,1,0] becomes [2,3,1,0]
 
-    arg = np.atleast_2d(somearray).astype(float).flatten()
+    arg = np.atleast_2d(somearray).flatten()
 
     if arg.ndim > 1:
         raise ValueError('The argument is not 1D array-like hence cannot be'

@@ -23,7 +23,8 @@ THE SOFTWARE.
 """
 import numpy as np
 
-__all__ = ['pair_complex_numbers', 'e_i', 'matrix_slice']
+__all__ = ['haroldsvd', 'haroldker', 'pair_complex_numbers',
+           'e_i', 'matrix_slice']
 
 
 def haroldsvd(D, also_rank=False, rank_tol=None):
@@ -297,9 +298,9 @@ def pair_complex_numbers(a, tol=1e-9, realness_tol=1e-9,
         paired_cmplx_part += sorted_array_j*1j
 
         if reals_first:
-            return np.r_[array_r_j[~imagness], paired_cmplx_part]
+            return np.r_[np.sort(array_r_j[~imagness]), paired_cmplx_part]
         else:
-            return np.r_[paired_cmplx_part, array_r_j[~imagness]]
+            return np.r_[paired_cmplx_part, np.sort(array_r_j[~imagness])]
 
 
 def e_i(width, nth=0):
