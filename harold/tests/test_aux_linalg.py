@@ -25,7 +25,7 @@ from harold import (haroldsvd, haroldker, pair_complex_numbers,
                     matrix_slice, e_i)
 import numpy.testing as npt
 from scipy.linalg import block_diag, qr, solve
-from numpy import fliplr, flipud, array, zeros
+from numpy import fliplr, flipud, array, zeros, s_
 from numpy.random import rand, shuffle
 from numpy.testing import assert_equal, assert_almost_equal
 from numpy.testing import assert_raises
@@ -101,7 +101,7 @@ def test_e_i():
                                [0., 1., 1., 1., 0.]])
                         )
 
-    assert_almost_equal(e_i(5, np.s_[1:3]),
+    assert_almost_equal(e_i(5, s_[1:3]),
                         array([[0., 0.],
                                [1., 0.],
                                [0., 1.],
