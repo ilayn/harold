@@ -21,7 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from harold import haroldsvd, haroldker, pair_complex_numbers
+from harold import (haroldsvd, haroldker, pair_complex_numbers,
+                    matrix_slice, e_i)
 import numpy.testing as npt
 from scipy.linalg import block_diag, qr, solve
 from numpy import fliplr, flipud, array, zeros
@@ -85,3 +86,50 @@ def test_cplxpair():
                  1.00000000-1.j, 1.00000000+1.j])
 
     npt.assert_almost_equal(t1, tt1, decimal=7)
+
+
+def test_e_i():
+    assert_almost_equal(e_i(7, 5, output='r'),
+                        array([[0., 0., 0., 0., 0., 1., 0.]])
+                        )
+
+    assert_almost_equal(e_i(5, [0, 4, 4, 4, 1]),
+                        array([[1., 0., 0., 0., 0.],
+                               [0., 0., 0., 0., 1.],
+                               [0., 0., 0., 0., 0.],
+                               [0., 0., 0., 0., 0.],
+                               [0., 1., 1., 1., 0.]])
+                        )
+
+    assert_almost_equal(e_i(5, np.s_[1:3]),
+                        array([[0., 0.],
+                               [1., 0.],
+                               [0., 1.],
+                               [0., 0.],
+                               [0., 0.]])
+                        )
+
+    assert_almost_equal(e_i(5, slice(1, 5, 2), output='r'),
+                        array([[0., 1., 0., 0., 0.],
+                               [0., 0., 0., 1., 0.]])
+                        )
+
+
+def test_matrix_slice():
+    A = array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    a, b, c, d = matrix_slice(A, (1, 1))
+    assert_almost_equal(a, array([[1]]))
+    assert_almost_equal(b, array([[2, 3]]))
+    assert_almost_equal(c, array([[4], [7]]))
+    assert_almost_equal(d, array([[5, 6], [8, 9]]))
+
+    a, b, c, d = matrix_slice(A, (2, 2), 'sw')
+    assert_almost_equal(a, array([[1, 2]]))
+    assert_almost_equal(b, array([[3]]))
+    assert_almost_equal(c, array([[4, 5], [7, 8]]))
+    assert_almost_equal(d, array([[6], [9]]))
+
+    a, b, c, d = matrix_slice(A, (0, 0))
+    assert_almost_equal(d, array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
+    for x in (a, b, c):
+        assert_equal(x.size, 0)

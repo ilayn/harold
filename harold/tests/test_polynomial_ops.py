@@ -30,6 +30,7 @@ from numpy.testing import assert_raises
 
 
 def test_haroldgcd():
+    # Test case 0
     a = array([1, 3, 2])
     b = array([1, 4, 6, 4, 1])
     c = array([0, 1, 1])
@@ -40,7 +41,7 @@ def test_haroldgcd():
     z = haroldgcd(a, b, c, d, e, f)
     assert_almost_equal(w, array([1, 1]))
     assert_almost_equal(z, array([1]))
-
+    # Test case 1
     a = array([1, 4, 6, 6, 5, 2])
     b = array([1, 14, 71, 154, 120])
     c = array(haroldpoly([-2]*10))
@@ -49,6 +50,7 @@ def test_haroldgcd():
 
 
 def test_haroldlcm():
+        # Test the least common multiple
         a, b = haroldlcm(array([1, 3, 0, -4]),
                          array([1, -4, -3, 18]),
                          array([1, -4, 3]),
@@ -56,7 +58,7 @@ def test_haroldlcm():
                          )
         assert_almost_equal(a,
                             array([1., -7., 3., 59., -68., -132., 144.]))
-
+        # Test the multipliers
         for ind, x in enumerate([array([1., -10., 33., -36.]),
                                  array([1., -3., -6., 8.]),
                                  array([1., -3., -12., 20.,  48.]),

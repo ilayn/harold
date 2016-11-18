@@ -303,42 +303,145 @@ def pair_complex_numbers(a, tol=1e-9, realness_tol=1e-9,
             return np.r_[paired_cmplx_part, np.sort(array_r_j[~imagness])]
 
 
-def e_i(width, nth=0):
+def e_i(width, nth=0, output='c'):
     """
-    Returns the ``nth`` column of the identity matrix with shape
+    Returns the ``nth`` column(s) of the identity matrix with shape
     ``(width,width)``. Slicing is permitted with the ``nth`` parameter.
+
+    The output is returned without slicing an intermediate identity matrix
+    hence can be used without allocating the whole array.
+
+    Parameters
+    ----------
+    width : int
+        The size of the identity matrix from which the columns are taken
+    nth : 1D index array
+        A sequence/index expression that selects the requested columns/rows
+        of the identity matrix. The index starts with zero denoting the first
+        column.
+    output : str
+        This switches the shape of the output; if ``'r'`` is given then
+        the rows are returned. The default is ``'c'`` which returns columns
+    Returns
+    -------
+    E : ndarray
+      The resulting row/column subset of the identity matrix
+
+    Examples
+    --------
+    >>>> e_i(7, 5, output='r') # The 5th row of 7x7 identity matrix
+    array([[ 0.,  0.,  0.,  0.,  0.,  1.,  0.]])
+
+    >>>> e_i(5, [0, 4, 4, 4, 1])  # Sequences can also be used
+    array([[ 1.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  1.],
+           [ 0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.],
+           [ 0.,  1.,  1.,  1.,  0.]])
+
+    >>>> e_i(5,np.s_[1:3])  # or NumPy index expressions
+    array([[ 0.,  0.],
+           [ 1.,  0.],
+           [ 0.,  1.],
+           [ 0.,  0.],
+           [ 0.,  0.]])
+
+    >>>> e_i(5,slice(1,5,2),output='r')  # or Python slice objects
+    array([[ 0.,  1.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  1.,  0.]])
+
     """
-    return np.eye(width)[[nth]].T
+    col_inds = np.atleast_1d(np.arange(width)[nth])
+    m = col_inds.size
+    E = np.zeros((width, m)) if output == 'c' else np.zeros((m, width))
+
+    if output == 'c':
+        for ind, x in enumerate(col_inds):
+            E[x, ind] = 1
+    else:
+        for ind, x in enumerate(col_inds):
+            E[ind, x] = 1
+
+    return E
 
 
-def matrix_slice(M, M11shape):
+def matrix_slice(M, corner_shape, corner='nw'):
     """
-    Takes a two dimensional array of size :math:`p\\times m` and slices into
-    four parts such that
+    Takes a two dimensional array ``M`` and slices into four parts dictated
+    by the ``corner_shape`` and the corner string ``corner``.
 
-    .. math::
+            m   n
+        p [ A | B ]
+          [-------]
+        q [ C | D ]
 
-        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
-
-    where the shape of :math:`A` is determined by ``M11shape=(r,q)``.
+    If the given corner and the shape is the whole array then the remaining
+    arrays are returned as ``numpy.array([])``.
 
     Parameters
     ----------
     M : ndarray
-    M11shape : tuple
-        An integer valued 2-tuple for the shape of :math:`(1,1)` block element
-
+        2D input matrix
+    corner_shape : tuple
+        An integer valued 2-tuple for the shape of the corner
+    corner : str
+        Defines which corner should be used to start slicing. Possible
+        options are the compass abbreviations: ``'nw', 'ne', 'sw', 'se'``.
+        The default is the north-west corner.
     Returns
     -------
     A : ndarray
-        The upper left :math:`r\\times q` block of :math:`M`
+        The upper left corner
     B : ndarray
-        The upper right :math:`r\\times (m-q)` block of :math:`M`
+        The upper right corner
     C : ndarray
-        The lower left :math:`(p-r)\\times q` block of :math:`M`
+        The lower left corner
     D : ndarray
-        The lower right :math:`(p-r)\\times (m-q)` block of :math:`M`
+        The lower right corner
 
+    Examples
+    --------
+    >>>> A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+    >>>> matrix_slice(A,(1,1))
+    (array([[1]]),
+     array([[2, 3]]),
+     array([[4],
+            [7]]),
+     array([[5, 6],
+            [8, 9]])
+    )
+
+    >>>> matrix_slice(A, (2,2), 'sw')
+    (array([[1, 2]]),
+     array([[3]]),
+     array([[4, 5],
+            [7, 8]]),
+     array([[6],
+            [9]])
+     )
+
+    >>>> matrix_slice(A, (0, 0))  % empty A
+    (array([], shape=(0, 0), dtype=int32),
+     array([], shape=(0, 3), dtype=int32),
+     array([], shape=(3, 0), dtype=int32),
+     array([[1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]]))
     """
-    p, m = M11shape
+    if corner not in ('ne', 'nw', 'se', 'sw'):
+        raise ValueError('The corner string needs to be one of'
+                         '"ne, nw, se, sw".')
+
+    x, y = M.shape
+    z, w = corner_shape
+    if corner == 'nw':
+        p, m = z, w
+    elif corner == 'ne':
+        p, m = x, y - w
+    elif corner == 'sw':
+        p, m = x - z, w
+    else:
+        p, m = x - z, y - w
+
     return M[:p, :m], M[:p, m:], M[p:, :m], M[p:, m:]
