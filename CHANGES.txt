@@ -1,13 +1,20 @@
 ﻿ChangeLog
 ============
 
+v0.1.1b3
+--------
++ More tests
++ bode, nyquist plots with matplotlib
++ Rewritten the transmission_zeros to improve accuracy
+- Removed the single file and replaced it with modular files.
+- Refactored Riccati solvers to SciPy official repo
+- Lyapunov solver safety net is moot. Created PR #6775 in SciPy
+
 v0.1.1b2
 --------
 + Added Riccati solvers
 + More documentation
-+ Added safety net for lyapunov solvers 
-  in case there is no solution. 
-
++ Added safety net for lyapunov solvers in case there is no solution
 
 v0.1.1b1
 --------
@@ -20,4 +27,3 @@ v0.1.1a
 + Initial versioning and packaging.
 + Adding documentation and Sphinx integration.
 + Basically everything there is.
-

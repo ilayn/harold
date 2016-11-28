@@ -27,7 +27,7 @@ __all__ = ['haroldsvd', 'haroldker', 'pair_complex_numbers',
            'e_i', 'matrix_slice']
 
 
-def haroldsvd(D, also_rank=False, rank_tol=None):
+def haroldsvd(A, also_rank=False, rank_tol=None):
     """
     This is a wrapper/container function of both the SVD decomposition
     and the rank computation. Since the regular rank computation is
@@ -46,7 +46,7 @@ def haroldsvd(D, also_rank=False, rank_tol=None):
     Parameters
     ----------
 
-    D : (m,n) array_like
+    A : (m,n) array_like
         Matrix to be decomposed
     also_rank : bool, optional
         Whether the rank of the matrix should also be reported or not.
@@ -68,15 +68,15 @@ def haroldsvd(D, also_rank=False, rank_tol=None):
 
     """
     try:
-        D = np.atleast_2d(np.array(D))
+        A = np.atleast_2d(np.array(A))
     except TypeError:
         raise TypeError('Incompatible argument, use either list of lists'
                         'or native numpy arrays for svd.')
     except ValueError:
         raise ValueError('The argument cannot be cast as an array.')
 
-    p, m = D.shape
-    u, s, v = np.linalg.svd(D, full_matrices=True)
+    p, m = A.shape
+    u, s, v = np.linalg.svd(A, full_matrices=True)
     diags = np.zeros((p, m))  # Reallocate the s matrix of u,s,v
     for index, svalue in enumerate(s):  # Repopulate the diagoanal with svds
         diags[index, index] = svalue

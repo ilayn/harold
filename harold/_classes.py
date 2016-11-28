@@ -24,8 +24,8 @@ THE SOFTWARE.
 
 import numpy as np
 
-from scipy.linalg import eigvals, block_diag, qz
-
+from scipy.linalg import eigvals, block_diag, qz, norm, qr
+from scipy.linalg.lapack import dgebal
 from tabulate import tabulate
 from itertools import zip_longest, chain
 
@@ -33,8 +33,7 @@ from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
                               haroldpolymul, haroldcompanion,
                               haroldtrimleftzeros, haroldlcm)
 
-from ._aux_linalg import e_i, matrix_slice, haroldsvd
-from ._system_funcs import minimal_realization
+from ._aux_linalg import e_i, haroldsvd
 from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
 
@@ -436,12 +435,16 @@ class Transfer:
                 self.poles = eigvals(zzz[0])
 
         self._set_stability()
+        self._set_representation()
 
     def _set_stability(self):
         if self._SamplingSet == 'Z':
             self._isstable = all(1 > abs(self.poles))
         else:
             self._isstable = all(0 > np.real(self.poles))
+
+    def _set_representation(self):
+        self._repr_type = 'Transfer'
 
     # =================================
     # Transfer class arithmetic methods
@@ -1700,6 +1703,7 @@ class State:
             self.poles = eigvals(self._a)
 
         self._set_stability()
+        self._set_representation()
 
     def _set_stability(self):
         if self._SamplingSet == 'Z':
@@ -1707,8 +1711,11 @@ class State:
         else:
             self._isstable = all(0 > np.real(self.poles))
 
+    def _set_representation(self):
+        self._repr_type = 'State'
+
     # ===========================
-    # ss class arithmetic methods
+    # State class arithmetic methods
     # ===========================
 
     def __neg__(self):
@@ -2146,7 +2153,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
     den : Same as num
 
     """
-    #FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
+    # FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
     if output not in ('system', 'polynomials'):
         raise ValueError('The output can either be "system" or "matrices".\n'
@@ -2168,8 +2175,8 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     if it_is_gain:
         return Transfer(D)
-
-    A, B, C = minimal_realization(A, B, C)
+    # FIXME: Following causes a circular import
+    #    A, B, C = minimal_realization(A, B, C)
     if A.size == 0:
         if output is 'polynomials':
             return D, np.ones_like(D)
@@ -2305,7 +2312,6 @@ def transfer_to_state(*tf_or_numden, output='system'):
 
     # Check if it is just a gain
     if it_is_gain:
-        empty_size = max(m, p)
         A = np.array([], dtype=float)
         B = np.array([], dtype=float)
         C = np.array([], dtype=float)
@@ -2488,8 +2494,8 @@ def transfer_to_state(*tf_or_numden, output='system'):
         if is_ct:
             return (A, B, C, D) if output == 'matrices' else State(A, B, C, D)
         else:
-            return (A, B, C, D) if output == 'matrices' else State(A, B, C, D,
-                                                            G.SamplingPeriod)
+            return (A, B, C, D) if output == 'matrices' else \
+                                    State(A, B, C, D, G.SamplingPeriod)
     except AttributeError:  # the arg was num,den
         return (A, B, C, D) if output == 'matrices' else State(A, B, C, D)
 
@@ -2500,33 +2506,28 @@ def transmission_zeros(A, B, C, D):
 
     .. note:: This is a straightforward implementation of the algorithm of
               Misra, van Dooren, Varga 1994 but skipping the descriptor matrix
-              which in turn becomes Emami-Naeini,van Dooren 1979. I don't
-              know if anyone actually uses descriptor systems in practice
-              so I removed the descriptor parts to reduce the clutter. Hence,
-              it is possible to directly row/column compress the matrices
-              without caring about the upper Hessenbergness of E matrix.
+              which in turn becomes Emami-Naeini, van Dooren 1979.
 
     Parameters
     ----------
-    A,B,C,D : {(nxn),(nxm),(p,n),(p,m)} ndarray
+    A,B,C,D : ndarray
+        The input data matrices with (nxn), (nxm), (p,n), (p,m) shapes.
 
     Returns
     -------
-    z : {1D Numpy array}
+    z : ndarray
         The array of computed transmission zeros. The array is returned
         empty if no transmission zeros are found.
 
     """
     n, (p, m) = A.shape[0], D.shape
     r = np.linalg.matrix_rank(D)
-
     # Trivially zero, transmission zero doesn't make sense
-    if np.count_nonzero(B) == 0 or np.count_nonzero(C) == 0:
+    # and becomes a c'bility/o'bility test. We don't need that.
+    if not np.any(B) or not np.any(C):
         return np.zeros((0, 1))
-
     elif (p == 1 and m == 1 and r > 0) or (r == min(p, m) and p == m):
-        z = _tzeros_final_compress(A, B, C, D, n, p, m)
-        return z
+        Arc, Brc, Crc, Drc = (A, B, C, D)
     else:  # Reduction needed
         if r == p:
             Ar, Br, Cr, Dr = (A, B, C, D)
@@ -2541,66 +2542,63 @@ def transmission_zeros(A, B, C, D):
         else:
             Arc, Brc, Crc, Drc = (Ar, Br, Cr, Dr)
 
-        n, (p, m) = Arc.shape[0], Drc.shape
+    if Arc.size == 0:
+        return np.zeros((0, 1))
 
-        if n != 0:
-            z = _tzeros_final_compress(Arc, Brc, Crc, Drc, n, p, m)
-        else:
-            z = np.zeros((0, 1))
-        return z
+    n, (p, m) = Arc.shape[0], Drc.shape
+
+    *_, v = haroldsvd(np.hstack((Drc, Crc)))
+    v = np.roll(np.roll(v.T, -m, axis=0), -m, axis=1)
+    T = np.hstack((Arc, Brc)) @ v
+    a, b, *_ = qz(v[:n, :n], T[:n, :n], output='complex')
+    z = np.diag(b)/np.diag(a)
+    for ind in range(z.size):
+        z[ind] = np.real_if_close(z[ind])
+    return z
 
 
 def _tzeros_reduce(A, B, C, D):
     """
     Basic deflation loop until we get a full row rank feedthrough matrix.
     """
+    m_eps = np.spacing(100 * np.sqrt((A.shape[0] + C.shape[0]) * (
+                       A.shape[1] + B.shape[1]))) * norm(A, 'fro')
+
     for x in range(A.shape[0]):  # At most!
         n, (p, m) = A.shape[0], D.shape
-        u, s, v, r = haroldsvd(D, also_rank=True)
-        # Do we have full rank D already?
-        if r == D.shape[0]:
+        # Is there anything in D?
+        if np.any(D):
+            q_of_d, ss, vv, sigma = haroldsvd(D, also_rank=1, rank_tol=m_eps)
+            r_of_d = (ss @ vv)[sigma:, :]
+            tau = p - sigma
+            if tau == 0:  # In case we have full rank then done
+                break
+            Cbd = q_of_d.T @ C
+        else:
+            sigma, tau = 0, p
+            Cbd = C
+        # Partition C accordingly
+        Cbar = Cbd[:sigma, :]
+        Ctilde = Cbd[sigma:, :]
+        q_of_c, *_, rho = haroldsvd(Ctilde.T, also_rank=1, rank_tol=m_eps)
+        nu = n - rho
+        if rho == 0:  # [C,D] happen to be compressed simultaneously
+            break
+        elif nu == 0:  # [C, D] happen to form a invertible matrix
+            A, B, C, D = np.array([]), np.array([]), np.array([]), np.array([])
             break
 
-#        Dt = s.dot(v)
-        Ct = u.T.dot(C)[r-p:, ]
-
-        vc, mm = haroldsvd(Ct, also_rank=True)[2:]
-        T = np.roll(vc.T, -mm, axis=1)
-
-        Sysmat = block_diag(T, u).T.dot(
-            np.vstack((
-                np.hstack((A, B)), np.hstack((C, D))
-            )).dot(block_diag(T, np.eye(m)))
-            )
-
-        Sysmat = np.delete(Sysmat, np.s_[r-p:], 0)
-        Sysmat = np.delete(Sysmat, np.s_[n-mm:n], 1)
-
-        A, B, C, D = matrix_slice(Sysmat, (n-mm, n-mm))
-        if A.size == 0 or np.count_nonzero(np.c_[C, D]) == 0:
-            break
+        q_of_c = np.fliplr(q_of_c)  # Compress on the right side of C
+        if sigma > 0:
+            AC_slice = np.r_[q_of_c.T @ A, Cbar] @ q_of_c
+            A, C = AC_slice[:nu, :nu], AC_slice[nu:, :nu]
+            BD_slice = np.r_[(q_of_c.T @ B), r_of_d]
+            B, D = BD_slice[:nu, :], BD_slice[nu:, :]
+        else:
+            ABCD_slice = q_of_c.T @ np.c_[A @ q_of_c, B]
+            A, B, C, D = (ABCD_slice[:nu, :nu], ABCD_slice[:nu, -m:],
+                          ABCD_slice[nu:, :nu], ABCD_slice[nu:, -m:])
     return A, B, C, D
-
-
-def _tzeros_final_compress(A, B, C, D, n, p, m):
-    """
-    Internal command for finding the Schur form of a full rank and
-    row/column compressed C,D pair.
-
-    TODO: Clean up the numerical noise and switch to Householder maybe?
-
-    TODO : Rarely z will include 10^15-10^16 entries instead of
-    infinite zeros. Decide on a reasonable bound to discard.
-    """
-
-    v = haroldsvd(np.hstack((D, C)))[-1]
-    T = np.hstack((A, B)).dot(np.roll(np.roll(v.T, -m, axis=0), -m, axis=1))
-    S = block_diag(np.eye(n), np.zeros((p, m))).dot(
-                                np.roll(np.roll(v.T, -m, axis=0), -m, axis=1))
-    a, b = qz(S[:n, :n], T[:n, :n], output='complex')[:2]
-    z = np.diag(b)/np.diag(a)
-
-    return z
 
 
 def _state_or_abcd(arg, n=4):
@@ -2622,21 +2620,26 @@ def _state_or_abcd(arg, n=4):
     ----------
     arg : State() or tuple of 2D Numpy arrays
         The argument to be parsed and checked for validity.
-
     n : integer {-1,1,2,3,4}
         If we let A,B,C,D numbered as 1,2,3,4, defines the test scope such
-        that only up to n-th matrix is tested.
-
-        To test only an A,C use n = -1
+        that only up to n-th matrix is tested. To test only an A,C use n = -1
 
     Returns
     -------
     system_or_not : Boolean
         True if system and False otherwise
-
-    validated_matrices: n-many 2D Numpy arrays
-
+    validated_matrices: ndarray
+        The validated n-many 2D arrays.
     """
+    try:
+        repr_str = arg._repr_type
+        if repr_str == 'State':
+            return True, None
+        else:
+            raise TypeError('The argument needs to be a State model '
+                            'but it is a {} model'.format(repr_str))
+    except AttributeError:  # It is not a model so must be tuple of matrices
+        pass
     if isinstance(arg, tuple):
         system_or_not = False
         if len(arg) == n or (n == -1 and len(arg) == 2):
@@ -2650,16 +2653,15 @@ def _state_or_abcd(arg, n=4):
                 m = arg[1].shape[1]
                 returned_args = State.validate_arguments(
                                 *arg,
-                                c = np.zeros((1,z)),
-                                d = np.zeros((1,m))
+                                c=np.zeros((1, z)),
+                                d=np.zeros((1, m))
                                 )[:2]
             elif n == 3:
                 m = arg[1].shape[1]
                 p = arg[2].shape[0]
                 returned_args = State.validate_arguments(
                                 *arg,
-                                d = np.zeros((p,m))
-                                )[:3]
+                                d=np.zeros((p, m)))[:3]
             elif n == 4:
                 m = arg[1].shape[1]
                 p = arg[2].shape[0]
@@ -2667,22 +2669,18 @@ def _state_or_abcd(arg, n=4):
             else:
                 p = arg[1].shape[0]
                 returned_args = tuple(State.validate_arguments(
-                                arg[0],
-                                np.zeros((z,1)),
-                                arg[1],
-                                np.zeros((p,1))
-                                )[x] for x in [0,2])
+                                      arg[0],
+                                      np.zeros((z, 1)),
+                                      arg[1],
+                                      np.zeros((p, 1))
+                                      )[x] for x in [0, 2])
         else:
             raise ValueError('_state_or_abcd error:\n'
                              'Not enough elements in the argument to test.'
                              'Maybe you forgot to modify the n value?')
-
-
-    elif isinstance(arg,State):
-            system_or_not = True
-            returned_args = None
     else:
         raise TypeError('The argument is neither a tuple of matrices nor '
-                        'a State() object.')
+                        'a State() object. The argument is of the type "{}"'
+                        ''.format(type(arg).__qualname__))
 
-    return system_or_not , returned_args
+    return system_or_not, returned_args

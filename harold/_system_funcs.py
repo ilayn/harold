@@ -23,10 +23,10 @@ THE SOFTWARE.
 """
 import numpy as np
 from numpy.linalg import cond, eig, norm
-from scipy.linalg import svdvals, qr
-
+from scipy.linalg import svdvals, qr, block_diag
+from ._classes import State
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
-#from ._classes import Transfer, State
+
 
 """
 TODO Though the descriptor code also works up-to-production, I truncated
@@ -34,228 +34,11 @@ to explicit systems. I better ask around if anybody needs them (though
 the answer to such question is always a yes).
 """
 
-__all__ = ['system_norm', 'concatenate_state_matrices', 'staircase',
+__all__ = ['concatenate_state_matrices', 'staircase',
            'cancellation_distance', 'minimal_realization']
 
+# TODO : type checking for both.
 
-def system_norm(state_or_transfer,
-                p=np.inf,
-                validate=False,
-                verbose=False,
-                max_iter_limit=100,
-                hinf_tolerance=1e-10,
-                eig_tolerance=1e-12
-                ):
-    """
-    Computes the system p-norm. Currently, no balancing is done on the
-    system, however in the future, a scaling of some sort will be introduced.
-    Another short-coming is that while sounding general, only
-    :math:`\\mathcal{H}_2` and :math:`\\mathcal{H}_\\infty`
-    norm are understood.
-
-    For :math:`\\mathcal{H}_2` norm, the standard grammian definition via
-    controllability grammian, that can be found elsewhere is used.
-
-    Currently, the :math:`\\mathcal{H}_\\infty` norm is computed via
-    so-called Boyd-Balakhrishnan-Bruinsma-Steinbuch algorithm (See e.g. [2]).
-
-    However, (with kind and generous help of Melina Freitag) the algorithm
-    given in [1] is being implemented and depending on the speed benefit
-    might be replaced as the default.
-
-    [1] M.A. Freitag, A Spence, P. Van Dooren: Calculating the
-    :math:`\\mathcal{H}_\\infty`-norm using the implicit determinant method.
-    SIAM J. Matrix Anal. Appl., 35(2), 619-635, 2014
-
-    [2] N.A. Bruinsma, M. Steinbuch: Fast Computation of
-    :math:`\\mathcal{H}_\\infty`-norm of transfer function. System and Control
-    Letters, 14, 1990
-
-    Parameters
-    ----------
-    state_or_transfer : {State,Transfer}
-        System for which the norm is computed
-    p : {int,Inf}
-        Whether the rank of the matrix should also be reported or not.
-        The returned rank is computed via the definition taken from the
-        official numpy.linalg.matrix_rank and appended here.
-
-    validate: boolean
-        If applicable and if the resulting norm is finite, the result is
-        validated via other means.
-
-    verbose: boolean
-        If True, the (some) internal progress is printed out.
-
-    max_iter_limit: int
-        Stops the iteration after max_iter_limit many times spinning the
-        loop. Very unlikely but might be required for pathological examples.
-
-    hinf_tolerance: float
-        Convergence check value such that when the progress is below this
-        tolerance the result is accepted as *converged*.
-
-    eig_tolerance: float
-        The algorithm relies on checking the eigenvalues of the Hamiltonian
-        being on the imaginary axis or not. This value is the threshold
-        such that the absolute real value of the eigenvalues smaller than
-        this value will be accepted as pure imaginary eigenvalues.
-
-    Returns
-    -------
-    n : float
-        Computed norm. In NumPy, infinity is also float-type
-
-    omega : float
-        For Hinf norm, omega is the frequency where the maximum is attained
-        (technically this is a numerical approximation of the supremum).
-
-    """
-    if not isinstance(state_or_transfer, (State, Transfer)):
-        raise TypeError('The argument should be a State or Transfer. Instead '
-                        'I received {0}'.format(type(
-                                    state_or_transfer).__qualname__))
-
-    if isinstance(state_or_transfer, Transfer):
-        now_state = transfer_to_state(state_or_transfer)
-    else:
-        now_state = state_or_transfer
-
-    if not isinstance(p,(int,float)):
-        raise('The p in p-norm is not an integer or float.'
-              'If you tried the string \'inf\', use Numpy.Inf instead')
-
-    # Two norm
-    if p == 2:
-        # Handle trivial infinities
-        if now_state._isgain:
-            # If nonzero -> infinity, if zero -> zero
-            if np.count_nonzero(now_state.d) > 0:
-                return np.Inf
-            else:
-                return 0.
-
-        if not now_state._isstable:
-            return np.Inf
-
-        if now_state.SamplingSet == 'R':
-            a , b , c = now_state.matrices[:3]
-            x = lyapunov_eq_solver( a , b.dot(b.T) )
-            return np.sqrt(np.trace(c.dot(x.dot(c.T))))
-        else:
-            a , b , c , d = now_state.matrices
-            x = lyapunov_eq_solver( a , b.dot(b.T) , form = 'd' )
-            return np.sqrt(np.trace(c.dot(x.dot(c.T))+d.dot(d.T)))
-
-
-    elif np.isinf(p):
-        if not now_state._isstable:
-            return np.Inf,None
-
-        a , b , c , d = now_state.matrices
-#        n_s , (n_in , n_out) = now_state.NumberOfStates, now_state.shape
-
-        # Initial gamma0 guess
-        # Get the max of the largest svd of either
-        #   - feedthrough matrix
-        #   - G(iw) response at the pole with smallest damping
-        #   - G(iw) at w = 0
-
-        # We only need the svd vals hence call numpy svd
-        lb1 = np.max(np.linalg.svd(d,compute_uv=False))
-
-        # Formula (4.3) given in Bruinsma, Steinbuch Sys.Cont.Let. (1990)
-        if any(np.abs(np.imag(now_state.poles)>1e-5)):
-            low_damp_freq = np.abs(now_state.poles[np.argmax(
-            [np.abs(np.imag(x)/np.real(x)/np.abs(x)) for x in now_state.poles]
-            )])
-        else:
-            low_damp_freq = np.min(np.abs(now_state.poles))
-
-
-        f , w = frequency_response(now_state,custom_grid=[0,low_damp_freq])
-        if now_state._isSISO:
-            lb2 = np.max(np.abs(f))
-        else:
-            lb2 = [np.linalg.svd(f[:,:,x],compute_uv=0) for x in range(2)]
-            lb2 = np.max(lb2)
-
-        # Finally
-        gamma_lb = np.max([lb1,lb2])
-
-        # Constant part of the Hamiltonian to shave off a few flops
-        H_of_gam_const = np.c_[np.r_[a,np.zeros_like(a)],np.r_[c.T.dot(c),a.T]]
-        H_of_gam_lfact = np.r_[b,c.T.dot(d)]
-        H_of_gam_rfact = np.c_[-d.T.dot(c),b.T]
-
-        # Start a for loop with a definite end !
-        for x in range(max_iter_limit):
-
-            # (Step b1)
-            test_gamma = gamma_lb * ( 1 + 2*hinf_tolerance)
-
-            # (Step b2)
-            R_of_gam = d.T.dot(d) - test_gamma**2 * np.eye(d.shape[1])
-            # TODO : It might be good to implement the result of Benner et al.
-            # for the Hamiltonian later
-            try:
-                eigs_of_H = sp.linalg.eigvals(
-                                H_of_gam_const - H_of_gam_lfact.dot(
-                                    sp.linalg.solve(R_of_gam,H_of_gam_rfact)
-                                )
-                            )
-            except np.linalg.linalg.LinAlgError as err:
-                if 'singular matrix' == str(err):
-                    at, bt, ct = minimal_realization(a, b, c)
-                    if at.size == 0:
-                        return lb1, None
-                    else:
-                        raise ValueError('The A matrix is/looks like stable '
-                                         'but somehow I managed to screw it '
-                                         'up. Please send an insulting mail '
-                                         'to ilhan together with this example'
-                                         '.')
-
-            # (Step b3)
-            #
-            if all(np.abs(np.real(eigs_of_H)) > eig_tolerance):
-                gamma_ub = test_gamma
-                break
-            else:
-                # Pick up the ones with the tiny or zero real parts
-                # but leave out the euclidian ball around the origin
-                mix_imag_eigs = eigs_of_H[np.abs(
-                            np.real(eigs_of_H)) < eig_tolerance]
-                imag_eigs = np.unique(np.round(np.abs(
-                        mix_imag_eigs[np.abs(np.imag(eigs_of_H))>eig_tolerance]
-                            ),decimals=7))
-
-                m_i = [np.average(imag_eigs[x], imag_eigs[x+1])
-                       for x in range(len(imag_eigs))]
-
-                # TODO : Clean up this mess above with imag_eigs etc.
-                # TODO : Still needs five times speed-up
-
-                f, w = frequency_response(now_state, custom_grid=m_i)
-                if now_state._isSISO:
-                    gamma_lb = np.max(np.abs(f))
-                else:
-                    gamma_lb = [np.linalg.svd(
-                            f[::x], compute_uv=0) for x in range(len(m_i))]
-                    gamma_lb = np.max(lb2)
-
-
-
-        return np.mean([gamma_lb, gamma_ub])
-
-        #           [ A     0  ]  _ [  B  ] * [        -1 ] * [-C.T*D].T
-        #  H(gam) = [C.T*C  A.T]    [C.T*D]   [R_of_gam   ]   [   B  ]
-
-    else:
-        raise('I can only handle the cases for p=2,inf for now.')
-
-
-#TODO : type checking for both.
 
 def concatenate_state_matrices(G):
     """
@@ -284,9 +67,8 @@ def concatenate_state_matrices(G):
     return H
 
 
-
-
-def staircase(A,B,C,compute_T=False,form='c',invert=False,block_indices=False):
+def staircase(A, B, C,
+              compute_T=False, form='c', invert=False, block_indices=False):
     """
     The staircase form is used very often to assess system properties.
     Given a state system matrix triplet A,B,C, this function computes
@@ -375,17 +157,16 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False,block_indices=False):
 
     """
 
-
-    if not form in {'c','o'}:
+    if form not in {'c', 'o'}:
         raise ValueError('The "form" key can only take values'
                          '\"c\" or \"o\" denoting\ncontroller- or '
                          'observer-Hessenberg form.')
     if form == 'o':
-        A , B , C = A.T , C.T , B.T
+        A, B, C = A.T, C.T, B.T
 
     n = A.shape[0]
-    ub , sb , vb , m0 = haroldsvd(B,also_rank=True)
-    cble_block_indices = np.empty((1,0))
+    ub, sb, vb, m0 = haroldsvd(B, also_rank=True)
+    cble_block_indices = np.empty((1, 0))
 
     # Trivially  Uncontrollable Case
     # Skip the first branch of the loop by making m0 greater than n
@@ -395,24 +176,23 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False,block_indices=False):
         cble_block_indices = np.array([0])
 
     # After these, start the regular case
-    if n > m0:# If it is not a square system with full rank B
+    if n > m0:  # If it is not a square system with full rank B
 
         A0 = ub.T.dot(A.dot(ub))
-#        print(A0)
 
         # Row compress B and consistent zero blocks with the reported rank
         B0 = sb.dot(vb)
-        B0[m0:,:] = 0.
+        B0[m0:, :] = 0.
         C0 = C.dot(ub)
-        cble_block_indices = np.append(cble_block_indices,m0)
+        cble_block_indices = np.append(cble_block_indices, m0)
 
         if compute_T:
-            P = sp.linalg.block_diag(np.eye(n-ub.T.shape[0]),ub.T)
+            P = block_diag(np.eye(n-ub.T.shape[0]), ub.T)
 
         # Since we deal with submatrices, we need to increase the
         # default tolerance to reasonably high values that are
         # related to the original data to get exact zeros
-        tol_from_A = n*sp.linalg.norm(A,1)*np.finfo(float).eps
+        tol_from_A = n*norm(A, 1)*np.finfo(float).eps
 
         # Region of interest
         m = m0
@@ -422,32 +202,29 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False,block_indices=False):
         for dummy_row_counter in range(A.shape[0]):
             ROI_start += ROI_size
             ROI_size = m
-#            print(ROI_start,ROI_size)
-            h1,h2,h3,h4 = matrix_slice(
-                                A0[ROI_start:,ROI_start:],
-                                (ROI_size,ROI_size)
-                                )
-            uh3,sh3,vh3,m = haroldsvd(h3,also_rank=True,rank_tol = tol_from_A)
+            h1, h2, h3, h4 = matrix_slice(A0[ROI_start:, ROI_start:],
+                                          (ROI_size, ROI_size))
+            uh3, sh3, vh3, m = haroldsvd(h3, also_rank=True,
+                                         rank_tol=tol_from_A)
 
             # Make sure reported rank and sh3 are consistent about zeros
-            sh3[ sh3 < tol_from_A ] = 0.
+            sh3[sh3 < tol_from_A] = 0.
 
             # If the resulting subblock is not full row or zero rank
             if 0 < m < h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices,m)
+                cble_block_indices = np.append(cble_block_indices, m)
                 if compute_T:
-                    P = sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3.T).dot(P)
-                A0[ROI_start:,ROI_start:] = np.r_[
-                                    np.c_[h1,h2],
-                                    np.c_[sh3.dot(vh3),uh3.T.dot(h4)]
-                                    ]
-                A0 = A0.dot(sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3))
-                C0 = C0.dot(sp.linalg.block_diag(np.eye(n-uh3.shape[1]),uh3))
+                    P = block_diag(np.eye(n-uh3.shape[1]), uh3.T).dot(P)
+                A0[ROI_start:, ROI_start:] = np.r_[np.c_[h1, h2],
+                                                   np.c_[sh3.dot(vh3),
+                                                         uh3.T.dot(h4)]]
+                A0 = A0.dot(block_diag(np.eye(n-uh3.shape[1]), uh3))
+                C0 = C0.dot(block_diag(np.eye(n-uh3.shape[1]), uh3))
                 # Clean up
-                A0[abs(A0) < tol_from_A ] = 0.
-                C0[abs(C0) < tol_from_A ] = 0.
+                A0[abs(A0) < tol_from_A] = 0.
+                C0[abs(C0) < tol_from_A] = 0.
             elif m == h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices,m)
+                cble_block_indices = np.append(cble_block_indices, m)
                 break
             else:
                 break
@@ -460,36 +237,37 @@ def staircase(A,B,C,compute_T=False,form='c',invert=False,block_indices=False):
                 P = np.flipud(P)
 
         if form == 'o':
-            A0 , B0 , C0 = A0.T , C0.T , B0.T
+            A0, B0, C0 = A0.T, C0.T, B0.T
 
         if compute_T:
             if block_indices:
-                return A0 , B0 , C0 , P.T , cble_block_indices
+                return A0, B0, C0, P.T, cble_block_indices
             else:
-                return A0 , B0 , C0 , P.T
+                return A0, B0, C0, P.T
         else:
             if block_indices:
-                return A0 , B0 , C0 , cble_block_indices
+                return A0, B0, C0, cble_block_indices
             else:
-                return A0 , B0 , C0
+                return A0, B0, C0
 
-    else: # Square system B full rank ==> trivially controllable
+    else:  # Square system B full rank ==> trivially controllable
         cble_block_indices = np.array([n])
         if form == 'o':
-            A , B , C = A.T , C.T , B.T
+            A, B, C = A.T, C.T, B.T
 
         if compute_T:
             if block_indices:
-                return A,B,C,np.eye(n),cble_block_indices
+                return A, B, C, np.eye(n), cble_block_indices
             else:
-                return A , B , C , np.eye(n)
+                return A, B, C, np.eye(n)
         else:
             if block_indices:
-                return A , B , C , cble_block_indices
+                return A, B, C, cble_block_indices
             else:
-                return A , B , C
+                return A, B, C
 
-def cancellation_distance(F,G):
+
+def cancellation_distance(F, G):
     """
     Given matrices :math:`F,G`, computes the upper and lower bounds of
     the perturbation needed to render the pencil :math:`\\left[
@@ -593,19 +371,19 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
         n = A.shape[0]
         # Make sure that we still have states left
         if n == 0:
-            A , B , C = [(np.empty((1,0)))]*3
+            A, B, C = [(np.empty((1, 0)))]*3
             break
 
-        kc = cancellation_distance(A,B)[0]
-        ko = cancellation_distance(A.T,C.T)[0]
+        kc = cancellation_distance(A, B)[0]
+        ko = cancellation_distance(A.T, C.T)[0]
 
-        if min(kc,ko) > mu_tol: # no cancellation
-            keep_looking= False
+        if min(kc, ko) > mu_tol:  # no cancellation
+            keep_looking = False
         else:
 
-            Ac,Bc,Cc,blocks_c = staircase(A,B,C,block_indices=True)
-            Ao,Bo,Co,blocks_o = staircase(A,B,C,form='o',invert=True,
-                                              block_indices=True)
+            Ac, Bc, Cc, blocks_c = staircase(A, B, C, block_indices=True)
+            Ao, Bo, Co, blocks_o = staircase(A, B, C, form='o', invert=True,
+                                             block_indices=True)
 
             # ===============Extra Check============================
             """
@@ -628,65 +406,66 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
             """
 
             # If unobservability distance is closer, let it handle first
-            if ko>=kc:
+            if ko >= kc:
                 if (sum(blocks_c) == n and kc <= mu_tol):
-                    Ac_mod , Bc_mod , Cc_mod , kc_mod = Ac,Bc,Cc,kc
+                    Ac_mod, Bc_mod, Cc_mod, kc_mod = Ac, Bc, Cc, kc
 
-                    while kc_mod <= mu_tol:# Until cancel dist gets big
-                        Ac_mod,Bc_mod,Cc_mod = (
-                                Ac_mod[:-1,:-1],Bc_mod[:-1,:],Cc_mod[:,:-1])
+                    while kc_mod <= mu_tol:  # Until cancel dist gets big
+                        Ac_mod, Bc_mod, Cc_mod = (Ac_mod[:-1, :-1],
+                                                  Bc_mod[:-1, :],
+                                                  Cc_mod[:, :-1])
 
                         if Ac_mod.size == 0:
-                            A , B , C = [(np.empty((1,0)))]*3
+                            A, B, C = [(np.empty((1, 0)))]*3
                             run_out_of_states = True
                             break
                         else:
-                            kc_mod = cancellation_distance(Ac_mod,Bc_mod)[0]
+                            kc_mod = cancellation_distance(Ac_mod, Bc_mod)[0]
 
                     kc = kc_mod
                     # Fake an iterable to fool the sum below
                     blocks_c = [sum(blocks_c)-Ac_mod.shape[0]]
 
-
             # Same with the o'ble modes
             if (sum(blocks_o) == n and ko <= mu_tol):
-                Ao_mod , Bo_mod , Co_mod , ko_mod = Ao,Bo,Co,ko
+                Ao_mod, Bo_mod, Co_mod, ko_mod = Ao, Bo, Co, ko
 
-                while ko_mod <= mu_tol:# Until cancel dist gets big
-                    Ao_mod,Bo_mod,Co_mod = (
-                            Ao_mod[1:,1:],Bo_mod[1:,:],Co_mod[:,1:])
+                while ko_mod <= mu_tol:  # Until cancel dist gets big
+                    Ao_mod, Bo_mod, Co_mod = (Ao_mod[1:, 1:],
+                                              Bo_mod[1:, :],
+                                              Co_mod[:, 1:])
 
                     # If there is nothing left, break out everything
                     if Ao_mod.size == 0:
-                        A , B , C = [(np.empty((1,0)))]*3
+                        A, B, C = [(np.empty((1, 0)))]*3
                         run_out_of_states = True
                         break
                     else:
-                        ko_mod = cancellation_distance(Ao_mod,Bo_mod)[0]
-
+                        ko_mod = cancellation_distance(Ao_mod, Bo_mod)[0]
 
                 ko = ko_mod
                 blocks_o = [sum(blocks_o)-Ao_mod.shape[0]]
 
             # ===============End of Extra Check=====================
 
-            if run_out_of_states: break
+            if run_out_of_states:
+                break
 
             if sum(blocks_c) > sum(blocks_o):
                 remove_from = 'o'
             elif sum(blocks_c) < sum(blocks_o):
                 remove_from = 'c'
-            else: # both have the same number of states to be removed
+            else:  # both have the same number of states to be removed
                 if kc >= ko:
                     remove_from = 'o'
                 else:
                     remove_from = 'c'
 
             if remove_from == 'c':
-                l = sum(blocks_c)
-                A , B , C = Ac[:l,:l] , Bc[:l,:] , Cc[:,:l]
+                l = int(sum(blocks_c))
+                A, B, C = Ac[:l, :l], Bc[:l, :], Cc[:, :l]
             else:
-                l = n - sum(blocks_o)
-                A , B , C = Ao[l:,l:] , Bo[l:,:] , Co[:,l:]
+                l = n - int(sum(blocks_o))
+                A, B, C = Ao[l:, l:], Bo[l:, :], Co[:, l:]
 
-    return A , B, C
+    return A, B, C

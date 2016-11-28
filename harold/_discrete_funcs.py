@@ -29,6 +29,7 @@ from ._classes import Transfer, State, transfer_to_state, state_to_transfer
 from ._global_constants import _KnownDiscretizationMethods
 from ._aux_linalg import matrix_slice
 
+__all__ = ['discretize', 'undiscretize']
 
 
 def discretize(G, dt, method='tustin', PrewarpAt=0., q=None):
@@ -312,8 +313,7 @@ def __undiscretize(G, method_to_use):
     return Ac, Bc, Cc, Dc
 
 
-
-def rediscretize(G,dt,method='tustin',alpha=0.5):
+def rediscretize(G, dt, method='tustin', alpha=0.5):
     """
     .. todo:: Not implemented yet!
     """

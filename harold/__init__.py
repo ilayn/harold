@@ -29,4 +29,5 @@ from ._system_funcs import *
 from ._solvers import *
 from ._discrete_funcs import *
 from ._frequency_domain import *
+from ._system_props import *
 from ._kalman_ops import *
