@@ -2534,6 +2534,9 @@ def transmission_zeros(A, B, C, D):
         else:
             Ar, Br, Cr, Dr = _tzeros_reduce(A, B, C, D)
 
+        if Ar.size == 0:
+            return np.zeros((0, 1))
+
         n, (p, m) = Ar.shape[0], Dr.shape
 
         if np.count_nonzero(np.c_[Cr, Dr]) == 0 or p != m:
@@ -2569,7 +2572,7 @@ def _tzeros_reduce(A, B, C, D):
         # Is there anything in D?
         if np.any(D):
             q_of_d, ss, vv, sigma = haroldsvd(D, also_rank=1, rank_tol=m_eps)
-            r_of_d = (ss @ vv)[sigma:, :]
+            r_of_d = ss @ vv
             tau = p - sigma
             if tau == 0:  # In case we have full rank then done
                 break
@@ -2592,7 +2595,7 @@ def _tzeros_reduce(A, B, C, D):
         if sigma > 0:
             AC_slice = np.r_[q_of_c.T @ A, Cbar] @ q_of_c
             A, C = AC_slice[:nu, :nu], AC_slice[nu:, :nu]
-            BD_slice = np.r_[(q_of_c.T @ B), r_of_d]
+            BD_slice = np.r_[(q_of_c.T @ B), r_of_d[:sigma, :]]
             B, D = BD_slice[:nu, :], BD_slice[nu:, :]
         else:
             ABCD_slice = q_of_c.T @ np.c_[A @ q_of_c, B]
