@@ -89,19 +89,17 @@ def lyapunov_eq_solver(A, Y, E=None, form='c'):
                                  ''.format(arg_names[ind], mat.shape))
 
         # shapes are square now check compatibility
-        if a.shape != y.shape and (
-                       (E is not None and a.shape != e.shape) or E is None):
+        if a.shape != y.shape or (e is not None and a.shape != e.shape):
             raise ValueError('The sizes of the arguments are not compatible. '
                              'For convenience I have received A , Y , E '
-                             'matrices shaped as {}'.format([a.shape,
-                                                             y.shape,
-                                                 e if e is None else e.shape]))
+                             'matrices shaped as {}'
+                             ''.format([a.shape, y.shape,
+                                        e if e is None else e.shape]))
         return a, y, e
 
-    if form not in ('c', 'continuous' , 'd', 'discrete'):
-        raise ValueError('The keyword "form" accepts only the '
-                         'following choices:\n'
-                         "''c','continuous','d','discrete'")
+    if form not in ('c', 'continuous', 'd', 'discrete'):
+        raise ValueError('The keyword "form" accepts only the following'
+                         'choices:\n\'c\',\'continuous\',\'d\',\'discrete\'')
 
     A, Y, E = check_matrices(A, Y, E)
 
@@ -242,8 +240,9 @@ def _solve_continuous_generalized_lyapunov(A, E, Y, tol=1e-12):
         XA_of_row = tempx @ As[:nextr, thisr:]
 
         # Update Y terms right of the diagonal
-        Ys[thisr:nextr, thisr:] += As[thisr:nextr, thisr:nextr].T @ XE_of_row + \
-                                   Es[thisr:nextr, thisr:nextr].T @ XA_of_row
+        Ys[thisr:nextr, thisr:] += \
+            As[thisr:nextr, thisr:nextr].T @ XE_of_row + \
+            Es[thisr:nextr, thisr:nextr].T @ XA_of_row
 
         # Walk over upper triangular terms
         for col in range(row + 1, total_blk):
@@ -266,31 +265,30 @@ def _solve_continuous_generalized_lyapunov(A, E, Y, tol=1e-12):
             tempa = tempx @ As[thisc:nextc, thisc:]
 
             # Update Y towards left
-            Ys[ thisr:nextr, thisc:] += As[thisr:nextr, thisr:nextr].T @ tempe + \
-                                        Es[thisr:nextr, thisr:nextr].T @ tempa
+            Ys[thisr:nextr, thisc:] += \
+                As[thisr:nextr, thisr:nextr].T @ tempe + \
+                Es[thisr:nextr, thisr:nextr].T @ tempa
             # Update Y downwards
             XE_of_row[:, (thisc - thisr):] += tempe
             XA_of_row[:, (thisc - thisr):] += tempa
 
-            ugly_slice = slice(thisc - thisr,
-                               nextc - thisr if nextc is not None else None
-                               )
+            ugly_sl = slice(thisc - thisr,
+                            nextc - thisr if nextc is not None else None)
 
             Ys[nextr:nextc, thisc:nextc] += \
-                     As[thisr:nextr, nextr:nextc].T @ XE_of_row[:, ugly_slice] + \
-                     Es[thisr:nextr, nextr:nextc].T @ XA_of_row[:, ugly_slice]
+                As[thisr:nextr, nextr:nextc].T @ XE_of_row[:, ugly_sl] + \
+                Es[thisr:nextr, nextr:nextc].T @ XA_of_row[:, ugly_sl]
 
     return Q @ Xs @ Q.T
 
 
-def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
+def _solve_discrete_generalized_lyapunov(A, E, Y, tol=1e-12):
     '''
     Solves
 
                 A.T X A - E.T X E + Y = 0
 
     for symmetric Y
-
     '''
     mat33 = np.zeros((3, 3), dtype=float)
     mat44 = np.zeros((4, 4), dtype=float)
@@ -375,8 +373,7 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
     # from the uppper left corner and alternate between updating the
     # Y term and solving the next entry of X. We walk over X row-wise
 
-
-    for row in range( total_blk ):
+    for row in range(total_blk):
 
         thisr = bs[row]
         nextr = bs[row+1]
@@ -384,72 +381,73 @@ def _solve_discrete_generalized_lyapunov( A , E , Y , tol = 1e-12 ):
         # This block is executed at the second and further spins of the
         # for loop. Humans should start reading from (**)
         if row is not 0:
-            Ys[ thisr:nextr , thisr:nextr ] +=  \
-                            As[ thisr:nextr , thisr:nextr ].T @ \
-                                   Xs[ thisr:nextr , :thisr ] @ \
-                                   As[ :thisr , thisr:nextr ] - \
-                                                                \
-                            Es[ thisr:nextr , thisr:nextr ].T @ \
-                                   Xs[ thisr:nextr , :thisr ] @ \
-                                   Es[ :thisr , thisr:nextr ]
+            Ys[thisr:nextr, thisr:nextr] +=  \
+                As[thisr:nextr, thisr:nextr].T @ \
+                Xs[thisr:nextr, :thisr] @ \
+                As[:thisr, thisr:nextr] - \
+                Es[thisr:nextr, thisr:nextr].T @ \
+                Xs[thisr:nextr, :thisr] @ \
+                Es[:thisr, thisr:nextr]
 
         # (**) Solve for the diagonal via Akk , Ekk , Ykk and place it in Xkk
-        tempx = mini_sylvester(As[ thisr:nextr , thisr:nextr ],
-                               Es[ thisr:nextr , thisr:nextr ],
-                               Ys[ thisr:nextr , thisr:nextr ])
+        tempx = mini_sylvester(As[thisr:nextr, thisr:nextr],
+                               Es[thisr:nextr, thisr:nextr],
+                               Ys[thisr:nextr, thisr:nextr])
 
         # Place it in the data
-        Xs[ thisr:nextr , thisr:nextr ] = tempx
+        Xs[thisr:nextr, thisr:nextr] = tempx
 
         # Form the common products of X * E and X * A
-        tempx = Xs[ thisr:nextr , :nextr ]
-        XE_of_row = tempx @ Es[ :nextr , thisr: ]
-        XA_of_row = tempx @ As[ :nextr , thisr: ]
+        tempx = Xs[thisr:nextr, :nextr]
+        XE_of_row = tempx @ Es[:nextr, thisr:]
+        XA_of_row = tempx @ As[:nextr, thisr:]
 
         # Update Y terms right of the diagonal
-        Ys[thisr:nextr,thisr:]+= As[thisr:nextr,thisr:nextr].T @ XA_of_row - \
-                                 Es[thisr:nextr,thisr:nextr].T @ XE_of_row
+        Ys[thisr:nextr, thisr:] += \
+            As[thisr:nextr, thisr:nextr].T @ XA_of_row - \
+            Es[thisr:nextr, thisr:nextr].T @ XE_of_row
 
         # Walk over upper triangular terms
-        for col in range( row + 1 , total_blk ):
+        for col in range(row + 1, total_blk):
 
             thisc = bs[col]
             nextc = bs[col+1]
 
             # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester(As[ thisc:nextc , thisc:nextc ],
-                                   Es[ thisc:nextc , thisc:nextc ],
-                                   Ys[ thisr:nextr , thisc:nextc ],
-                                   As[ thisr:nextr , thisr:nextr ],
-                                   Es[ thisr:nextr , thisr:nextr ])
+            tempx = mini_sylvester(As[thisc:nextc, thisc:nextc],
+                                   Es[thisc:nextc, thisc:nextc],
+                                   Ys[thisr:nextr, thisc:nextc],
+                                   As[thisr:nextr, thisr:nextr],
+                                   Es[thisr:nextr, thisr:nextr])
 
             # Place it in the data
-            Xs[ thisr:nextr , thisc:nextc ] = tempx
-            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
+            Xs[thisr:nextr, thisc:nextc] = tempx
+            Xs[thisc:nextc, thisr:nextr] = tempx.T
 
-            ## Post column solution Y update
+            # Post column solution Y update
 
             # XA and XE terms
-            tempe = tempx @ Es[ thisc:nextc , thisc: ]
-            tempa = tempx @ As[ thisc:nextc , thisc: ]
+            tempe = tempx @ Es[thisc:nextc, thisc:]
+            tempa = tempx @ As[thisc:nextc, thisc:]
             # Update Y towards left
-            Ys[ thisr:nextr, thisc: ] += As[ thisr:nextr , thisr:nextr ].T @ tempa - \
-                                         Es[ thisr:nextr , thisr:nextr ].T @ tempe
+            Ys[thisr:nextr, thisc:] += \
+                As[thisr:nextr, thisr:nextr].T @ tempa - \
+                Es[thisr:nextr, thisr:nextr].T @ tempe
             # Update Y downwards
-            XE_of_row[:,( thisc - thisr ):] += tempe
-            XA_of_row[:,( thisc - thisr ):] += tempa
+            XE_of_row[:, (thisc - thisr):] += tempe
+            XA_of_row[:, (thisc - thisr):] += tempa
 
-            ugly_slice = slice(thisc - thisr,
-                        nextc - thisr if nextc is not None else None
-                        )
+            ugly_sl = slice(thisc - thisr,
+                            nextc - thisr if nextc is not None else None)
 
-            Ys[ nextr:nextc , thisc:nextc ] += \
-                     As[ thisr:nextr , nextr:nextc ].T @ XA_of_row[:,ugly_slice] - \
-                     Es[ thisr:nextr , nextr:nextc ].T @ XE_of_row[:,ugly_slice]
+            Ys[nextr:nextc, thisc:nextc] += \
+                As[thisr:nextr, nextr:nextc].T @ XA_of_row[:, ugly_sl] - \
+                Es[thisr:nextr, nextr:nextc].T @ XE_of_row[:, ugly_sl]
 
     return Q @ Xs @ Q.T
 
-def _solve_continuous_lyapunov( A , Y ):
+
+def _solve_continuous_lyapunov(A, Y):
     '''
             Solves A.T X + X A + Y = 0
 
@@ -458,7 +456,7 @@ def _solve_continuous_lyapunov( A , Y ):
     mat44 = np.zeros((4, 4), dtype=float)
     i2 = np.eye(2, dtype=float)
 
-    def mini_sylvester(Ar, Yt, Al = None):
+    def mini_sylvester(Ar, Yt, Al=None):
         '''
         A helper function to solve the 1x1 or 2x2 Sylvester equations
         arising in the solution of the continuous-time Lyapunov equations
@@ -545,7 +543,7 @@ def _solve_continuous_lyapunov( A , Y ):
         # for loop. Humans should start reading from (**)
         if row is not 0:
             Ys[thisr:nextr, thisr:] +=  \
-                      Xs[thisr:nextr, 0:thisr ] @ As[0:thisr, thisr:]
+                      Xs[thisr:nextr, 0:thisr] @ As[0:thisr, thisr:]
 
         # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk
         tempx = mini_sylvester(As[thisr:nextr, thisr:nextr],
@@ -574,7 +572,8 @@ def _solve_continuous_lyapunov( A , Y ):
             Ys[thisr:nextr, nextc:] += tempx @ As[thisc:nextc, nextc:]
 
             # Update Y downwards
-            Ys[nextr:nextc, thisc:nextc] += As[thisr:nextr, nextr:nextc].T @ tempx
+            Ys[nextr:nextc, thisc:nextc] += \
+                As[thisr:nextr, nextr:nextc].T @ tempx
 
     return S @ Xs @ S.T
 
@@ -662,56 +661,52 @@ def _solve_discrete_lyapunov(A, Y):
     # from the uppper left corner and alternate between updating the
     # Y term and solving the next entry of X. We walk over X row-wise
 
-    for row in range( total_blk ):
+    for row in range(total_blk):
         thisr = bs[row]
         nextr = bs[row+1]
 
         if row is not 0:
-            Ys[ thisr:nextr , thisr:nextr ] +=  \
-                            As[ thisr:nextr , thisr:nextr ].T @ \
-                                  Xs[ thisr:nextr , 0:thisr ] @ \
-                                  As[ 0:thisr , thisr:nextr ]
+            Ys[thisr:nextr, thisr:nextr] +=  \
+                As[thisr:nextr, thisr:nextr].T @ \
+                Xs[thisr:nextr, :thisr] @ \
+                As[:thisr, thisr:nextr]
 
         # (**) Solve for the diagonal via Akk , Ykk and place it in Xkk
-        tempx = mini_sylvester( As[ thisr:nextr , thisr:nextr ],
-                                Ys[ thisr:nextr , thisr:nextr ] )
+        tempx = mini_sylvester(As[thisr:nextr, thisr:nextr],
+                               Ys[thisr:nextr, thisr:nextr])
 
-        Xs[ thisr:nextr , thisr:nextr ] = tempx
-
-
-
-        XA_of_row = Xs[ thisr:nextr ,  0:nextr ] @ As[ 0:nextr , thisr: ]
+        Xs[thisr:nextr, thisr:nextr] = tempx
+        XA_of_row = Xs[thisr:nextr, :nextr] @ As[:nextr, thisr:]
 
         # Update Y terms right of the diagonal
-        Ys[thisr:nextr , thisr:] += As[thisr:nextr,thisr:nextr ].T @ XA_of_row
+        Ys[thisr:nextr, thisr:] += As[thisr:nextr, thisr:nextr].T @ XA_of_row
 
         # Walk over upper triangular terms
-        for col in range( row + 1 , total_blk ):
+        for col in range(row + 1, total_blk):
             thisc = bs[col]
             nextc = bs[col+1]
 
             # The corresponding Y term has already been updated, solve for X
-            tempx = mini_sylvester( As[ thisr:nextr , thisr:nextr ] ,
-                                    Ys[ thisr:nextr , thisc:nextc ] ,
-                                    As[ thisc:nextc , thisc:nextc ] )
+            tempx = mini_sylvester(As[thisr:nextr, thisr:nextr],
+                                   Ys[thisr:nextr, thisc:nextc],
+                                   As[thisc:nextc, thisc:nextc])
 
             # Place it in the data
-            Xs[ thisr:nextr , thisc:nextc ] = tempx
-            Xs[ thisc:nextc , thisr:nextr ] = tempx.T
+            Xs[thisr:nextr, thisc:nextc] = tempx
+            Xs[thisc:nextc, thisr:nextr] = tempx.T
 
-            ## Post column solution Y update
+            # Post column solution Y update
             # XA terms
-            tempa = tempx @ As[ thisc:nextc , thisc: ]
+            tempa = tempx @ As[thisc:nextc, thisc:]
             # Update Y towards left
-            Ys[ thisr:nextr , thisc:] += As[thisr:nextr,thisr:nextr].T @ tempa
+            Ys[thisr:nextr, thisc:] += As[thisr:nextr, thisr:nextr].T @ tempa
             # Update Y downwards
-            XA_of_row[: , thisc - thisr:] += tempa
+            XA_of_row[:, thisc - thisr:] += tempa
 
-            ugly_slice = slice(thisc - thisr,
-                        nextc - thisr if nextc is not None else None
-                        )
+            ugly_sl = slice(thisc - thisr,
+                            nextc - thisr if nextc is not None else None)
 
-            Ys[ nextr:nextc , thisc:nextc ] += \
-                     As[thisr:nextr , nextr:nextc].T @ XA_of_row[:,ugly_slice]
+            Ys[nextr:nextc, thisc:nextc] += \
+                As[thisr:nextr, nextr:nextc].T @ XA_of_row[:, ugly_sl]
 
     return S @ Xs @ S.T
