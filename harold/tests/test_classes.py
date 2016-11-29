@@ -261,7 +261,7 @@ def test_model_zeros():
     D = np.zeros((1, 3))
     zs = transmission_zeros(A, B, C, D)
     res = np.array([-7, -6])
-    assert_almost_equal(res, zs)
+    assert_almost_equal(np.sort(res), np.sort(zs))
     # Example from Reinschke, 1988
     A = np.array([[0, 0, 1, 0, 0, 0],
                   [2, 0, 0, 3, 4, 0],
@@ -276,4 +276,4 @@ def test_model_zeros():
     D = np.zeros((3, 2))
     zs = transmission_zeros(A, B, C, D)
     res = np.array([-6.78662791+0.j,  3.09432022+0.j])
-    assert_almost_equal(zs, res)
+    assert_almost_equal(np.sort(zs), np.sort(res))
