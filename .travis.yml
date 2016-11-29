@@ -4,8 +4,9 @@ python:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
+  - pip install coverage
   - pip install coveralls
 # command to run tests
-script: nosetests --with-coverage
+script: nosetests --with-coverage --cover-package=harold
 after_success:
   coveralls
