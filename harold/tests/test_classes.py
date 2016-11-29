@@ -247,7 +247,7 @@ def test_model_zeros():
                     -9.52183370e-03 + 0j,
                     1.69789270e-01 - 0j,
                     5.46527700e-01 - 0j])
-    assert_almost_equal(np.sort(zs), res)
+    assert_almost_equal(np.sort(zs), np.sort(res))
     # An example found online (citation lost), please let me know
     A = np.array([[-6.5000, 0.5000, 6.5000, -6.5000],
                   [-0.5000, -5.5000, -5.5000, 5.5000],
