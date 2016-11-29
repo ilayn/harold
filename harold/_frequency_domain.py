@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 from ._classes import State, Transfer
 from ._system_funcs import staircase, minimal_realization
 
-__all__ = ['frequency_response', 'bode_plot']
+__all__ = ['frequency_response', 'bode_plot', 'nyquist_plot']
 
 
 def _State_frequency_response_generator(mA, mb, sc, f):
@@ -266,7 +266,7 @@ def frequency_response(G, custom_grid=None, high=None, low=None, samples=None,
     return freq_resp_array, w
 
 
-def bode_plot(G, w=None, dont_draw=False):
+def bode_plot(G, w=None, use_db=False, use_radian=False):
     """
     Draws the Bode plot of the system G. As the name implies, this only
     creates a plot and for the data that is used `frequency_response()`
@@ -278,15 +278,78 @@ def bode_plot(G, w=None, dont_draw=False):
         The system for which the Bode plot will be drawn
     w : array_like
         Range of frequencies
-    dont_draw : bool
-        If True the figure handle is returned instead of directly drawing
-        to be used in elsewhere. The figure has no applied styles such as
-        title, grid etc.
+    use_db : bool
+        Uses the deciBell unit for the magnitude plots.
+    use_radian : bool
+        Uses radians per second for the frequencies.
 
     Returns
     -------
     plot : matplotlib.figure.Figure
-        If `dont_draw` key is set to True then this returns the figure object.
+
+    """
+    if not isinstance(G, (State, Transfer)):
+        raise TypeError('The first argument should be a system'
+                        ' representation.')
+    db_scale = 20 if use_db else 1
+    if w is not None:
+        fre, ww = frequency_response(G, w)
+    else:
+        fre, ww = frequency_response(G)
+
+    mag = db_scale * np.log10(np.abs(fre))
+    pha = np.unwrap(np.angle(fre, deg=True if use_radian else False))
+
+    if G._isSISO:
+        fig, axs = plt.subplots(2, 1, sharex=True)
+        axs[0].semilogx(ww, mag)
+        axs[1].semilogx(ww, pha)
+        axs[1].set_xlabel(r'Frequency ({})'
+                          ''.format('rad/s' if use_radian else 'Hz'))
+        axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
+        axs[1].set_ylabel(r'Phase (deg)')
+        for x in range(2):
+            axs[x].grid(True, which='both')
+        return fig
+
+    p, m = G.shape
+    fig, axs = plt.subplots(2*p, m, sharex=True)
+    # For SIMO systems axs returns a 1D array hence double indices
+    # lead to errors.
+    if axs.ndim == 1:
+        axs = axs[:, None]
+
+    for col in range(m):
+        for row in range(p):
+            axs[2*row, col].semilogx(ww, mag[row, col, :])
+            axs[2*row+1, col].semilogx(ww, pha[row, col, :])
+            axs[2*row, col].grid(True, which='both')
+            axs[2*row+1, col].grid(True, which='both')
+            # MIMO Labels and gridding
+            if col == 0:
+                axs[2*row, col].set_ylabel(r'Magnitude'.format(
+                                                ' (dB)' if use_db else ''))
+                axs[2*row+1, col].set_ylabel(r'Phase (deg)')
+            if row == p - 1:
+                axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(
+                                        'rad/s' if use_radian else 'Hz'))
+    return fig
+
+
+def nyquist_plot(G, w=None):
+    """
+    Draws the Nyquist plot of the system G.
+
+    Parameters
+    ----------
+    G : {State,Transfer}
+        The system for which the Nyquist plot will be drawn
+    w : array_like
+        Range of frequencies
+
+    Returns
+    -------
+    plot : matplotlib.figure.Figure
 
     """
     if not isinstance(G, (State, Transfer)):
@@ -297,32 +360,36 @@ def bode_plot(G, w=None, dont_draw=False):
         fre, ww = frequency_response(G, w)
     else:
         fre, ww = frequency_response(G)
-
-    mag = 20*np.log10(np.abs(fre))
-    pha = np.unwrap(np.angle(fre, deg=True))
-
-    m, p = G.shape
+        rr = np.real(fre)
+        ii = np.imag(fre)
 
     if G._isSISO:
-        fig, axs = plt.subplots(2, 1, sharex=True)
-        axs[0].semilogx(ww, mag)
-        axs[1].semilogx(ww, pha)
-        if dont_draw:
-            return fig
-
-    # For SIMO systems axs returns a 1D array hence double indices
-    # lead to errors. Hence the if-switch to detect that.
-    elif p == 1:
-        fig, axs = plt.subplots(2*m, 1, sharex=True)
-        for x in range(m):
-            axs[2*x].semilogx(ww, mag[x, 0, :])
-            axs[2*x+1].semilogx(ww, pha[x, 0, :])
-    else:
-        fig, axs = plt.subplots(2*m, p, sharex=True)
-        for y in range(p):
-            for x in range(m):
-                axs[2*x, y].semilogx(ww, mag[x, y, :])
-                axs[2*x+1, y].semilogx(ww, pha[x, y, :])
-
-    if dont_draw:
+        plt.plot(rr, ii, '-')
+        plt.plot(rr, -ii, '-.')
+        # (-1,0) point
+        plt.plot([-1], [0], 'b+')
+        plt.xlabel(r'Real Part')
+        plt.ylabel(r'Imaginary Part')
+        plt.grid(which='both', axis='both')
+        fig = plt.gcf()
         return fig
+
+    p, m = G.shape
+    fig, axs = plt.subplots(p, m)
+    # For SIMO systems axs returns a 1D array hence double indices
+    # lead to errors.
+    if axs.ndim == 1:
+            axs = axs[:, None] if m == 1 else axs[None, :]
+
+    for col in range(m):
+        for row in range(p):
+            axs[row, col].plot(rr[row, col, :], ii[row, col, :], '-')
+            axs[row, col].plot(rr[row, col, :], -ii[row, col, :], '-.')
+            axs[row, col].plot([-1], [0], 'b+')
+            axs[row, col].grid(True, which='both')
+            # MIMO Labels and gridding
+            if col == 0:
+                axs[row, col].set_ylabel('Imaginary Part')
+            if row == p - 1:
+                axs[row, col].set_xlabel('Real Part')
+    return fig
