@@ -1,4 +1,4 @@
-|Travis-CI| |GitHub license| |Join the chat at https://gitter.im/ilayn/harold|
+|Travis-CI| |License| |Join the chat at Gitter| |Coveralls|
 
 harold
 ======
@@ -76,7 +76,7 @@ Notice how we had to increase the nesting of the bracket level to make it
 contain arrays for a 2x2 system. This is, say in matlab, is done via curly
 braces but for Python, brackets are natural for a list syntax.
 
-We are at it, here is a Bode Plot of a 348-state Clamped Beam model
+While we are at it, here is a Bode Plot of a 348-state Clamped Beam model
 from the SLICOT collections::
 
     import scipy.io as sio # needed to read .mat files
@@ -251,9 +251,11 @@ If you have questions/comments feel free to shoot one to
 .. _Sphinx documentation: http://harold.readthedocs.org/en/latest/
 .. _Skogestad-Python: https://github.com/alchemyst/Skogestad-Python
 
-.. |GitHub license| image:: https://img.shields.io/github/license/mashape/apistatus.svg
+.. |License| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/ilayn/harold/blob/master/LICENSE
-.. |Join the chat at https://gitter.im/ilayn/harold| image:: https://badges.gitter.im/Join%20Chat.svg
+.. |Join the chat at Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 .. |Travis-CI| image:: https://travis-ci.org/ilayn/harold.svg?branch=master
     :target: https://travis-ci.org/ilayn/harold
+.. |Coveralls| image:: https://coveralls.io/repos/github/ilayn/harold/badge.svg?branch=master
+    :target: https://coveralls.io/github/ilayn/harold?branch=master
