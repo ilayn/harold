@@ -1,6 +1,14 @@
 ﻿ChangeLog
 ============
 
+v0.1.1b4
+--------
++ Sanitized the circular dependencies a bit more
++ minimal_realization is changed to accept models instead of A,B,C triplet
++ minimal_realization for Transfer uses the pole zero cancellation check
++ more housekeeping and bug fixes
+- state_to_transfer does not return minimal realizations (per request)
+
 v0.1.1b3
 --------
 + More tests

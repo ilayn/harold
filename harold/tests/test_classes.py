@@ -242,12 +242,14 @@ def test_model_zeros():
     D = np.zeros((2, 2))
     zs = transmission_zeros(A, B, C, D)
     res = np.array([-2.64128629e+01 - 0j,
-                    -2.93193619e+00 + 4.19522621e-01j,
-                    -2.93193619e+00 - 4.19522621e-01j,
+                    -2.93193619 - 0.419522621j,
                     -9.52183370e-03 + 0j,
+                    -2.93193619 + 0.419522621j,
                     1.69789270e-01 - 0j,
                     5.46527700e-01 - 0j])
-    assert_almost_equal(np.sort(zs), np.sort(res))
+    # Sort is numerically too sensitive for imaginary parts.
+    assert_almost_equal(np.sort(np.imag(zs)), np.sort(np.imag(res)))  # 0.0
+    assert_almost_equal(np.sort(np.real(zs)), np.sort(np.real(res)))  # 0.1
     # An example found online (citation lost), please let me know
     A = np.array([[-6.5000, 0.5000, 6.5000, -6.5000],
                   [-0.5000, -5.5000, -5.5000, 5.5000],
@@ -261,7 +263,7 @@ def test_model_zeros():
     D = np.zeros((1, 3))
     zs = transmission_zeros(A, B, C, D)
     res = np.array([-7, -6])
-    assert_almost_equal(np.sort(res), np.sort(zs))
+    assert_almost_equal(np.sort(res), np.sort(zs))  # 1
     # Example from Reinschke, 1988
     A = np.array([[0, 0, 1, 0, 0, 0],
                   [2, 0, 0, 3, 4, 0],

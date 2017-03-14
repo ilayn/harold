@@ -198,10 +198,8 @@ def pair_complex_numbers(a, tol=1e-9, realness_tol=1e-9,
 
     # a close to realness function that operates element-wise
     real_if_close_array = np.vectorize(
-                                       lambda x: np.real_if_close(x, realness_tol),
-                                       otypes=[np.complex_],
-                                       doc='Elementwise numpy.real_if_close'
-                                       )
+            lambda x: np.real_if_close(x, realness_tol), otypes=[np.complex_],
+            doc='Elementwise numpy.real_if_close')
 
     array_r_j = real_if_close_array(array_r_j)
     array_r, array_j = return_imre(array_r_j)

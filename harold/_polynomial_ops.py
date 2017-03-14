@@ -365,7 +365,7 @@ def haroldcompanion(somearray):
         return np.array([])
 
     # regularize to flat 1D np.array
-    somearray = np.array(somearray, dtype='float').flatten()
+    somearray = np.array(somearray).flatten()
 
     ta = haroldtrimleftzeros(somearray)
     # convert to monic polynomial.

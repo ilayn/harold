@@ -24,8 +24,7 @@ THE SOFTWARE.
 
 import numpy as np
 
-from scipy.linalg import eigvals, block_diag, qz, norm, qr
-from scipy.linalg.lapack import dgebal
+from scipy.linalg import eigvals, block_diag, qz, norm
 from tabulate import tabulate
 from itertools import zip_longest, chain
 
@@ -34,11 +33,12 @@ from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
                               haroldtrimleftzeros, haroldlcm)
 
 from ._aux_linalg import e_i, haroldsvd
+#from ._system_funcs import minimal_realization
 from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
 
 __all__ = ['Transfer', 'State', 'state_to_transfer', 'transfer_to_state',
-           'transmission_zeros']
+           'transmission_zeros', 'concatenate_state_matrices']
 
 
 class Transfer:
@@ -774,14 +774,15 @@ class Transfer:
 
     def __repr__(self):
         if self.SamplingSet == 'R':
-            desc_text = 'Continous-Time Transfer function with:\n'
+            desc_text = 'Continous-Time Transfer function\n'
         else:
             desc_text = ('Discrete-Time Transfer function with: '
                          'sampling time: {0:.3f} \n'
                          ''.format(float(self.SamplingPeriod)))
 
         if self._isgain:
-            desc_text += '\nStatic Gain\n'
+            desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
+                                                        self.NumberOfInputs)
         else:
             desc_text += ' {0} input(s) and {1} output(s)\n'.format(
                                                         self.NumberOfInputs,
@@ -801,9 +802,7 @@ class Transfer:
                                                   'Zeros(imag)']
                                          )
 
-        desc_text += '\n\n'+'End of {0} object description'.format(
-                                                        __class__.__qualname__
-                                                        )
+        desc_text += '\n\n'
         return desc_text
 
     @staticmethod
@@ -1953,8 +1952,8 @@ class State:
     # TODO: How to validate strides
     # ================================================================
 
-    def __getitem__(self, num_or_slice):
-        print('La la')
+#    def __getitem__(self, num_or_slice):
+#        print('La la')
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
@@ -1965,30 +1964,33 @@ class State:
         if self._SamplingSet == 'R':
             desc_text = '\n Continous-time state represantation\n'
         else:
-            desc_text = ('Discrete-time state represantation with: '
-                         'sampling time: %.3f \n' % self.SamplingPeriod)
+            desc_text = ('Discrete-Time state representation with: '
+                         'sampling time: {0:.3f} \n'
+                         ''.format(float(self.SamplingPeriod)))
 
-        desc_text += (' {0} input(s) and {1} output(s)\n'.format(
-                                                    self.NumberOfInputs,
-                                                    self.NumberOfOutputs))
-        poles_real_part = np.real(self.poles)
-        poles_imag_part = np.imag(self.poles)
-        zeros_real_part = np.real(self.zeros)
-        zeros_imag_part = np.imag(self.zeros)
-        pole_zero_table = zip_longest(
-                                      poles_real_part,
-                                      poles_imag_part,
-                                      zeros_real_part,
-                                      zeros_imag_part
-                                      )
+        if self._isgain:
+            desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
+                                                        self.NumberOfInputs)
+        else:
+            desc_text += ' {0} input(s) and {1} output(s)\n'.format(
+                                                        self.NumberOfInputs,
+                                                        self.NumberOfOutputs
+                                                        )
 
-        desc_text += '\n' + tabulate(pole_zero_table,
-                                     headers=['Poles(real)',
-                                              'Poles(imag)',
-                                              'Zeros(real)',
-                                              'Zeros(imag)'])
-#        desc_text += '\n\n'+str('End of object description')
-#                                                % __class__.__qualname__
+            pole_zero_table = zip_longest(np.real(self.poles),
+                                          np.imag(self.poles),
+                                          np.real(self.zeros),
+                                          np.imag(self.zeros)
+                                          )
+
+            desc_text += '\n' + tabulate(pole_zero_table,
+                                         headers=['Poles(real)',
+                                                  'Poles(imag)',
+                                                  'Zeros(real)',
+                                                  'Zeros(imag)']
+                                         )
+
+        desc_text += '\n\n'
         return desc_text
 
     @staticmethod
@@ -2175,8 +2177,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     if it_is_gain:
         return Transfer(D)
-    # FIXME: Following causes a circular import
-    #    A, B, C = minimal_realization(A, B, C)
+
     if A.size == 0:
         if output is 'polynomials':
             return D, np.ones_like(D)
@@ -2687,3 +2688,30 @@ def _state_or_abcd(arg, n=4):
                         ''.format(type(arg).__qualname__))
 
     return system_or_not, returned_args
+
+
+def concatenate_state_matrices(G):
+    """
+    Takes a State() model as input and returns the matrix
+
+    .. math::
+
+        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
+
+    Parameters
+    ----------
+
+    G : State()
+
+    Returns
+    -------
+
+    M : 2D Numpy array
+
+    """
+    if not isinstance(G, State):
+        raise TypeError('concatenate_state_matrices() works on state '
+                        'representations, but I found \"{0}\" object '
+                        'instead.'.format(type(G).__name__))
+    H = np.vstack((np.hstack((G.a, G.b)), np.hstack((G.c, G.d))))
+    return H

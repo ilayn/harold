@@ -21,12 +21,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
+from copy import deepcopy
 import numpy as np
 from numpy.linalg import cond, eig, norm
 from scipy.linalg import svdvals, qr, block_diag
-from ._classes import State
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
-
+from ._classes import *
 
 """
 TODO Though the descriptor code also works up-to-production, I truncated
@@ -34,37 +34,7 @@ to explicit systems. I better ask around if anybody needs them (though
 the answer to such question is always a yes).
 """
 
-__all__ = ['concatenate_state_matrices', 'staircase',
-           'cancellation_distance', 'minimal_realization']
-
-# TODO : type checking for both.
-
-
-def concatenate_state_matrices(G):
-    """
-    Takes a State() model as input and returns the matrix
-
-    .. math::
-
-        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
-
-    Parameters
-    ----------
-
-    G : State()
-
-    Returns
-    -------
-
-    M : 2D Numpy array
-
-    """
-    if not isinstance(G, State):
-        raise TypeError('concatenate_state_matrices() works on state '
-                        'representations, but I found \"{0}\" object '
-                        'instead.'.format(type(G).__name__))
-    H = np.vstack((np.hstack((G.a, G.b)), np.hstack((G.c, G.d))))
-    return H
+__all__ = ['staircase', 'cancellation_distance', 'minimal_realization']
 
 
 def staircase(A, B, C,
@@ -330,9 +300,9 @@ def cancellation_distance(F, G):
     return upper2, upper1, lower0, e_f, radius
 
 
-def minimal_realization(A, B, C, mu_tol=1e-9):
+def minimal_realization(G, tol=1e-6):
     """
-    Given state matrices :math:`A,B,C` computes minimal state matrices
+    Given system realization G, this computes minimal realization
     such that the system is controllable and observable within the
     given tolerance :math:`\\mu`.
 
@@ -343,27 +313,45 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
      cancellations but the distance is less than the tolerance,
      distance wins and the respective mode is removed.
 
-    Uses ``cancellation_distance()`` and ``staircase()`` for the tests.
-
     Parameters
     ----------
-
-    A,B,C : {(n,n), (n,m), (pxn)} array_like
-        System matrices to be checked for minimality
-    mu_tol: float
-        The sensitivity threshold for the cancellation to be compared
-        with the first default output of cancellation_distance() function. The
-        default value is (default value is :math:`10^{-9}`)
+    G : State, Transfer
+        System representation to be checked for minimality
+    tol: float
+        The sensitivity threshold for the cancellation.
 
     Returns
     -------
+    G_min : realization
+        Minimal realization of the input G
 
-    A,B,C : {(k,k), (k,m), (pxk)} array_like
-        System matrices that are identified as minimal with k states
-        instead of the original n where (k <= n)
+    Notes
+    -----
+    For State() inputs the alogrithm uses ``cancellation_distance()`` and
+    ``staircase()`` for the tests. For Transfer() inputs, ``haroldgcd()``
+    is used per entry.
 
     """
 
+    try:
+        if G._isgain:
+            return G
+
+        A, B, C, D = G.matrices
+        Am, Bm, Cm = _minimal_realization_state(A, B, C, tol=tol)
+        return State(Am, Bm, Cm, D, dt=G.SamplingPeriod)
+    except AttributeError:
+        try:
+            num, den = G.polynomials
+            numm, denm = _minimal_realization_transfer(num, den, tol=tol)
+            return Transfer(numm, denm, dt=G.SamplingPeriod)
+        except AttributeError:
+            raise ValueError("The argument G is not a State() or a "
+                             "Transfer() representation. Instead I got"
+                             "{}".format(type(G).__qualname__))
+
+
+def _minimal_realization_state(A, B, C, tol=1e-6):
     keep_looking = True
     run_out_of_states = False
 
@@ -377,7 +365,7 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
         kc = cancellation_distance(A, B)[0]
         ko = cancellation_distance(A.T, C.T)[0]
 
-        if min(kc, ko) > mu_tol:  # no cancellation
+        if min(kc, ko) > tol:  # no cancellation
             keep_looking = False
         else:
 
@@ -407,10 +395,10 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
 
             # If unobservability distance is closer, let it handle first
             if ko >= kc:
-                if (sum(blocks_c) == n and kc <= mu_tol):
+                if (sum(blocks_c) == n and kc <= tol):
                     Ac_mod, Bc_mod, Cc_mod, kc_mod = Ac, Bc, Cc, kc
 
-                    while kc_mod <= mu_tol:  # Until cancel dist gets big
+                    while kc_mod <= tol:  # Until cancel dist gets big
                         Ac_mod, Bc_mod, Cc_mod = (Ac_mod[:-1, :-1],
                                                   Bc_mod[:-1, :],
                                                   Cc_mod[:, :-1])
@@ -427,10 +415,10 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
                     blocks_c = [sum(blocks_c)-Ac_mod.shape[0]]
 
             # Same with the o'ble modes
-            if (sum(blocks_o) == n and ko <= mu_tol):
+            if (sum(blocks_o) == n and ko <= tol):
                 Ao_mod, Bo_mod, Co_mod, ko_mod = Ao, Bo, Co, ko
 
-                while ko_mod <= mu_tol:  # Until cancel dist gets big
+                while ko_mod <= tol:  # Until cancel dist gets big
                     Ao_mod, Bo_mod, Co_mod = (Ao_mod[1:, 1:],
                                               Bo_mod[1:, :],
                                               Co_mod[:, 1:])
@@ -469,3 +457,107 @@ def minimal_realization(A, B, C, mu_tol=1e-9):
                 A, B, C = Ao[l:, l:], Bo[l:, :], Co[:, l:]
 
     return A, B, C
+
+
+def _minimal_realization_transfer(num, den, tol=1e-6):
+    '''
+    A helper function for obtaining a minimal representation of the
+    Transfer() models.
+    The method is pretty straightforward; going over the pole/zero pairs
+    and removing them if they are either exactly the same or within their
+    neigbourhood in 2-norm sense with threshold `tol`.
+    '''
+    # MIMO or not?
+    if isinstance(num, list):
+        # Don't touch the original data
+        num = deepcopy(num)
+        den = deepcopy(den)
+
+        # Walk over entries for pole/zero cancellations
+        m, p = len(num[0]), len(num)
+        for row in range(p):
+            for col in range(m):
+                (num[row][col],
+                 den[row][col]) = _minimal_realization_simplify(num[row][col],
+                                                                den[row][col],
+                                                                tol)
+    # It's SISO search directly
+    else:
+        num, den = _minimal_realization_simplify(num, den, tol)
+
+    return num, den
+
+
+def _minimal_realization_simplify(num, den, tol):
+    '''
+    This is a simple distance checker between the each root of num and all
+    roots of den to see whether there are any pairs that are sufficiently
+    close to each other defined by `tol`.
+    '''
+    plz = np.roots(den[0])
+    zrz = np.roots(num[0])
+
+    # Root finding algorithms are inherently ill-conditioned. Hence it might
+    # happen that real multiplicities can turn out as complex pairs, e.g.,
+    # np.roots(np.poly([1,2,3,2,3,4]))
+
+    # This is a simple walk over zeros checking if there is something close
+    # enough to it in the pole list with the slight extra check:
+    # If we encounter 3.0 zero vs. 3.0+1e-9i pole, we look for another real
+    # 3.0 in the zeros and for the conjugate of the pole and vice versa.
+
+    # Zeros (both reals and one element of each complex pairs)
+    zrz = np.r_[zrz[np.imag(zrz) == 0.], zrz[np.imag(zrz) > 0.]]
+
+    safe_z = []
+
+    for z in zrz:
+        dist = np.abs(plz-z)
+        bool_cz = np.imag(z) > 0
+        # Do we have a match ?
+        if np.min(dist) < tol + tol*np.abs(z):
+            # Get the index and check the complex part
+            match_index = np.argmin(dist)
+            pz = plz[match_index]
+            bool_cp = np.imag(pz) > 0
+
+            if bool_cz and bool_cp:
+                plz = np.delete(plz, match_index)
+                # remove also the conjugate
+                del_index, = np.where(plz == np.conj(pz))
+                plz = np.delete(plz, del_index[0])
+
+            elif bool_cz and not bool_cp:
+                # We have a complex pair of zeros and a real pole
+                # If there is another entry of this pole then we
+                # cancel both of them otherwise we assume a real/real
+                # cancellation and convert the other complex zero to real.
+
+                # First get rid of the real pole
+                plz = np.delete(plz, match_index)
+                # Now search another real pole that is also close
+                dist = np.abs(plz-z)
+                if np.min(dist) < tol + tol*np.abs(z):
+                    match_index = np.argmin(dist)
+                    plz = np.delete(plz, match_index)
+                else:
+                    # It was a real/complex cancellation, make the zero real
+                    safe_z += np.real(z)
+
+            elif not bool_cz and bool_cp:
+                # Same with above but this time we convert the other pole
+                # to catch in the next iteration if another zero exists
+                plz = np.delete(plz, match_index)
+                conj_index, = np.where(plz == np.conj(pz))
+                plz[conj_index[0]] = np.real(plz[conj_index[0]])
+
+            else:
+                plz = np.delete(plz, match_index)
+
+        else:
+            safe_z += [z]
+
+            if bool_cz:
+                safe_z += [np.conj(z)]
+
+    return np.poly(safe_z), np.poly(plz)
