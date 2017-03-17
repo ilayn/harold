@@ -2294,6 +2294,7 @@ def transfer_to_state(*tf_or_numden, output='system'):
     if len(tf_or_numden) > 1:
         num, den = tf_or_numden[:2]
         num, den, (p, m), it_is_gain = Transfer.validate_arguments(num, den)
+        dt = None
     elif isinstance(tf_or_numden[0], State):
         return tf_or_numden[0]
     else:
@@ -2303,6 +2304,7 @@ def transfer_to_state(*tf_or_numden, output='system'):
             den = G.den
             m, p = G.NumberOfInputs, G.NumberOfOutputs
             it_is_gain = G._isgain
+            dt = G.SamplingPeriod
         except AttributeError:
             raise TypeError('I\'ve checked the argument for being a Transfer, '
                             'a State,\nor a pair for (num,den) but'
@@ -2311,11 +2313,10 @@ def transfer_to_state(*tf_or_numden, output='system'):
                             ' object.'
                             ''.format(type(tf_or_numden[0]).__qualname__))
 
+    # Arguments should be regularized here.
     # Check if it is just a gain
     if it_is_gain:
-        A = np.array([], dtype=float)
-        B = np.array([], dtype=float)
-        C = np.array([], dtype=float)
+        A, B, C = (np.array([], dtype=float),)*3
         if np.max((m, p)) > 1:
             D = np.empty((m, p), dtype=float)
             for rows in range(p):
@@ -2324,7 +2325,7 @@ def transfer_to_state(*tf_or_numden, output='system'):
         else:
             D = num/den
 
-        return None, None, None, D
+        return (A, B, C, D) if output == 'matrices' else State(D, dt=dt)
 
     if (m, p) == (1, 1):  # SISO
         A = haroldcompanion(den)
@@ -2490,15 +2491,7 @@ def transfer_to_state(*tf_or_numden, output='system'):
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
 
-    try:  # if the arg was a Transfer object
-        is_ct = tf_or_numden[0].SamplingSet is 'R'
-        if is_ct:
-            return (A, B, C, D) if output == 'matrices' else State(A, B, C, D)
-        else:
-            return (A, B, C, D) if output == 'matrices' else \
-                                    State(A, B, C, D, G.SamplingPeriod)
-    except AttributeError:  # the arg was num,den
-        return (A, B, C, D) if output == 'matrices' else State(A, B, C, D)
+    return (A, B, C, D) if output == 'matrices' else State(A, B, C, D, dt)
 
 
 def transmission_zeros(A, B, C, D):
