@@ -1969,7 +1969,6 @@ class State:
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
                          ''.format(float(self.SamplingPeriod),
                                    1/float(self.SamplingPeriod)))
-            print('Yo')
 
         if self._isgain:
             desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
