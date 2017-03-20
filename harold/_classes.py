@@ -1953,9 +1953,6 @@ class State:
     # TODO: How to validate strides
     # ================================================================
 
-#    def __getitem__(self, num_or_slice):
-#        print('La la')
-
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
                          'the relevant num,den or A,B,C,D attributes. '
@@ -1965,7 +1962,7 @@ class State:
         if self._SamplingSet == 'R':
             desc_text = '\n Continous-time state represantation\n'
         else:
-            desc_text = ('Discrete-Time state representation with: '
+            desc_text = ('Discrete-Time state representation with '
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
                          ''.format(float(self.SamplingPeriod),
                                    1/float(self.SamplingPeriod)))
@@ -2124,19 +2121,17 @@ class State:
 
 def state_to_transfer(*state_or_abcd, output='system'):
     """
-    Given a State() object of a tuple of A,B,C,D array-likes, converts
+    Given a State() object or a tuple of A,B,C,D array-likes, converts
     the argument into the transfer representation. The output can be
-    selected as a Transfer() object or the numerator, denominator if
+    selected as a Transfer() object or the numerator, denominator pair if
     'output' keyword is given with the option 'polynomials'.
 
     If the input is a Transfer() object it returns the argument with no
     modifications.
 
-
-    The algorithm is to first get the minimal realization of the State()
-    representation. Then implements the conversion ala Varga,Sima 1981
-    which can be summarized as iterating over every row/cols of B and C
-    to get SISO Transfer representations via c*(sI-A)^(-1)*b+d
+    The algorithm is Varga,Sima 1981 which can be summarized as iterating
+    over every row/cols of B and C to get SISO Transfer representations
+    via c*(sI-A)^(-1)*b+d.
 
     Parameters
     ----------
@@ -2685,26 +2680,25 @@ def _state_or_abcd(arg, n=4):
 
 def concatenate_state_matrices(G):
     """
-    Takes a State() model as input and returns the matrix
-
-    .. math::
-
-        \\left[\\begin{array}{c|c}A&B\\\\ \\hline C&D\\end{array}\\right]
+    Takes a State() model as input and returns the A, B, C, D matrices
+    combined into a full matrix. For static gain models, the feedthrough
+    matrix D is returned.
 
     Parameters
     ----------
 
-    G : State()
+    G : State
 
     Returns
     -------
 
-    M : 2D Numpy array
+    M : ndarray
 
     """
     if not isinstance(G, State):
         raise TypeError('concatenate_state_matrices() works on state '
                         'representations, but I found \"{0}\" object '
                         'instead.'.format(type(G).__name__))
-    H = np.vstack((np.hstack((G.a, G.b)), np.hstack((G.c, G.d))))
-    return H
+    if G._isgain:
+        return G.d
+    return np.vstack((np.hstack((G.a, G.b)), np.hstack((G.c, G.d))))

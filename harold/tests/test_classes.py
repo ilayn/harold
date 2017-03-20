@@ -24,7 +24,8 @@ THE SOFTWARE.
 
 import numpy as np
 from harold import (Transfer, State, e_i, haroldcompanion,
-                    transmission_zeros, state_to_transfer, transfer_to_state)
+                    transmission_zeros, state_to_transfer, transfer_to_state,
+                    concatenate_state_matrices)
 
 from numpy.testing import (assert_,
                            assert_equal,
@@ -286,7 +287,7 @@ def test_model_zeros():
     assert_almost_equal(np.sort(zs), np.sort(res))  # 2
 
 
-def static_model_conversion_sampling_period():
+def test_static_model_conversion_sampling_period():
     G = State(np.eye(5), dt=0.001)
     H = state_to_transfer(G)
     assert_(H._isgain)  # 0
@@ -294,3 +295,11 @@ def static_model_conversion_sampling_period():
     assert_equal(H.SamplingPeriod, 0.001)  # 2
     K = transfer_to_state(H)
     assert_equal(K.SamplingPeriod, 0.001)  # 3
+
+
+def test_concatenate_state_matrices():
+    G = State(1, 2, 3, 4)
+    M = concatenate_state_matrices(G)
+    assert_array_equal(M, np.array([[1, 2], [3, 4]]))  # 1
+    G = State(np.eye(4))
+    assert_array_equal(concatenate_state_matrices(G), np.eye(4))
