@@ -17,7 +17,7 @@ def read(*filenames, **kwargs):
         with io.open(filename, encoding=encoding) as f:
             buf.append(f.read())
     return sep.join(buf)
-    
+
 long_description = read('README.rst', 'CHANGES.txt')
 
 setup(
@@ -25,7 +25,7 @@ setup(
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1b1',
+    version='0.1.1b4',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',

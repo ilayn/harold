@@ -776,9 +776,10 @@ class Transfer:
         if self.SamplingSet == 'R':
             desc_text = 'Continous-Time Transfer function\n'
         else:
-            desc_text = ('Discrete-Time Transfer function with: '
-                         'sampling time: {0:.3f} \n'
-                         ''.format(float(self.SamplingPeriod)))
+            desc_text = ('Discrete-Time Transfer function with '
+                         'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
+                         ''.format(float(self.SamplingPeriod),
+                                   1/float(self.SamplingPeriod)))
 
         if self._isgain:
             desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
@@ -1965,8 +1966,10 @@ class State:
             desc_text = '\n Continous-time state represantation\n'
         else:
             desc_text = ('Discrete-Time state representation with: '
-                         'sampling time: {0:.3f} \n'
-                         ''.format(float(self.SamplingPeriod)))
+                         'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
+                         ''.format(float(self.SamplingPeriod),
+                                   1/float(self.SamplingPeriod)))
+            print('Yo')
 
         if self._isgain:
             desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
@@ -2174,14 +2177,12 @@ def state_to_transfer(*state_or_abcd, output='system'):
     else:
         A, B, C, D, (p, m), it_is_gain = State.validate_arguments(
                                                     *validated_matrices)
+        ZR = None
 
     if it_is_gain:
-        return Transfer(D)
-
-    if A.size == 0:
         if output is 'polynomials':
             return D, np.ones_like(D)
-        return Transfer(D, np.ones_like(D), ZR)
+        return Transfer(D, dt=ZR)
 
     n = A.shape[0]
 

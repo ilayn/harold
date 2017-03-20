@@ -23,8 +23,13 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from harold import Transfer, State, e_i, haroldcompanion, transmission_zeros
-from numpy.testing import (assert_equal, assert_array_equal, assert_raises,
+from harold import (Transfer, State, e_i, haroldcompanion,
+                    transmission_zeros, state_to_transfer, transfer_to_state)
+
+from numpy.testing import (assert_,
+                           assert_equal,
+                           assert_array_equal,
+                           assert_raises,
                            assert_almost_equal)
 
 
@@ -278,4 +283,14 @@ def test_model_zeros():
     D = np.zeros((3, 2))
     zs = transmission_zeros(A, B, C, D)
     res = np.array([-6.78662791+0.j,  3.09432022+0.j])
-    assert_almost_equal(np.sort(zs), np.sort(res))
+    assert_almost_equal(np.sort(zs), np.sort(res))  # 2
+
+
+def static_model_conversion_sampling_period():
+    G = State(np.eye(5), dt=0.001)
+    H = state_to_transfer(G)
+    assert_(H._isgain)  # 0
+    assert_(not H._isSISO)  # 1
+    assert_equal(H.SamplingPeriod, 0.001)  # 2
+    K = transfer_to_state(H)
+    assert_equal(K.SamplingPeriod, 0.001)  # 3
