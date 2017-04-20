@@ -262,7 +262,7 @@ def cancellation_distance(F, G):
     Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.
 
     """
-    if np.equal(*F.shape):
+    if not np.equal(*F.shape):
         raise ValueError('F input must be a square array.')
     if F.shape[0] != G.shape[0]:
         raise ValueError('F and G inputs must have the same number of rows.')
