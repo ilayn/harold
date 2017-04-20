@@ -23,10 +23,10 @@ THE SOFTWARE.
 """
 
 from harold import (staircase, minimal_realization,
-                    State, Transfer, matrix_slice)
-from numpy import array, poly, zeros
+                    State, Transfer, matrix_slice, cancellation_distance)
+from numpy import array, poly, zeros, eye, empty
 
-from numpy.testing import assert_almost_equal, assert_
+from numpy.testing import assert_almost_equal, assert_, assert_raises
 
 
 def test_staircase():
@@ -39,6 +39,12 @@ def test_staircase():
     a, b, c, k = staircase(A, B, C, form='o', invert=True, block_indices=True)
     assert_almost_equal(a[2:, :2], zeros((2, 2)))
     assert_almost_equal(k, array([1, 1]))
+
+def test_cancellation_distance():
+    # Shape checks
+    assert_raises(ValueError, cancellation_distance, empty((4, 3)), 1)
+    f, g = eye(4), eye(3)
+    assert_raises(ValueError, cancellation_distance, f, g)
 
 
 def test_minimal_realization_State():
