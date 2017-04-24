@@ -302,16 +302,11 @@ def cancellation_distance(F, G):
 
 def minimal_realization(G, tol=1e-6):
     """
-    Given system realization G, this computes minimal realization
-    such that the system is controllable and observable within the
-    given tolerance :math:`\\mu`.
-
-    Implements a basic two pass algorithm :
-     1- First distance to mode cancellation is computed then also
-     the Hessenberg form is obtained with the identified o'ble/c'ble
-     block numbers. If staircase form reports that there are no
-     cancellations but the distance is less than the tolerance,
-     distance wins and the respective mode is removed.
+    Given system realization G, this computes minimal realization such that
+    if a State representation is given then the returned representation is
+    controllable and observable within the given tolerance ``tol``. If
+    a Transfer representation is given, then the fractions are simplified
+    in the representation entries.
 
     Parameters
     ----------
@@ -328,8 +323,17 @@ def minimal_realization(G, tol=1e-6):
     Notes
     -----
     For State() inputs the alogrithm uses ``cancellation_distance()`` and
-    ``staircase()`` for the tests. For Transfer() inputs, ``haroldgcd()``
-    is used per entry.
+    ``staircase()`` for the tests. A basic two pass algorithm performs:
+     1- First distance to mode cancellation is computed then also
+     the Hessenberg form is obtained with the identified o'ble/c'ble
+     block numbers.
+     2- If staircase form reports that there are no cancellations but the
+     distance is less than the tolerance, distance wins and the corresponding
+     mode is removed.
+
+    For Transfer() inputs, every entry of the representation is checked for
+    pole/zero cancellations and ``tol`` is used to decide for the decision
+    precision.
 
     """
 

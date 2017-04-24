@@ -205,7 +205,7 @@ def frequency_response(G, custom_grid=None, high=None, low=None, samples=None,
 
         if isinstance(G, State):
             aa, bb, cc = staircase(
-                            *minimal_realization(*G.matrices[:-1]),
+                            *minimal_realization(G).matrices[:-1],
                             form='o',
                             invert=True
                             )
@@ -225,7 +225,7 @@ def frequency_response(G, custom_grid=None, high=None, low=None, samples=None,
         freq_resp_array = np.empty((len(w), m, p), dtype='complex')
 
         if isinstance(G, State):
-            aa, bb, cc = minimal_realization(*G.matrices[:-1])
+            aa, bb, cc = minimal_realization(G).matrices[:-1]
 
             for rows in range(p):
                 aaa, bbb, ccc = staircase(
