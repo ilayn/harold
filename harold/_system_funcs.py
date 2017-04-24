@@ -43,31 +43,16 @@ def staircase(A, B, C,
     The staircase form is used very often to assess system properties.
     Given a state system matrix triplet A,B,C, this function computes
     the so-called controller/observer-Hessenberg form such that the resulting
-    system matrices have the block-form (x denoting the nonzero blocks)
+    system matrices have the block-form (x denoting the possibly nonzero
+    blocks)
 
-    .. math::
-
-        \\begin{array}{c|c}
-            \\begin{bmatrix}
-                \\times & \\times & \\times & \\times & \\times \\\\
-                \\times & \\times & \\times & \\times & \\times \\\\
-                0       & \\times & \\times & \\times & \\times \\\\
-                0       & 0       & \\times & \\times & \\times \\\\
-                0       & 0       &  0      & \\times & \\times
-            \\end{bmatrix} &
-            \\begin{bmatrix}
-                \\times \\\\
-                0       \\\\
-                0       \\\\
-                0       \\\\
-                0
-            \\end{bmatrix} \\\\ \\hline
-            \\begin{bmatrix}
-                \\times & \\times & \\times & \\times & \\times \\\\
-                \\times & \\times & \\times & \\times & \\times
-            \\end{bmatrix}
-        \\end{array}
-
+    [x x x x x|x]
+    [x x x x x|0]
+    [0 x x x x|0]
+    [0 0 x x x|0]
+    [0 0 0 x x|0]
+    [x x x x x|x]
+    [x x x x x|x]
 
     For controllability and observability, the existence of zero-rank
     subdiagonal blocks can be checked, as opposed to forming the Kalman
@@ -240,12 +225,9 @@ def staircase(A, B, C,
 def cancellation_distance(F, G):
     """
     Given matrices :math:`F,G`, computes the upper and lower bounds of
-    the perturbation needed to render the pencil :math:`\\left[
-    \\begin{array}{c|c}F-pI & G\\end{array}\\right]` rank deficient. It is
-    used for assessing the controllability/observability degenerate distance
-    and hence for minimality assessment.
-
-    Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.
+    the perturbation needed to render the pencil [F-pI | G]` rank deficient.
+    It is used for assessing the controllability/observability degenerate
+    distance and hence for minimality assessment.
 
     Parameters
     ----------
@@ -275,7 +257,16 @@ def cancellation_distance(F, G):
         a disk in the complex plane whose center is on "e_f" and whose
         radius is bounded by this output.
 
+    Notes
+    -----
+    Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.
+
     """
+    if not np.equal(*F.shape):
+        raise ValueError('F input must be a square array.')
+    if F.shape[0] != G.shape[0]:
+        raise ValueError('F and G inputs must have the same number of rows.')
+
     A = np.c_[F, G].T
     n, m = A.shape
     B = e_i(n, np.s_[:m])
@@ -334,7 +325,6 @@ def minimal_realization(G, tol=1e-6):
     For Transfer() inputs, every entry of the representation is checked for
     pole/zero cancellations and ``tol`` is used to decide for the decision
     precision.
-
     """
 
     try:
