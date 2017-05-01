@@ -33,7 +33,6 @@ from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
                               haroldtrimleftzeros, haroldlcm)
 
 from ._aux_linalg import e_i, haroldsvd
-#from ._system_funcs import minimal_realization
 from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
 
@@ -805,6 +804,11 @@ class Transfer:
 
         desc_text += '\n\n'
         return desc_text
+
+    def pole_properties(self, output_data=False):
+        return _pole_properties(self.poles,
+                                self.SamplingPeriod,
+                                output_data=output_data)
 
     @staticmethod
     def validate_arguments(num, den, verbose=False):
@@ -1992,6 +1996,11 @@ class State:
         desc_text += '\n\n'
         return desc_text
 
+    def pole_properties(self, output_data=False):
+        return _pole_properties(self.poles,
+                                self.SamplingPeriod,
+                                output_data=output_data)
+
     @staticmethod
     def validate_arguments(a, b, c, d, verbose=False):
         """
@@ -2117,6 +2126,67 @@ class State:
             return a, b, c, d, user_shape, Gain_flag
         else:
             return a, b, c, d, d.shape, Gain_flag
+
+
+def _pole_properties(poles, dt=None, output_data=False):
+    '''
+    This method provides the natural frequency, damping and time constant
+    values of each poles in a tabulated format. Pure integrators have zero
+    frequency and NaN as the damping value. Poles at infinity are discarded.
+
+    Parameters
+    ----------
+    poles : ndarray
+        Poles of the system representation. p must be a 1D array.
+
+    Returns
+    -------
+    props : ndarray
+        The resulting array holds the poles in the first column, natural
+        frequencies in the second and damping ratios in the third.
+        # TODO : Will be implemented!!!
+        The result is an array whose first column is the one of the complex
+        pair or the real pole. When tabulated the complex pair is represented
+        as "<num> ± <num>j" using single entry. However the data is kept as
+        a valid complex number for convenience. If output_data is set to
+        True the numerical values will be returned instead of the string
+        type tabulars.
+
+    Notes
+    -----
+    It should be noted that these properties have very little or no importance
+    except some second order system examples in the academic setting or beyond
+    second order systems. For higher order systems and also for MIMO systems
+    these frequencies and damping ratio values hardly ever mean anything
+    unless there are separable poles/modes. It is just a quick way to get a
+    geometric intuition about the location of the poles.
+    '''
+    # Protect system pole value info
+    p = poles.copy()
+
+    n = np.size(p)
+    # If a static gain is given
+    if n == 0:
+        return None
+    freqn = np.empty_like(p, dtype=float)
+    damp = np.empty_like(p, dtype=float)\
+
+    # Check for pure integrators
+    if dt is not None:  # Discrete
+        z_p = p == 1
+    else:
+        z_p = p == 0
+
+    nz_p = np.logical_not(z_p)
+    freqn[z_p] = 0
+    damp[z_p] = np.NaN
+
+    if dt is not None:
+        p[nz_p] = np.log(p[nz_p])/dt
+
+    freqn[nz_p] = np.abs(p[nz_p])
+    damp[nz_p] = -np.real(p[nz_p])/freqn[nz_p]
+    return np.c_[poles.copy(), freqn, damp]
 
 
 def state_to_transfer(*state_or_abcd, output='system'):
