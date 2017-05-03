@@ -7,6 +7,7 @@ v0.1.1b4
 + minimal_realization is changed to accept models instead of A,B,C triplet
 + minimal_realization for Transfer uses the pole zero cancellation check
 + more housekeeping and bug fixes
++ added damping, natural frequency properties of poles
 - state_to_transfer does not return minimal realizations (per request)
 
 v0.1.1b3

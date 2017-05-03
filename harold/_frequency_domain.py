@@ -266,7 +266,7 @@ def frequency_response(G, custom_grid=None, high=None, low=None, samples=None,
     return freq_resp_array, w
 
 
-def bode_plot(G, w=None, use_db=False, use_radian=False):
+def bode_plot(G, w=None, use_db=False, use_radians=False):
     """
     Draws the Bode plot of the system G. As the name implies, this only
     creates a plot and for the data that is used `frequency_response()`
@@ -280,7 +280,7 @@ def bode_plot(G, w=None, use_db=False, use_radian=False):
         Range of frequencies
     use_db : bool
         Uses the deciBell unit for the magnitude plots.
-    use_radian : bool
+    use_radians : bool
         Uses radians per second for the frequencies.
 
     Returns
@@ -298,14 +298,14 @@ def bode_plot(G, w=None, use_db=False, use_radian=False):
         fre, ww = frequency_response(G)
 
     mag = db_scale * np.log10(np.abs(fre))
-    pha = np.unwrap(np.angle(fre, deg=True if use_radian else False))
+    pha = np.unwrap(np.angle(fre, deg=False if use_radians else True))
 
     if G._isSISO:
         fig, axs = plt.subplots(2, 1, sharex=True)
         axs[0].semilogx(ww, mag)
         axs[1].semilogx(ww, pha)
         axs[1].set_xlabel(r'Frequency ({})'
-                          ''.format('rad/s' if use_radian else 'Hz'))
+                          ''.format('rad/s' if use_radians else 'Hz'))
         axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
         axs[1].set_ylabel(r'Phase (deg)')
         for x in range(2):
@@ -332,7 +332,7 @@ def bode_plot(G, w=None, use_db=False, use_radian=False):
                 axs[2*row+1, col].set_ylabel(r'Phase (deg)')
             if row == p - 1:
                 axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(
-                                        'rad/s' if use_radian else 'Hz'))
+                                        'rad/s' if use_radians else 'Hz'))
     return fig
 
 
