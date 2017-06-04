@@ -221,6 +221,33 @@ def test_State_algebra():
                         2*np.eye(3))
 
 
+def test_State_slicing():
+    F = State(np.random.rand(4, 4))
+    H = State(F.d, np.random.rand(4, 3), np.random.rand(5, 4))
+    Hind = [(1, 3), (5, 1),
+            (5, 3), (1, 1),
+            (2, 3), (5, 2),
+            (2, 3), (5, 2),
+            (1, 2), (2, 1),
+            (3, 3), (5, 2)]
+    Find = [(1, 4), (4, 1),
+            (4, 4), (1, 1),
+            (2, 4), (4, 2),
+            (2, 4), (4, 2),
+            (1, 2), (2, 1),
+            (2, 4), (4, 2)]
+
+    for s, sind in ((H, Hind), (F, Find)):
+        for ind, x in enumerate([s[1, :], s[:, 1],
+                                s[:, :], s[0, 0],
+                                s[1:3, :], s[:, 1:3],
+                                s[[1, 2], :], s[:, [1, 2]],
+                                s[2, [1, 2]], s[[1, 2], 2],
+                                s[::2, :], s[:, ::2]]):
+            print(ind)
+            assert_equal(x.shape, sind[ind])
+
+
 def test_model_zeros():
     # Test example
     A = np.array(

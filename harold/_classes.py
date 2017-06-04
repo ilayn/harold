@@ -806,6 +806,19 @@ class Transfer:
         return desc_text
 
     def pole_properties(self, output_data=False):
+        '''
+        The resulting array holds the poles in the first column, natural
+        frequencies in the second and damping ratios in the third. For
+        static gain representations None is returned.
+
+        # TODO : Will be implemented!!!
+        The result is an array whose first column is the one of the complex
+        pair or the real pole. When tabulated the complex pair is represented
+        as "<num> ± <num>j" using single entry. However the data is kept as
+        a valid complex number for convenience. If output_data is set to
+        True the numerical values will be returned instead of the string
+        type tabulars.
+        '''
         return _pole_properties(self.poles,
                                 self.SamplingPeriod,
                                 output_data=output_data)
@@ -1951,16 +1964,44 @@ class State:
                             '{0} with a state representation '
                             '(yet).'.format(type(other).__name__))
 
-    # ================================================================
-    # __getitem__ to provide input-output selection of an ss
-    #
-    # TODO: How to validate strides
-    # ================================================================
+    def __getitem__(self, num_or_slice):
+
+        # Check if a double subscript or not
+        if isinstance(num_or_slice, tuple):
+            rows_of_c, cols_of_b = num_or_slice
+        else:
+            rows_of_c, cols_of_b = num_or_slice, slice(None, None, None)
+
+        # Handle the dimension losing behavior of NumPy indexing
+        rc = np.atleast_2d(np.arange(self.NumberOfOutputs)[rows_of_c])
+        cb = np.arange(self.NumberOfInputs)[cols_of_b]
+        n = np.arange(self.NumberOfStates)
+
+        if rc.size == 1:
+            rc = np.squeeze(rc).tolist()
+        # Transpose for braadcasting
+        elif rc.size > 1:
+            rc = rc.T
+
+        if cb.size == 1:
+            cb = np.squeeze(cb).tolist()
+
+        if self._isgain:
+                return State(self.d[rc, cb], dt=self._SamplingPeriod)
+
+        # Enforce fancyness, avoid mixing. Why do we even have to do this?
+        btemp = self.b[n[:, None], cb]
+        ctemp = self.c[rc, n]
+
+        return State(self.a,
+                     btemp if btemp.ndim > 1 else btemp.reshape(rc, cb),
+                     ctemp,
+                     self.d[rc, cb],
+                     dt=self._SamplingPeriod)
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
-                         'the relevant num,den or A,B,C,D attributes. '
-                         'This might be\nincluded in the future though.')
+                         'the relevant num,den or A,B,C,D attributes. ')
 
     def __repr__(self):
         if self._SamplingSet == 'R':
@@ -2000,6 +2041,7 @@ class State:
         return _pole_properties(self.poles,
                                 self.SamplingPeriod,
                                 output_data=output_data)
+    pole_properties.__doc__ = Transfer.pole_properties.__doc__
 
     @staticmethod
     def validate_arguments(a, b, c, d, verbose=False):
@@ -2100,9 +2142,17 @@ class State:
                                  'but I got {0}'.format(a.shape))
 
             if b.shape[0] != a.shape[0]:
-                raise ValueError('B matrix must have the same number of '
-                                 'rows with A matrix. I need {:d} but '
-                                 'got {:d}.'.format(a.shape[0], b.shape[0]))
+                # Accept annoying 1D inputs for B matrices
+                if b.shape[0] == 1 and b.shape[1] == a.shape[0]:
+                    if verbose:
+                        print('It looks like B was a 1D input hence '
+                              'I made it a column vector.')
+                    b = b.T.copy()
+                else:
+                    raise ValueError('B matrix must have the same number '
+                                     'of rows with A matrix. I need {:d} '
+                                     'but got {:d}.'
+                                     ''.format(a.shape[0], b.shape[0]))
 
             if c.shape[1] != a.shape[1]:
                 raise ValueError('C matrix must have the same number of '
@@ -2117,11 +2167,18 @@ class State:
                 d = np.zeros(user_shape)
 
             if d.shape != (user_shape):
-                raise ValueError('D matrix must have the same number of'
-                                 'rows/columns \nwith C/B matrices. I '
-                                 'need the shape ({0[0]:d},{0[1]:d}) '
-                                 'but got ({1[0]:d},{1[1]:d}).'
-                                 ''.format((c.shape[0], b.shape[1]), d.shape))
+                # Accept annoying 1D inputs for D matrices
+                if d.shape[0] == 1 and d.shape == (b.shape[1], c.shape[0]):
+                    if verbose:
+                        print('It looks like D was a 1D input hence '
+                              'I made it a column vector.')
+                    d = d.reshape(-1, 1)
+                else:
+                    raise ValueError('D matrix must have the same number of'
+                                     'rows/columns \nwith C/B matrices. I '
+                                     'need the shape ({0[0]:d},{0[1]:d}) '
+                                     'but got ({1[0]:d},{1[1]:d}).'
+                                     ''.format(user_shape, d.shape))
 
             return a, b, c, d, user_shape, Gain_flag
         else:
