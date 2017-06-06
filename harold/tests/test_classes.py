@@ -159,6 +159,30 @@ def test_Transfer_algebra():
         assert_almost_equal(Hden[x], Hden_computed[x])
 
 
+def test_Transfer_slicing():
+    Hind = [(1, 5), (4, 1),
+            (4, 5), (1, 1),
+            (2, 5), (4, 2),
+            (2, 5), (4, 2),
+            (1, 2), (2, 1),
+            (2, 5), (4, 3)]
+
+    H = state_to_transfer(State(np.random.rand(3, 3),
+                                np.random.rand(3, 5),
+                                np.random.rand(4, 3)))
+    F = Transfer(np.random.rand(4, 5))
+
+    for s, sind in ((H, Hind), (F, Hind)):
+        for ind, x in enumerate([s[1, :], s[:, 1],
+                                s[:, :], s[0, 0],
+                                s[1:3, :], s[:, 1:3],
+                                s[[1, 2], :], s[:, [1, 2]],
+                                s[2, [1, 2]], s[[1, 2], 2],
+                                s[::2, :], s[:, ::2]]):
+            assert_equal(x.shape, sind[ind])
+    assert_raises(ValueError, H.__setitem__)
+
+
 def test_State_Instantiations():
     assert_raises(TypeError, State)
     G = State(5)
@@ -244,9 +268,9 @@ def test_State_slicing():
                                 s[[1, 2], :], s[:, [1, 2]],
                                 s[2, [1, 2]], s[[1, 2], 2],
                                 s[::2, :], s[:, ::2]]):
-            print(ind)
             assert_equal(x.shape, sind[ind])
 
+    assert_raises(ValueError, H.__setitem__)
 
 def test_model_zeros():
     # Test example

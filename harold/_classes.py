@@ -751,19 +751,32 @@ class Transfer:
                             '{0} with a state representation '
                             '(yet).'.format(type(other).__name__))
 
-    # ================================================================
-    # __getitem__ to provide input-output selection of a tf
-    #
-    # TODO: How to validate strides
-    # ================================================================
+    def __getitem__(self, num_or_slice):
 
-#    def __getitem__(self,num_or_slice):
-#        print('Lalala I"m not listening lalala')
+        # Check if a double subscript or not
+        if isinstance(num_or_slice, tuple):
+            rows_of_c, cols_of_b = num_or_slice
+        else:
+            rows_of_c, cols_of_b = num_or_slice, slice(None, None, None)
+        # Eliminate all slices and colons but only indices
+        rc = np.arange(self.NumberOfOutputs)[rows_of_c].tolist()
+        cb = np.arange(self.NumberOfInputs)[cols_of_b].tolist()
+
+        # Is the result goint to be SISO ?
+        if isinstance(rc, int) and isinstance(cb, int):
+            return Transfer(self.num[rc][cb], self.den[rc][cb],
+                            dt=self._SamplingPeriod)
+        else:
+            # Nope, release the MIMO bracket hell
+            rc = [rc] if isinstance(rc, int) else rc
+            cb = [cb] if isinstance(cb, int) else cb
+            return Transfer([[self.num[x][y] for y in cb] for x in rc],
+                            [[self.den[x][y] for y in cb] for x in rc],
+                            dt=self._SamplingPeriod)
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
-                         'the relevant num,den or a,b,c,d properties. '
-                         'This might be\nincluded in the future though.')
+                         'the relevant num, den attributes.')
 
     # ================================================================
     # __repr__ and __str__ to provide meaningful info about the system
@@ -2001,7 +2014,7 @@ class State:
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
-                         'the relevant num,den or A,B,C,D attributes. ')
+                         'the relevant A,B,C,D attributes.')
 
     def __repr__(self):
         if self._SamplingSet == 'R':
