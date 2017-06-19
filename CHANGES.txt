@@ -1,6 +1,14 @@
 ﻿ChangeLog
 ============
 
+v0.1.1b5
+--------
++ Requirement of NumPy is changed to 1.13 and above. Among others, we need
+  `__array_ufunc__` override mechanism for representation algebra. This
+  should not be an issue since noone seems to use this.
++ The representations can now be sliced with `G[:,1:3]` etc.
+
+
 v0.1.1b4
 --------
 + Sanitized the circular dependencies a bit more
