@@ -488,6 +488,13 @@ def _minimal_realization_simplify(num, den, tol):
     roots of den to see whether there are any pairs that are sufficiently
     close to each other defined by `tol`.
     '''
+    # Early exit if numerator is a scalar
+    if num.size == 1:
+        m = den[0, 0]
+        return num/m, den/m
+
+    # Get the gain from leading coefficients to work with monic polynomials
+    k_gain = num[0, 0]/den[0, 0]
     plz = np.roots(den[0])
     zrz = np.roots(num[0])
 
@@ -554,4 +561,4 @@ def _minimal_realization_simplify(num, den, tol):
             if bool_cz:
                 safe_z += [np.conj(z)]
 
-    return np.poly(safe_z), np.poly(plz)
+    return np.atleast_2d(k_gain*np.poly(safe_z)), np.atleast_2d(np.poly(plz))

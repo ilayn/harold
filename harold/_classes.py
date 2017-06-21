@@ -131,7 +131,6 @@ class Transfer:
         doesn't make sense for analysis. If you don't care, then make up
         a number, say, a million, since you don't care.
     """
-
     def __init__(self, num, den=None, dt=False):
 
         # Initialization Switch and Variable Defaults
@@ -445,9 +444,12 @@ class Transfer:
     def _set_representation(self):
         self._repr_type = 'Transfer'
 
-    # =================================
-    # Transfer class arithmetic methods
-    # =================================
+    #   ==================================
+    # %% Transfer class arithmetic methods
+    #   ==================================
+
+    # Overwrite numpy array ufuncs
+    __array_ufunc__ = None
 
     def __neg__(self):
         if not self._isSISO:
@@ -563,7 +565,7 @@ class Transfer:
             return Transfer((other * np.ones(self._shape)).tolist(),
                             dt=self._SamplingPeriod) + self
 
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return self + float(other)
@@ -706,7 +708,7 @@ class Transfer:
                                    dt=self._SamplingPeriod)
 
         # Last chance for matrices, convert to static gain matrices and mult
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return self * Transfer(
@@ -735,7 +737,7 @@ class Transfer:
             else:
                 return Transfer(np.ones((self._shape))*other,
                                 dt=self._SamplingPeriod) * self
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return float(other) * self
@@ -1047,7 +1049,7 @@ class Transfer:
             # Disclaimer: We hope that the data type is 'float'
             # Life is too short to check everything.
 
-            elif isinstance(numden, type(np.array([0.]))):
+            elif isinstance(numden, np.ndarray):
                 if verbose:
                     print('I found a numpy array')
                 if numden.ndim > 1 and min(numden.shape) > 1:
@@ -1402,7 +1404,6 @@ class State:
     doesn't make sense for analysis. If you don't care, then make up
     a number, say, a million, since you don't care.
     """
-
     def __init__(self, a, b=None, c=None, d=None, dt=False):
 
         self._SamplingPeriod = False
@@ -1748,6 +1749,9 @@ class State:
     # State class arithmetic methods
     # ===========================
 
+    # Overwrite numpy array ufuncs
+    __array_ufunc__ = None
+
     def __neg__(self):
         if self._isgain:
             return State(-self._d, dt=self._SamplingPeriod)
@@ -1828,7 +1832,7 @@ class State:
             return State(np.ones_like(self.d)*other,
                          dt=self._SamplingPeriod) + self
 
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return self + float(other)
@@ -1927,7 +1931,7 @@ class State:
         elif isinstance(other, (int, float)):
             return self * State(np.atleast_2d(other), dt=self._SamplingPeriod)
         # Last chance for matrices, convert to static gain matrices and mult
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return self * State(
@@ -1960,7 +1964,7 @@ class State:
                              self._d * other,
                              dt=self._SamplingPeriod
                              )
-        elif isinstance(other, type(np.array([0.]))):
+        elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
             if other.size == 1:
                 return float(other) * self

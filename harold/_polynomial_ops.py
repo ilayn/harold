@@ -493,7 +493,7 @@ def haroldpolymul(*args, trimzeros=True):
         except ValueError:
             p = np.convolve(p.flatten(), x.flatten())
 
-    return p
+    return p if np.any(p) else np.array([0.])
 
 
 def haroldpolydiv(dividend, divisor):
