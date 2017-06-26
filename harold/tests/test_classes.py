@@ -79,7 +79,33 @@ def test_Transfer_Instantiations():
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
 
-def test_Transfer_algebra():
+def test_Transfer_algebra_mul_rmul():
+    NUM = [[[12], [-18]], [[6], [-24]]]
+    DEN = [[[16, 1.], [21., 1.]], [[10, 1.], [14, 1.]]]
+    G = Transfer(NUM, DEN)
+    H = np.eye(2)*G
+    assert_equal(H.num[0][1], np.array([[0.]]))
+    assert_equal(H.num[1][0], np.array([[0.]]))
+    assert_equal(H.den[0][1], np.array([[1.]]))
+    assert_equal(H.den[1][0], np.array([[1.]]))
+    assert_equal(H.num[0][0], G.num[0][0])
+    assert_equal(H.num[1][1], G.num[1][1])
+    assert_equal(H.den[0][0], G.den[0][0])
+    assert_equal(H.den[1][1], G.den[1][1])
+    H = G*np.eye(2)
+    assert_equal(H.num[0][1], np.array([[0.]]))
+    assert_equal(H.num[1][0], np.array([[0.]]))
+    assert_equal(H.den[0][1], np.array([[1.]]))
+    assert_equal(H.den[1][0], np.array([[1.]]))
+    assert_equal(H.num[0][0], G.num[0][0])
+    assert_equal(H.num[1][1], G.num[1][1])
+    assert_equal(H.den[0][0], G.den[0][0])
+    assert_equal(H.den[1][1], G.den[1][1])
+    H = 1/6*G
+#    assert_equal()
+
+
+def test_Transfer_algebra_mimo_siso():
 
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
     H = Transfer([[[1, 3]], [1]], [1, 2, 1])
@@ -214,7 +240,7 @@ def test_State_Instantiations():
                   np.array([0, 0]))
 
 
-def test_State_algebra():
+def test_State_algebra_mimo_siso():
     static_siso_state = State(5)
     static_mimo_state = State(2.0*np.eye(3))
     dynamic_siso_state = State(haroldcompanion([1, 3, 3, 1]),

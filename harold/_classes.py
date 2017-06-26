@@ -588,170 +588,103 @@ class Transfer:
 
     def __rsub__(self, other): return -self + other
 
-    def __mul__(self, other):
-        # Multiplication with a Transfer object is possible via four types
-        # 1. Another shape matching State()
-        # 2. Another shape matching Transfer()
-        # 3. Integer or float
-        # 4. A shape matching numpy array
-
-        if isinstance(other, (Transfer, State)):
-            # Trivial Rejections:
-            # ===================
-            # Reject 'ct + dt' or 'dt + dt' with different sampling periods
-            #
-            # A future addition would be converting everything to the slowest
-            # sampling system but that requires pretty comprehensive change.
-
-            if not self._SamplingPeriod == other._SamplingPeriod:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot\nmultiply these systems. '
-                                'If you still want to multiply them as'
-                                'if they are\ncompatible, carry the data '
-                                'to a compatible system model and then '
-                                'multiply.'
-                                )
-
-        # Reject if the size don't match
-            if not self._shape[1] == other.shape[0]:
-                raise IndexError('Multiplication of systems requires '
-                                 'their shape to match but the system '
-                                 'shapes I got are {0} vs. {1}'.format(
-                                                self._shape,
-                                                other.shape))
-        # ===================
-
-            if isinstance(other, Transfer):
-
-                # First get the static gain case out of the way.
-                if self._isgain and other._isgain:
-                        return State(self.num.dot(other.num),
-                                     dt=self._SamplingPeriod)
-
-                if self._isSISO:
-                    return Transfer(
-                            haroldpolymul(self._num.flatten(),
-                                          other.num.flatten()),
-                            haroldpolymul(self._den.flatten(),
-                                          other.den.flatten()),
-                            dt=self._SamplingPeriod)
-                else:
-                    # Bah.. Here we go!
-                    # Same as SISO but over all rows/cols:
-                    # Also if the result would be a SISO extra steps
-                    # such as stripping off the list of lists
-
-                    # So we have a (p x k) and (k x m) shapes hence
-                    # the temporary size variables
-                    t_p = self._p
-                    t_k = self._m
-                    t_m = other.shape[1]
-
-                    newnum = [[None]*t_m for n in range(t_p)]
-                    newden = [[None]*t_m for n in range(t_p)]
-
-                    # Here we have again a looping fun:
-                    # What we do is to rely on the Transfer()
-                    # __add__ method for the SISO case recursively.
-
-                    # Suppose we have a multiplication of a 1x5 Transfer
-                    # multiplied with a 5x1 Transfer
-
-                    #                [1]
-                    #  [a b c d e] * [2]
-                    #                [3]
-                    #                [4]
-                    #                [5]
-
-                    # What we do here is to form each a1,b2,...e5
-                    # and convert each of them to a temporary Transfer
-                    # object and then add --> a1 + b2 + c3 + d4 + e5
-                    # such that possible common poles don't get spurious
-                    # multiplicities.
-
-                    # Recursion part is the fact that we are already
-                    # inside a Transfer() method but forming temporary
-                    # Transfer()objects within. Fingers crossed...
-
-                    for row in range(t_p):
-                        for col in range(t_m):
-                            # Zero out the temporary Transfer()
-                            t_G = Transfer(0, 1)
-
-                            # for all elements in row/col multiplication
-                            for elem in range(t_k):
-
-                                t_num = haroldpolymul(self._num[row][elem],
-                                                      other.num[elem][col])
-
-                                t_den = haroldpolymul(self._den[row][elem],
-                                                      other.den[elem][col])
-
-                                t_G += Transfer(t_num, t_den)
-                            # Add the resulting arrays to the containers.
-                            newnum[row][col] = t_G.num
-                            newden[row][col] = t_G.den
-
-                    # If the resulting shape is SISO, strip off the lists
-                    if (t_p, t_m) == (1, 1):
-                        newnum = newnum[0][0]
-                        newden = newden[0][0]
-
-                    # Finally return the result.
-                    return Transfer(newnum, newden, dt=self._SamplingPeriod)
-
-            elif isinstance(other, State):
-                return transfer_to_state(self) * other
-
-        elif isinstance(other, (int, float)):
-            return self * Transfer(np.atleast_2d(other),
-                                   dt=self._SamplingPeriod)
-
-        # Last chance for matrices, convert to static gain matrices and mult
-        elif isinstance(other, np.ndarray):
-            # It still might be a scalar inside an array
-            if other.size == 1:
-                return self * Transfer(
-                            np.atleast_2d(other), dt=self._SamplingPeriod)
-
-            if self._shape[1] == other.shape[0]:
-                return self * Transfer(other, dt=self._SamplingPeriod)
-            else:
-                raise IndexError('Multiplication of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'
-                                 ''.format(self._shape, other.shape))
-        else:
-            raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a state representation '
-                            '(yet).'.format(type(other).__name__))
-
     def __rmul__(self, other):
+        # *-multiplication means elementwise multiplication in Python
+        # and order doesn't matter so pass it to mul, only because
+        # I wrote that one first
+        return self * other
+
+    def __mul__(self, other):
         # Notice that if other is a State or Transfer, it will be handled
         # by other's __mul__() method. Hence we only take care of the
         # right multiplication of the scalars and arrays. Otherwise
         # rejection is executed
         if isinstance(other, (int, float)):
             if self._isSISO:
-                return Transfer(other, dt=self._SamplingPeriod) * self
+                return Transfer(other*self._num, self._den,
+                                dt=self._SamplingPeriod)
             else:
-                return Transfer(np.ones((self._shape))*other,
-                                dt=self._SamplingPeriod) * self
+                # Manually multiply each numerator
+                t_p = self._p
+                t_m = self._m
+
+                newnum = [[None]*t_m for n in range(t_p)]
+
+                for row in range(t_p):
+                    for col in range(t_m):
+                        newnum[row][col] = other*self._num[row][col]
+
+                return Transfer(newnum, self._den, dt=self._SamplingPeriod)
+
         elif isinstance(other, np.ndarray):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other):
+                if np.any(other.imag):
+                    raise ValueError('Complex valued representations are not '
+                                     'supported.')
+
             # It still might be a scalar inside an array
             if other.size == 1:
                 return float(other) * self
-            elif self._shape[0] == other.shape[1]:
-                return Transfer(other, dt=self._SamplingPeriod) * self
+
+            if other.ndim == 1:
+                arr = np.atleast_2d(other.real)
+            else:
+                arr = other.real
+            t_p, t_m = arr.shape
+            newnum = [[None]*t_m for n in range(t_p)]
+            newden = [[None]*t_m for n in range(t_p)]
+            # if an array multiplied with SISO Transfer, elementwise multiply
+            if self._isSISO:
+                # Manually multiply numerator
+                for row in range(t_p):
+                    for col in range(t_m):
+                        # If identically zero, empty out num/den
+                        if arr[row, col] == 0.:
+                            newnum[row][col] = np.array([[0.]])
+                            newden[row][col] = np.array([[1.]])
+                        else:
+                            newnum[row][col] = arr[row, col]*self._num
+                            newden[row][col] = self._den
+                return Transfer(newnum, newden, dt=self._SamplingPeriod)
+
+            # Reminder: This is elementwise multiplication not __matmul__!!
+            elif self._shape == arr.shape:
+                # Manually multiply each numerator
+                for r in range(t_p):
+                    for c in range(t_m):
+                        # If identically zero, empty out num/den
+                        if arr[r, c] == 0.:
+                            newnum[r][c] = np.array([[0.]])
+                            newden[r][c] = np.array([[1.]])
+                        else:
+                            newnum[r][c] = arr[r, c]*self._num[r][c]
+                            newden[r][c] = self._den[r][c]
+
+                return Transfer(newnum, newden, dt=self._SamplingPeriod)
+
             else:
                 raise IndexError('Multiplication of systems requires their '
                                  'shape to match but the system shapes '
                                  'I got are {0} vs. {1}'
                                  ''.format(self._shape, other.shape))
+        elif isinstance(other, State):
+            # State representations win over the typecasting
+            return other*transfer_to_state(self)
+
+        elif isinstance(other, Transfer):
+            pass
         else:
             raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a state representation '
+                            '{0} with a Transfer representation '
                             '(yet).'.format(type(other).__name__))
+
+    def __matmul__(self, other):
+        pass
+
+    def __rmatmul__(self, other):
+        pass
 
     def __getitem__(self, num_or_slice):
 
