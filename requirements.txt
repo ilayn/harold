@@ -1,5 +1,5 @@
 numpy>=1.13
-nose
+pytest
 scipy>=0.18
 tabulate
 matplotlib
