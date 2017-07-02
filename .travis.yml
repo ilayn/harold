@@ -7,6 +7,6 @@ install:
   - pip install coverage
   - pip install coveralls
 # command to run tests
-script: nosetests --with-coverage --cover-package=harold
+script: pytest
 after_success:
   coveralls

@@ -1,6 +1,5 @@
 
-from setuptools import setup, find_packages
-from codecs import open
+from setuptools import setup
 from os import path
 import io
 
@@ -25,12 +24,12 @@ setup(
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1b4',
+    version='0.1.1rc1',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Stable',
         'Topic :: Software Development :: Build Tools',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
@@ -45,9 +44,9 @@ setup(
     ],
     packages=['harold'],
     package_dir={'harold': 'harold'},
-    install_requires=['numpy','scipy','matplotlib','tabulate'],
-    tests_require=['numpy','nose'],
-    test_suite = 'nose.collector',
+    install_requires=['numpy', 'scipy', 'matplotlib', 'tabulate'],
+    setup_requires=['pytest-runner'],
+    tests_require=['numpy', 'pytest'],
     keywords='control-theory PID controller design industrial automation',
     extras_require={
         'dev': ['check-manifest'],
