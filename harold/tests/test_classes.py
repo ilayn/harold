@@ -79,40 +79,78 @@ def test_Transfer_Instantiations():
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
 
-def test_Transfer_algebra_mul_rmul():
+def test_Transfer_algebra_mul_rmul_dt():
+    G = Transfer(1, [1, 2], dt=0.1)
+    F = Transfer(1, [1, 3])
+    with assert_raises(TypeError):
+        F*G
+
+
+def test_Transfer_algebra_truediv_rtruediv():
+    G = Transfer(1, [1, 2])
+    F = G/0.5
+    assert_equal(F.num, np.array([[2.]]))
+    assert_equal(F.den, np.array([[1., 2.]]))
+
+    with assert_raises(TypeError):
+        G/G
+    with assert_raises(TypeError):
+        G/3j
+
+
+def test_Transfer_algebra_mul_rmul_scalar_array():
     NUM = [[[12], [-18]], [[6], [-24]]]
-    DEN = [[[16, 1.], [21., 1.]], [[10, 1.], [14, 1.]]]
+    DEN = [[[14, 1.], [21., 1.]], [[7, 1.], [49, 1.]]]
     G = Transfer(NUM, DEN)
-    H = np.eye(2)*G
-    assert_equal(H.num[0][1], np.array([[0.]]))
-    assert_equal(H.num[1][0], np.array([[0.]]))
-    assert_equal(H.den[0][1], np.array([[1.]]))
-    assert_equal(H.den[1][0], np.array([[1.]]))
-    assert_equal(H.num[0][0], G.num[0][0])
-    assert_equal(H.num[1][1], G.num[1][1])
-    assert_equal(H.den[0][0], G.den[0][0])
-    assert_equal(H.den[1][1], G.den[1][1])
-    H = G*np.eye(2)
-    assert_equal(H.num[0][1], np.array([[0.]]))
-    assert_equal(H.num[1][0], np.array([[0.]]))
-    assert_equal(H.den[0][1], np.array([[1.]]))
-    assert_equal(H.den[1][0], np.array([[1.]]))
-    assert_equal(H.num[0][0], G.num[0][0])
-    assert_equal(H.num[1][1], G.num[1][1])
-    assert_equal(H.den[0][0], G.den[0][0])
-    assert_equal(H.den[1][1], G.den[1][1])
+
+    for H in (np.eye(2)*G, G*np.eye(2)):
+        assert_equal(H.num[0][1], np.array([[0.]]))
+        assert_equal(H.num[1][0], np.array([[0.]]))
+        assert_equal(H.den[0][1], np.array([[1.]]))
+        assert_equal(H.den[1][0], np.array([[1.]]))
+        assert_equal(H.num[0][0], G.num[0][0])
+        assert_equal(H.num[1][1], G.num[1][1])
+        assert_equal(H.den[0][0], G.den[0][0])
+        assert_equal(H.den[1][1], G.den[1][1])
+
     H = 1/6*G
-#    assert_equal()
+    assert_equal(float(H.num[0][0]), 2.)
+    assert_equal(float(H.num[0][1]), -3.)
+    assert_equal(float(H.num[1][0]), 1.)
+    assert_equal(float(H.num[1][1]), -4.)
 
 
-def test_Transfer_algebra_mimo_siso():
+def test_Transfer_algebra_mul_rmul_siso_mimo():
+    F = Transfer(2, [1, 1])
+    H = Transfer(np.arange(1, 5).reshape(2, 2), [1, 2])
+    K = Transfer([1, 3], [1, 0, 1])
+
+    FK_num, FK_den = (F*K).polynomials
+    assert_equal(FK_num, np.array([[2, 6]]))
+    assert_equal(FK_den, np.array([[1, 1, 1, 1]]))
+
+    for J in (F*H, H*F):
+        for x in range(2):
+            for y in range(2):
+                assert_equal(J.num[x][y], np.array([[(1+y+2*x)*2]]))
+                assert_equal(J.den[x][y], np.array([[1, 3, 2]]))
+
+    H = Transfer([1, 2], [1, 2, 3])*np.arange(1, 5).reshape(2, 2)
+    HH = H*H
+
+    for x in range(4):
+        assert_equal(sum(HH.den, [])[x], np.array([[1., 4., 10., 12., 9.]]))
+        assert_equal(sum(HH.num, [])[x], (x+1)**2 * np.array([[1., 4., 4.]]))
+
+
+def test_Transfer_algebra_matmul_rmatmul():
 
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
     H = Transfer([[[1, 3]], [1]], [1, 2, 1])
-    F = G*H
+    F = G @ H
     assert_almost_equal(F.num, np.array([[1, 3, 4]]))
     assert_almost_equal(F.den, np.array([[1, 4, 6, 4, 1]]))
-    F = H*G
+    F = H @ G
     assert_almost_equal(F.num[0][0], np.array([[1, 3]]))
     assert_almost_equal(F.num[0][1], np.array([[1, 4, 3]]))
     assert_almost_equal(F.num[1][0], np.array([[1]]))
@@ -123,6 +161,8 @@ def test_Transfer_algebra_mimo_siso():
     assert_almost_equal(F.den[1][0], F.den[0][0])
     assert_almost_equal(F.den[1][1], F.den[0][1])
 
+
+def test_Transfer_algebra_neg_add_radd():
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
     F = - G
     assert_almost_equal(G.num[0][0], -F.num[0][0])
