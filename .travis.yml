@@ -12,7 +12,8 @@ install:
   - pip install -r requirements.txt
   - pip install coverage
   - pip install coveralls
+  - pip install -e .
 # command to run tests
-script: pytest -v --cov harold
+script: pytest -v --pyargs harold --cov harold
 after_success:
   coveralls
