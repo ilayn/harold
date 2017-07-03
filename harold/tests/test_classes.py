@@ -23,9 +23,10 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from harold import (Transfer, State, e_i, haroldcompanion,
-                    transmission_zeros, state_to_transfer, transfer_to_state,
-                    concatenate_state_matrices)
+from .classes import (Transfer, State, transmission_zeros,
+                      state_to_transfer, transfer_to_state)
+from ._aux_linalg import e_i
+from ._system_funcs import haroldcompanion, concatenate_state_matrices
 
 from numpy.testing import (assert_,
                            assert_equal,
