@@ -1,19 +1,10 @@
 language: python
 python:
-  - "3.5"
   - "3.6"
-
-before_install:
-    - pip install --upgrade pip
-    - pip install pytest pytest-cov
-    - pip install codecov
-# command to install dependencies
 install:
-  - pip install -r requirements.txt
-  - pip install coverage
-  - pip install coveralls
-  - pip install -e .
+  - pip install travis-tox coveralls
 # command to run tests
-script: pytest -v --pyargs harold --cov harold
+script:
+    - tox
 after_success:
-  coveralls
+    - coveralls

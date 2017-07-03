@@ -1,6 +1,4 @@
 numpy>=1.13
-scipy>=0.18
+scipy>=0.19.1
 tabulate
 matplotlib
-pytest
-pytest-cov
