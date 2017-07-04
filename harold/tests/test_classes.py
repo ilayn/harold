@@ -233,6 +233,7 @@ def test_Transfer_slicing():
             (1, 2), (2, 1),
             (2, 5), (4, 3)]
 
+    np.random.seed(1234)
     H = state_to_transfer(State(np.random.rand(3, 3),
                                 np.random.rand(3, 5),
                                 np.random.rand(4, 3)))
