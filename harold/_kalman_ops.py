@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
+from scipy.linalg import block_diag
 from ._classes import State, _state_or_abcd
 from ._aux_linalg import haroldsvd
 
@@ -78,6 +79,7 @@ def kalman_controllability(G, compress=False):
     T, *_, r = haroldsvd(Cc, also_rank=True)
     return Cc, T, r
 
+
 def kalman_observability(G, compress=False):
     """
     Computes the Kalman observability related objects. The algorithm
@@ -128,7 +130,9 @@ def kalman_observability(G, compress=False):
     *_, T, r = haroldsvd(Co, also_rank=True)
     return Co, T, r
 
-def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-9):
+
+def kalman_decomposition(G, compute_T=False, output='system',
+                         cleanup_threshold=1e-9):
     """
     By performing a sequence of similarity transformations the State
     representation is transformed into a special structure such that
@@ -216,7 +220,7 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
             Gk.d = G.d
 
     """
-    if not isinstance(G,State):
+    if not isinstance(G, State):
         raise TypeError('The argument must be a State() object')
 
     # If a static gain, then skip and return the argument
@@ -232,63 +236,61 @@ def kalman_decomposition(G,compute_T=False,output='system',cleanup_threshold=1e-
 
     # First check if controllable
     if not is_kalman_controllable(G):
-        Tc , r = kalman_controllability(G)[1:]
+        Tc, r = kalman_controllability(G)[1:]
     else:
         Tc = np.eye(G.a.shape[0])
         r = G.a.shape[0]
 
-
-    ac = np.linalg.solve(Tc,G.a).dot(Tc)
-    bc = np.linalg.solve(Tc,G.b)
+    ac = np.linalg.solve(Tc, G.a).dot(Tc)
+    bc = np.linalg.solve(Tc, G.b)
     cc = G.c.dot(Tc)
-    ac[ abs(ac) < cleanup_threshold ] = 0.
-    bc[ abs(bc) < cleanup_threshold ] = 0.
-    cc[ abs(cc) < cleanup_threshold ] = 0.
+    ac[abs(ac) < cleanup_threshold] = 0.
+    bc[abs(bc) < cleanup_threshold] = 0.
+    cc[abs(cc) < cleanup_threshold] = 0.
 
     if r == 0:
         raise ValueError('The system is trivially uncontrollable.'
                          'Probably B matrix is numerically all zeros.')
     elif r != G.a.shape[0]:
-        aco , auco = ac[:r,:r] , ac[r:,r:]
-        bco = bc[:r,:]
-        cco , cuco = cc[:,:r] , cc[:,r:]
+        aco, auco = ac[:r, :r], ac[r:, r:]
+        bco = bc[:r, :]
+        cco, cuco = cc[:, :r], cc[:, r:]
         do_separate_obsv = True
     else:
-        aco , bco , cco = ac , bc , cc
-        auco , cuco = None , None
+        aco, bco, cco = ac, bc, cc
+        auco, cuco = None, None
         do_separate_obsv = False
 
     if do_separate_obsv:
-        To_co = kalman_observability((aco,cco))[1]
-        To_uco = kalman_observability((auco,cuco))[1]
-        To = sp.linalg.block_diag(To_co,To_uco)
+        To_co = kalman_observability((aco, cco))[1]
+        To_uco = kalman_observability((auco, cuco))[1]
+        To = block_diag(To_co, To_uco)
     else:
-        if not is_kalman_observable((ac,cc)):
-            To , r = kalman_observability((ac,cc))[1:]
+        if not is_kalman_observable((ac, cc)):
+            To, r = kalman_observability((ac, cc))[1:]
         else:
             To = np.eye(ac.shape[0])
 
-    A = np.linalg.solve(To,ac).dot(To)
-    B = np.linalg.solve(To,bc)
+    A = np.linalg.solve(To, ac).dot(To)
+    B = np.linalg.solve(To, bc)
     C = cc.dot(To)
 
     # Clean up the mess, if any, for the should-be-zero entries
-    A[ abs(A) < cleanup_threshold ] = 0.
-    B[ abs(B) < cleanup_threshold ] = 0.
-    C[ abs(C) < cleanup_threshold ] = 0.
+    A[abs(A) < cleanup_threshold] = 0.
+    B[abs(B) < cleanup_threshold] = 0.
+    C[abs(C) < cleanup_threshold] = 0.
     D = G.d.copy()
 
     if output == 'matrices':
         if compute_T:
-            return (A,B,C,D),Tc.dot(To)
+            return (A, B, C, D), Tc.dot(To)
 
-        return (A,B,C,D)
+        return (A, B, C, D)
 
     if compute_T:
-        return State(A,B,C,D,G.SamplingPeriod),Tc.dot(To)
+        return State(A, B, C, D, G.SamplingPeriod), Tc.dot(To)
 
-    return State(A,B,C,D,G.SamplingPeriod)
-
+    return State(A, B, C, D, G.SamplingPeriod)
 
 
 def is_kalman_controllable(G):
@@ -308,19 +310,20 @@ def is_kalman_controllable(G):
         Returns True if the input is Kalman controllable
 
     """
-    sys_flag,mats = _state_or_abcd(G,2)
+    sys_flag, mats = _state_or_abcd(G, 2)
     if sys_flag:
         A = G.a
         B = G.b
     else:
-        A , B = mats
+        A, B = mats
 
-    r = kalman_controllability((A,B))[-1]
+    r = kalman_controllability((A, B))[-1]
 
     if A.shape[0] > r:
         return False
 
     return True
+
 
 def is_kalman_observable(G):
     """
@@ -340,15 +343,15 @@ def is_kalman_observable(G):
         Returns True if the input is Kalman observable
 
     """
-    sys_flag , mats = _state_or_abcd(G,-1)
+    sys_flag, mats = _state_or_abcd(G, -1)
 
     if sys_flag:
         A = G.a
         C = G.c
     else:
-        A , C = mats
+        A, C = mats
 
-    r = kalman_observability((A,C))[-1]
+    r = kalman_observability((A, C))[-1]
 
     if A.shape[0] > r:
         return False
