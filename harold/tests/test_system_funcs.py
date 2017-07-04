@@ -40,6 +40,7 @@ def test_staircase():
     assert_almost_equal(a[2:, :2], zeros((2, 2)))
     assert_almost_equal(k, array([1, 1]))
 
+
 def test_cancellation_distance():
     # Shape checks
     assert_raises(ValueError, cancellation_distance, empty((4, 3)), 1)

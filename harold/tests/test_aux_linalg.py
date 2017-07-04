@@ -23,12 +23,13 @@ THE SOFTWARE.
 """
 from harold import (haroldsvd, haroldker, pair_complex_numbers,
                     matrix_slice, e_i)
-import numpy.testing as npt
+
 from scipy.linalg import block_diag, qr, solve
 from numpy import fliplr, flipud, array, zeros, s_
 from numpy.random import rand, shuffle
-from numpy.testing import assert_equal, assert_almost_equal
-from numpy.testing import assert_raises
+from numpy.testing import (assert_equal, assert_almost_equal,
+                           assert_allclose, assert_raises,
+                           )
 
 
 def test_haroldsvd():
@@ -37,7 +38,7 @@ def test_haroldsvd():
     testmat = solve(shuffler, blkdiag_mat).dot(shuffler)
     u, s, v, r = haroldsvd(testmat, also_rank=True)
 
-    npt.assert_allclose(s, flipud(fliplr(blkdiag_mat)))
+    assert_allclose(s, flipud(fliplr(blkdiag_mat)))
     assert_equal(r, 9)
 
     r = haroldsvd(testmat, also_rank=True, rank_tol=1.00001e-1)[-1]
@@ -85,7 +86,7 @@ def test_cplxpair():
                  0.99999999-1.j, 0.99999999+1.j,
                  1.00000000-1.j, 1.00000000+1.j])
 
-    npt.assert_almost_equal(t1, tt1, decimal=7)
+    assert_almost_equal(t1, tt1, decimal=7)
 
 
 def test_e_i():

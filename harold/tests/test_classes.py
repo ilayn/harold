@@ -338,6 +338,7 @@ def test_State_slicing():
 
     assert_raises(ValueError, H.__setitem__)
 
+
 def test_model_zeros():
     # Test example
     A = np.array(
