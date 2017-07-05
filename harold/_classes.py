@@ -790,7 +790,7 @@ class Transfer:
         # 3. self is MIMO and other is np.ndarray --> Matrix mult
         # 4. self is MIMO and other is MIMO --> Matrix mult
 
-        # 1. and 2.
+        # 1.
         if isinstance(other, (int, float)) or self._isSISO:
             return self * other
 
@@ -843,8 +843,13 @@ class Transfer:
             if not self._SamplingPeriod == other._SamplingPeriod:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot multiply these systems.')
+
             if isinstance(other, State):
                 return transfer_to_state(self) @ State
+
+            # 2.
+            if other._isSISO:
+                return self * other
 
             if self._shape[1] != other.shape[0]:
                 raise ValueError(f'Size mismatch: Left Transfer '
@@ -992,6 +997,28 @@ class Transfer:
         return _pole_properties(self.poles,
                                 self.SamplingPeriod,
                                 output_data=output_data)
+
+    def to_array(self):
+        '''
+        If a Transfer representation is a static gain, this method returns
+        a regular 2D-ndarray.
+        '''
+        if self._isgain:
+            if self._isSISO:
+                return self._num/self._den
+            else:
+                num_arr = np.empty((self._p * self._m,))
+                num_entries = sum(self._num, [])
+                den_entries = sum(self._den, [])
+
+                for x in range(self._p * self._m):
+                    num_arr[x] = num_entries[x]
+                    num_arr[x] /= den_entries[x]
+
+                return num_arr.reshape(self._p, self._m)
+        else:
+            raise TypeError('Only static gain models can be converted to '
+                            'ndarrays.')
 
     @staticmethod
     def validate_arguments(num, den, verbose=False):

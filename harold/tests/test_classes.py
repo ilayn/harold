@@ -79,6 +79,18 @@ def test_Transfer_Instantiations():
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
 
+def test_Transfer_to_array():
+    G = Transfer(1, [1, 1])
+    H = Transfer(2, 10)
+    with assert_raises(TypeError):
+        G.to_array()
+
+    assert_equal(H.to_array(), np.array([[.2]]))
+    assert_equal(Transfer(np.arange(9, 90, 9).reshape(3, 3),
+                          9*np.ones((3, 3))).to_array(),
+                 np.arange(1, 10).reshape(3, 3))
+
+
 def test_Transfer_algebra_mul_rmul_dt():
     G = Transfer(1, [1, 2], dt=0.1)
     F = Transfer(1, [1, 3])
@@ -160,6 +172,9 @@ def test_Transfer_algebra_matmul_rmatmul():
     assert_almost_equal(F.den[0][1], np.array([[1, 3, 3, 1]]))
     assert_almost_equal(F.den[1][0], F.den[0][0])
     assert_almost_equal(F.den[1][1], F.den[0][1])
+
+    F = Transfer(2) @ Transfer(np.eye(2)) @ Transfer(2)
+    assert_equal(F.to_array(), 4*np.eye(2))
 
 
 def test_Transfer_algebra_neg_add_radd():
