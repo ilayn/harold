@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 import numpy as np
 
-from scipy.linalg import eigvals, block_diag, qz, norm
+from scipy.linalg import eigvals, block_diag, qz, norm, kron
 from tabulate import tabulate
 from itertools import zip_longest, chain
 
@@ -141,7 +141,7 @@ class Transfer:
         self._DiscretizedWith = None
         self._DiscretizationMatrix = None
         self._PrewarpFrequency = 0.
-        self._SamplingPeriod = False
+        self._dt = False
         (self._num, self._den,
          self._shape, self._isgain) = self.validate_arguments(num, den)
         self._p, self._m = self._shape
@@ -178,7 +178,7 @@ class Transfer:
         is assumed. Upon changing this value, relevant system properties are
         recalculated.
         """
-        return self._SamplingPeriod
+        return self._dt
 
     @property
     def SamplingSet(self):
@@ -188,7 +188,7 @@ class Transfer:
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
-        return self._SamplingSet
+        return self._rz
 
     @property
     def NumberOfInputs(self):
@@ -320,24 +320,24 @@ class Transfer:
     @SamplingPeriod.setter
     def SamplingPeriod(self, value):
         if value:
-            self._SamplingSet = 'Z'
+            self._rz = 'Z'
             if type(value) is bool:  # integer 1 != True
-                self._SamplingPeriod = 0.
+                self._dt = 0.
             elif isinstance(value, (int, float)):
-                self._SamplingPeriod = float(value)
+                self._dt = float(value)
             else:
                 raise TypeError('SamplingPeriod must be a real positive '
                                 'scalar. But looks like a \"{0}\" is '
                                 'given.'.format(
                                    type(value).__name__))
         else:
-            self._SamplingSet = 'R'
-            self._SamplingPeriod = None
+            self._rz = 'R'
+            self._dt = None
 
     @num.setter
     def num(self, value):
 
-        user_num, _, user_shape = validate_arguments(value, self._den)[:3]
+        user_num, _, user_shape = self.validate_arguments(value, self._den)[:3]
 
         if not user_shape == self._shape:
             raise IndexError('Once created, the shape of the transfer '
@@ -352,7 +352,7 @@ class Transfer:
     @den.setter
     def den(self, value):
 
-        user_den, user_shape = validate_arguments(self._num, value)[1:3]
+        user_den, user_shape = self.validate_arguments(self._num, value)[1:3]
 
         if not user_shape == self._shape:
             raise IndexError('Once created, the shape of the transfer '
@@ -400,7 +400,7 @@ class Transfer:
                             'Tustin then you don\'t need to set '
                             'this property.')
         else:
-            if value > 1/(2*self._SamplingPeriod):
+            if value > 1/(2*self._dt):
                 raise ValueError('Prewarping Frequency is beyond '
                                  'the Nyquist rate.\nIt has to '
                                  'satisfy 0 < w < 1/(2*dt) and dt '
@@ -436,7 +436,7 @@ class Transfer:
         self._set_representation()
 
     def _set_stability(self):
-        if self._SamplingSet == 'Z':
+        if self._rz == 'Z':
             self._isstable = all(1 > abs(self.poles))
         else:
             self._isstable = all(0 > np.real(self.poles))
@@ -460,7 +460,7 @@ class Transfer:
         else:
             newnum = -1*self._num
 
-        return Transfer(newnum, self._den, self._SamplingPeriod)
+        return Transfer(newnum, self._den, self._dt)
 
     def __add__(self, other):
         # Addition to a Transfer object is possible via four types
@@ -480,7 +480,7 @@ class Transfer:
             # A future addition would be converting everything to the slowest
             # sampling system but that requires pretty comprehensive change.
 
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot\nadd these systems. '
                                 'If you still want to add them as if '
@@ -503,7 +503,7 @@ class Transfer:
                 # First get the static gain case out of the way.
                 if self._isgain and other._isgain:
                         return Transfer(self._num + other.num,
-                                        dt=self._SamplingPeriod)
+                                        dt=self._dt)
 
                 # Now, we are sure that there are no possibility other than
                 # list of lists or np.arrays hence concatenation should be OK.
@@ -553,7 +553,7 @@ class Transfer:
 
                     if any(nonzero_num.ravel()):
                         return Transfer(newnum, newden,
-                                        dt=self._SamplingPeriod)
+                                        dt=self._dt)
                     else:
                         # Numerators all cancelled to zero hence 0-gain MIMO
                         return Transfer(np.zeros(self._shape).tolist())
@@ -563,7 +563,7 @@ class Transfer:
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other, (int, float)):
             return Transfer((other * np.ones(self._shape)).tolist(),
-                            dt=self._SamplingPeriod) + self
+                            dt=self._dt) + self
 
         elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
@@ -571,7 +571,7 @@ class Transfer:
                 return self + float(other)
 
             if self._shape == other.shape:
-                return self + Transfer(other, dt=self._SamplingPeriod)
+                return self + Transfer(other, dt=self._dt)
             else:
                 raise IndexError('Addition of systems requires their '
                                  'shape to match but the system shapes '
@@ -597,7 +597,7 @@ class Transfer:
                 else:
                     return Transfer(other*self._num,
                                     self._den,
-                                    dt=self._SamplingPeriod)
+                                    dt=self._dt)
             else:
                 # Manually multiply each numerator
                 t_p = self._p
@@ -614,7 +614,7 @@ class Transfer:
                             newnum[row][col] = other*self._num[row][col]
                             newden[row][col] = self._den[row][col]
 
-                return Transfer(newnum, newden, dt=self._SamplingPeriod)
+                return Transfer(newnum, newden, dt=self._dt)
 
         elif isinstance(other, np.ndarray):
             # Complex dtype does not immediately mean complex numbers,
@@ -646,7 +646,7 @@ class Transfer:
                         else:
                             newnum[row][col] = arr[row, col]*self._num
                             newden[row][col] = self._den
-                return Transfer(newnum, newden, dt=self._SamplingPeriod)
+                return Transfer(newnum, newden, dt=self._dt)
 
             # Reminder: This is elementwise multiplication not __matmul__!!
             elif self._shape == arr.shape:
@@ -661,22 +661,22 @@ class Transfer:
                             newnum[r][c] = arr[r, c]*self._num[r][c]
                             newden[r][c] = self._den[r][c]
 
-                return Transfer(newnum, newden, dt=self._SamplingPeriod)
+                return Transfer(newnum, newden, dt=self._dt)
 
             else:
-                raise IndexError('Multiplication of systems requires their '
+                raise ValueError('Multiplication of systems requires their '
                                  'shape to match but the system shapes '
                                  'I got are {0} vs. {1}'
                                  ''.format(self._shape, other.shape))
         elif isinstance(other, State):
             # State representations win over the typecasting
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot multiply these systems. ')
             return other*transfer_to_state(self)
 
         elif isinstance(other, Transfer):
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot multiply these systems.')
 
@@ -816,15 +816,8 @@ class Transfer:
 
             # If self is gain, this is just matrix multiplication
             if self._isgain:
-                mult_arr = np.empty((self._p, self._m))
-
-                for r in range(self._p):
-                    for c in range(self._m):
-                        mult_arr[r, c] = self._num[r][c] \
-                            if self._den[r][c] == 1. else \
-                            self._num[r][c]/self._den[r][c]
-
-                return Transfer(mult_arr @ arr, dt=self._SamplingPeriod)
+                return Transfer(self.to_array() @ arr,
+                                dt=self._dt)
 
             tp, tm = self._shape[0], arr.shape[1]
             newnum = [[None]*tm for n in range(tp)]
@@ -840,7 +833,7 @@ class Transfer:
 
         # 4.
         if isinstance(other, (State, Transfer)):
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot multiply these systems.')
 
@@ -861,7 +854,7 @@ class Transfer:
             # TODO : unoptimized and too careful
             # Take out the SIMO * MISO case resulting with SISO.
             if (tp, tm) == (1, 1):
-                t_G = Transfer(0, 1, dt=self._SamplingPeriod)
+                t_G = Transfer(0, 1, dt=self._dt)
                 for ind in range(self._m):
                     t_G += self[0, ind] * other[ind, 0]
                 return t_G
@@ -871,14 +864,14 @@ class Transfer:
 
                 for r in range(tp):
                     for c in range(tm):
-                        t_G = Transfer(0, 1, dt=self._SamplingPeriod)
+                        t_G = Transfer(0, 1, dt=self._dt)
                         for ind in range(self._m):
                             t_G += self[r, ind] * other[ind, c]
 
                         newnum[r][c] = t_G.num
                         newden[r][c] = t_G.den
 
-            return Transfer(newnum, newden, dt=self._SamplingPeriod)
+            return Transfer(newnum, newden, dt=self._dt)
 
         else:
             raise TypeError('I don\'t know how to multiply a '
@@ -904,7 +897,7 @@ class Transfer:
             else:
                 arr = other.real
 
-            return Transfer(arr, self._SamplingPeriod) @ self
+            return Transfer(arr, self._dt) @ self
 
         elif isinstance(other, (int, float)):
             return self * other
@@ -927,14 +920,14 @@ class Transfer:
         # Is the result goint to be SISO ?
         if isinstance(rc, int) and isinstance(cb, int):
             return Transfer(self.num[rc][cb], self.den[rc][cb],
-                            dt=self._SamplingPeriod)
+                            dt=self._dt)
         else:
             # Nope, release the MIMO bracket hell
             rc = [rc] if isinstance(rc, int) else rc
             cb = [cb] if isinstance(cb, int) else cb
             return Transfer([[self.num[x][y] for y in cb] for x in rc],
                             [[self.den[x][y] for y in cb] for x in rc],
-                            dt=self._SamplingPeriod)
+                            dt=self._dt)
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
@@ -1206,8 +1199,8 @@ class Transfer:
                                          'number of entries, I\'ve found {1} '
                                          'element(s) in one row and {2} in '
                                          'another row.'
-                                         ''.format(entrytext[numden_index]),
-                                         max(m), min(m))
+                                         ''.format(entrytext[numden_index],
+                                                   max(m), min(m)))
 
                 # We found the list and it wasn't a list of lists.
                 # Then it should be a regular list to be np.array'd
@@ -1220,10 +1213,14 @@ class Transfer:
                                             )
                         if numden_index == 1:
                             Gain_flags[1] = True
-                    except:
+                    except ValueError:
                         raise ValueError('Something is not a \"float\" inside '
                                          'the {0} list.'
                                          ''.format(entrytext[numden_index]))
+                else:
+                    raise ValueError('Something is not a \"float\" inside '
+                                     'the {0} list.'
+                                     ''.format(entrytext[numden_index]))
 
             # Now we are sure that there is no dynamic MIMO entry.
             # The remaining possibility is a np.array as a static
@@ -1518,9 +1515,6 @@ class Transfer:
 
         shape = get_shape_from_arg(num)
 
-        # TODO : Gain_flags are not robust, remove them and make the
-        # check below be decisive
-
         # Final gateway for the static gain
         if isinstance(den, list):
             # Check the max number of elements in each entry
@@ -1580,15 +1574,14 @@ class State:
     the system continous time again and relevant properties are reset
     to continuous-time properties.
 
-    Warning: Unlike matlab or other tools, a discrete time system
-    needs a specified sampling period (and possibly a discretization
-    method if applicable) because a model without a sampling period
-    doesn't make sense for analysis. If you don't care, then make up
-    a number, say, a million, since you don't care.
+    Warning: A discrete time system needs a specified sampling period
+    (and better a discretization method if known) because a model without
+    a sampling period doesn't make sense for analysis. If you don't care,
+    then make up a number, say, a million, since you don't care.
     """
     def __init__(self, a, b=None, c=None, d=None, dt=False):
 
-        self._SamplingPeriod = False
+        self._dt = False
         self._DiscretizedWith = None
         self._DiscretizationMatrix = None
         self._PrewarpFrequency = 0.
@@ -1600,6 +1593,7 @@ class State:
 
         self._a, self._b, self._c, self._d = abcd
         self._p, self._m = self._shape
+        self._n = None if self._isgain else self._a.shape[0]
 
         if self._shape == (1, 1):
             self._isSISO = True
@@ -1652,7 +1646,7 @@ class State:
         is assumed. Upon changing this value, relevant system properties are
         recalculated.
         """
-        return self._SamplingPeriod
+        return self._dt
 
     @property
     def SamplingSet(self):
@@ -1662,7 +1656,7 @@ class State:
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
-        return self._SamplingSet
+        return self._rz
 
     @property
     def NumberOfStates(self):
@@ -1846,18 +1840,18 @@ class State:
     @SamplingPeriod.setter
     def SamplingPeriod(self, value):
         if value:
-            self._SamplingSet = 'Z'
+            self._rz = 'Z'
             if type(value) is bool:  # integer 1 != True
-                self._SamplingPeriod = 0.
+                self._dt = 0.
             elif isinstance(value, (int, float)):
-                self._SamplingPeriod = float(value)
+                self._dt = float(value)
             else:
                 raise TypeError('SamplingPeriod must be a real scalar.'
                                 'But looks like a \"{0}\" is given.'.format(
                                  type(value).__name__))
         else:
-            self._SamplingSet = 'R'
-            self._SamplingPeriod = None
+            self._rz = 'R'
+            self._dt = None
 
     @DiscretizedWith.setter
     def DiscretizedWith(self, value):
@@ -1895,14 +1889,14 @@ class State:
                             'Tustin then you don\'t need to set '
                             'this property.')
         else:
-            if value > 1/(2*self._SamplingPeriod):
+            if value > 1/(2*self._dt):
                 raise ValueError('Prewarping Frequency is beyond '
                                  'the Nyquist rate.\nIt has to '
                                  'satisfy 0 < w < 1/(2*dt) and dt '
                                  'being the sampling\nperiod in '
                                  'seconds (dt={0} is provided, '
                                  'hence the max\nallowed is '
-                                 '{1} Hz.'.format(dt, 1/(2*dt))
+                                 '{1} Hz.'.format(self._dt, 1/(2*self._dt))
                                  )
             else:
                 self._PrewarpFrequency = value
@@ -1919,7 +1913,7 @@ class State:
         self._set_representation()
 
     def _set_stability(self):
-        if self._SamplingSet == 'Z':
+        if self._rz == 'Z':
             self._isstable = all(1 > np.abs(self.poles))
         else:
             self._isstable = all(0 > np.real(self.poles))
@@ -1927,19 +1921,18 @@ class State:
     def _set_representation(self):
         self._repr_type = 'State'
 
-    # ===========================
-    # State class arithmetic methods
-    # ===========================
+    #   ==================================
+    # %% State class arithmetic methods
+    #   ==================================
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None
 
     def __neg__(self):
         if self._isgain:
-            return State(-self._d, dt=self._SamplingPeriod)
+            return State(-self._d, dt=self._dt)
         else:
-            newC = -1. * self._c
-            return State(self._a, self._b, newC, self._d, self._SamplingPeriod)
+            return State(self._a, self._b, -self._c, -self._d, self._dt)
 
     def __add__(self, other):
         # Addition to a State object is possible via four types
@@ -1959,7 +1952,7 @@ class State:
             # A future addition would be converting everything to the slowest
             # sampling system but that requires pretty comprehensive change.
 
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot\nadd these systems. '
                                 'If you still want to add them as if '
@@ -1985,13 +1978,13 @@ class State:
                 if self._isgain:
                     if other._isgain:
                         return State(self.d + other.d,
-                                     dt=self._SamplingPeriod)
+                                     dt=self._dt)
                     else:
                         return State(other.a,
                                      other.b,
                                      other.c,
                                      self.d + other.d,
-                                     dt=self._SamplingPeriod
+                                     dt=self._dt
                                      )
                 else:
                     if other._isgain:  # And self is not? Swap, come again
@@ -2012,7 +2005,7 @@ class State:
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other, (int, float)):
             return State(np.ones_like(self.d)*other,
-                         dt=self._SamplingPeriod) + self
+                         dt=self._dt) + self
 
         elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
@@ -2024,7 +2017,7 @@ class State:
                              self._b,
                              self._c,
                              self._d + other,
-                             dt=self._SamplingPeriod)
+                             dt=self._dt)
             else:
                 raise IndexError('Addition of systems requires their '
                                  'shape to match but the system shapes '
@@ -2042,13 +2035,20 @@ class State:
     def __rsub__(self, other): return -self + other
 
     def __mul__(self, other):
-        # Multiplication with a State object is possible via four types
-        # 1. Another shape matching State()
-        # 2. Another shape matching Transfer()
-        # 3. Integer or float
-        # 4. A shape matching numpy array
 
         if isinstance(other, (Transfer, State)):
+            # Though there is not a single example in the literature for this
+            # as far as the search results are concerned, we implement it
+            # for completeness. Might be useful for applying custom weight
+            # functions per entry.
+
+            # This is the elementwise multiplication of two State models.
+            # It should be understood as the State equivalent of the following
+            # Transfer product which is 2x2 just to illustrate:
+            #
+            #   [a(s) b(s)]  * [e(s) f(s)] = [a(s)e(s) b(s)f(s)]
+            #   [c(s) d(s)]    [g(s) h(s)]   [c(s)g(s) f(s)h(s)]
+
             # Trivial Rejections:
             # ===================
             # Reject 'ct + dt' or 'dt + dt' with different sampling periods
@@ -2056,7 +2056,7 @@ class State:
             # A future addition would be converting everything to the slowest
             # sampling system but that requires pretty comprehensive change.
 
-            if not self._SamplingPeriod == other._SamplingPeriod:
+            if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
                                 'so I cannot\nmultiply these systems. '
                                 'If you still want to multiply them as'
@@ -2066,66 +2066,91 @@ class State:
                                 )
 
         # Reject if the size don't match
-            if not self._shape[1] == other.shape[0]:
-                raise IndexError('Multiplication of systems requires '
-                                 'their shape to match but the system '
+            if not self._shape == other.shape:
+                raise IndexError('Elementwise multiplication of models '
+                                 'requires their shape to match but the '
                                  'shapes I got are {0} vs. {1}'.format(
                                                 self._shape,
                                                 other.shape))
-        # ===================
-            if isinstance(other, State):
 
+            if isinstance(other, State):
                 # First get the static gain case out of the way.
                 if self._isgain:
                     if other._isgain:
-                        return State(self.d.dot(other.d),
-                                     dt=self._SamplingPeriod)
+                        return State(self._d * other.d,
+                                     dt=self._dt)
                     else:
-                        return State(other.a,
-                                     other.b,
-                                     self.d.dot(other.c),
-                                     self.d.dot(other.d),
-                                     dt=self._SamplingPeriod
-                                     )
+                        # let other handle it
+                        return other * self
                 else:
-                    if other._isgain:  # And self is not? Swap, come again
-                        return State(self.a,
-                                     self.b.dot(other.d),
-                                     self.c,
-                                     self.d.dot(other.d),
-                                     dt=self._SamplingPeriod
-                                     )
+                    if other._isgain:
+                        arr = other.d
+                        # If SISO this is handled in matmul
+                        if self._isSISO:
+                            return self @ other
 
-                # Now, we are sure that there are no empty arrays in the
-                # system matrices hence concatenation should be OK.
+                        n, p, m = self._n, self._p, self._m
+                        atemp = kron(np.eye(p*m), self._a)
+                        btemp = np.zeros((n*p*m, m))
+                        for x in range(m):
+                            btemp[n*p*x:n*p*(x+1), [x]] = kron(arr[:, [x]],
+                                                               self._b[:, [x]])
+                        ctemp = kron(np.ones((1, m)), block_diag(*self._c))
 
-                multa = block_diag(self._a, other.a)
-                multa[self._a.shape[1]:, :other.a.shape[0]] = self._b.dot(
-                                                                    other.c)
-                multb = np.vstack((self._b.dot(other.d), other.b))
-                multc = np.hstack((self._c, self._d.dot(other.c)))
-                multd = self._d.dot(other.d)
-                return State(multa, multb, multc, multd,
-                             dt=self._SamplingPeriod)
+                        return State(atemp, btemp, ctemp, self._d * other.d,
+                                     dt=self._dt)
 
-        elif isinstance(other, Transfer):
-                return self * transfer_to_state(other)
+                # Remaining SISO case send to matmul
+                if self._isSISO:
+                    return self @ other
+
+                # If survived up to here MIMO elementwise multiplication
+                n, p, m = self._n, self._p, self._m
+                atemp = kron(np.eye(p*m), self._a)
+                atemp = block_diag(atemp, kron(np.eye(m), other.a))
+
+                btemp = np.zeros((n*p*m, m))
+                for x in range(m):
+                    btemp[n*p*x:n*p*(x+1), [x]] = kron(other.d[:, [x]],
+                                                       self._b[:, [x]])
+                btemp = np.vstack((btemp, block_diag(*other.b.T).T))
+
+                ctemp = kron(np.ones((1, m)), block_diag(*self._c))
+                ctemp2 = np.empty((p, m*n))
+                for x in range(p):
+                    ctemp2[[x], :] = kron(self._d[[x], :], other.c[[x], :])
+                ctemp = np.hstack((ctemp, ctemp2))
+                return State(atemp, btemp, ctemp, self._d * other.d,
+                             dt=self._dt)
+
+            return self * transfer_to_state(other)
+
         elif isinstance(other, (int, float)):
-            return self * State(np.atleast_2d(other), dt=self._SamplingPeriod)
+            return self @ other
         # Last chance for matrices, convert to static gain matrices and mult
         elif isinstance(other, np.ndarray):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other) and np.any(other.imag):
+                raise ValueError('Complex valued representations are not '
+                                 'supported.')
+
             # It still might be a scalar inside an array
             if other.size == 1:
-                return self * State(
-                            np.atleast_2d(other), dt=self._SamplingPeriod)
+                return self @ float(other)
 
-            if self._shape[1] == other.shape[0]:
-                return self * State(other, dt=self._SamplingPeriod)
+            if other.ndim == 1:
+                arr = np.atleast_2d(other.real)
             else:
-                raise IndexError('Multiplication of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                    self._shape, other.shape))
+                arr = other.real
+
+            if self._shape == other.shape:
+                return self * State(other, dt=self._dt)
+            else:
+                raise ValueError('Shapes are not compatible for elementwise '
+                                 'multiplication. Model shape is {0} but the'
+                                 ' array shape is {1}'.format(self._shape,
+                                                              other.shape))
         else:
             raise TypeError('I don\'t know how to multiply a '
                             '{0} with a state representation '
@@ -2136,32 +2161,192 @@ class State:
         # by other's __mul__() method. Hence we only take care of the
         # right multiplication of the scalars and arrays. Otherwise
         # rejection is executed
-        if isinstance(other, (int, float)):
-            if self._isgain:
-                return State(self.d * other, dt=self._SamplingPeriod)
+        if isinstance(other, (int, float, np.ndarray)):
+            return self @ other
+        else:
+            raise TypeError('I don\'t know how to elementwise multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__qualname__))
+
+    def __matmul__(self, other):
+
+        # Normalize arrays and scalars and consistency checks
+        if isinstance(other, (int, float, np.ndarray)):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other) and np.any(other.imag):
+                raise ValueError('Complex valued representations are not '
+                                 'supported.')
+
+            if isinstance(other, np.ndarray):
+                if other.ndim == 1:
+                    s = np.atleast_2d(other.real)
+                else:
+                    s = other.real
+
+                # Early shape check
+                if self._shape[1] != other.shape[0]:
+                    # It still might be a scalar inside an array
+                    if other.size == 1:
+                        s = float(other)
+                    else:
+                        raise ValueError('Shapes are not compatible for '
+                                         'multiplication. Model shape is {0}'
+                                         ' but the array shape is {1}.'
+                                         ''.format(self._shape, other.shape))
+
             else:
-                return State(self._a,
-                             self._b,
-                             self._c * other,
-                             self._d * other,
-                             dt=self._SamplingPeriod
-                             )
-        elif isinstance(other, np.ndarray):
-            # It still might be a scalar inside an array
-            if other.size == 1:
-                return float(other) * self
-            elif self._shape[0] == other.shape[1]:
-                return State(other, dt=self._SamplingPeriod) * self
-            else:
-                raise IndexError('Multiplication of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                               self._shape,
-                                                               other.shape))
+                s = float(other)
+
+        elif isinstance(other, (State, Transfer)):
+            # Trivial Rejections:
+            # ===================
+            # Reject 'ct + dt' or 'dt + dt' with different sampling periods
+            #
+            # A future addition would be converting everything to the slowest
+            # sampling system but that requires pretty comprehensive change.
+
+            if not self._dt == other._dt:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot multiply these systems. '
+                                'If you still want to multiply them as'
+                                'if they are compatible, carry the data '
+                                'to a compatible system model and then '
+                                'multiply.'
+                                )
+
+            # Reject if the size don't match
+            if not self._shape[1] == other.shape[0]:
+                raise IndexError('Multiplication of models '
+                                 'requires their shape to match but the '
+                                 'shapes I got are {0} vs. {1}'.format(
+                                                self._shape,
+                                                other.shape))
+            if isinstance(other, Transfer):
+                if other._isgain:
+                    return self @ other.to_array()
+
+                return self @ transfer_to_state(other)
+
+            # If made its way down here check for State gain
+            if other._isgain:
+                return self @ other.to_array()
+
+            s = other
+
         else:
             raise TypeError('I don\'t know how to multiply a '
                             '{0} with a state representation '
-                            '(yet).'.format(type(other).__name__))
+                            '(yet).'.format(type(other).__qualname__))
+
+        # isgain matmul 1- scalar
+        #               2- ndarray
+        #               3- State
+
+        # state matmul  4- scalar
+        #               5- ndarray
+        #               6- State
+
+        # Enumerating cases given above
+        if self._isgain:
+            # 1, 2, 3
+            if isinstance(s, State):
+                # 3
+                return State(self.to_array() @ s, dt=self._dt)
+            try:
+                # 2
+                mat = self.to_array() @ s
+            except ValueError:
+                # 1
+                mat = self.to_array * s
+
+            return State(mat, dt=self._dt)
+
+        # 4, 5, 6
+        if isinstance(s, State):
+            # 6
+            multa = block_diag(self._a, other.a)
+            multa[self._n:, :other.a.shape[0]] = self._b @ other.c
+            multb = np.vstack((self._b @ other.d, other.b))
+            multc = np.hstack((self._c, self._d @ other.c))
+            multd = self._d @ other.d
+            return State(multa, multb, multc, multd, dt=self._dt)
+
+        if isinstance(s, np.ndarray):
+            # 5
+            return State(self._a,
+                         self._b @ s,
+                         self._c,
+                         self._d @ s,
+                         dt=self._dt)
+        # 4
+        return State(self._a, self._b * s, self._c, self._d * s,
+                     dt=self._dt)
+
+    def __rmatmul__(self, other):
+        # isgain rmatmul 1- scalar
+        #                2- ndarray
+
+        # state rmatmul  3- scalar
+        #                4- ndarray
+
+        # Enumerating cases given above
+        # Normalize arrays and scalars and consistency checks
+        if isinstance(other, (int, float, np.ndarray)):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other) and np.any(other.imag):
+                raise ValueError('Complex valued representations are not '
+                                 'supported.')
+
+            if isinstance(other, np.ndarray):
+                # It still might be a scalar inside an array
+                if other.size == 1:
+                    s = float(other)
+
+                if other.ndim == 1:
+                    s = np.atleast_2d(other.real)
+                else:
+                    s = other.real
+                # Early shape check
+                if self._shape[0] != s.shape[1]:
+                    raise ValueError('Shapes are not compatible for '
+                                     'multiplication. Array shape is {1} but '
+                                     'the model shape is {0}.'
+                                     ''.format(self._shape, other.shape))
+
+                if self._isgain:
+                    # 2.
+                    return State(s @ self.to_array, dt=self._dt)
+                # 4.
+                return State(self._a, self._b, s @ self._c, s @ self._d,
+                             dt=self._dt)
+
+            s = float(other)
+            if self._isgain:
+                # 1.
+                return State(self.to_array * s, dt=self._dt)
+            # 3.
+            return State(self._a, self._b, self._c * s, self._d * s,
+                         dt=self._dt)
+
+        else:
+            raise TypeError('I don\'t know how to multiply a '
+                            '{0} with a state representation '
+                            '(yet).'.format(type(other).__qualname__))
+
+    def __truediv__(self, other):
+        # For convenience of scaling the system via G/5 and so on.
+        # Otherwise reject.
+        if isinstance(other, (int, float)):
+            return self @ (1/other)
+        else:
+            raise TypeError('Currently, division operation for State '
+                            'representations are limited to real scalars.')
+
+    def __rtruediv__(self, other):
+        raise TypeError('Currently, right division operation for State '
+                        'representations are not supported.')
 
     def __getitem__(self, num_or_slice):
 
@@ -2171,7 +2356,7 @@ class State:
         else:
             rows_of_c, cols_of_b = num_or_slice, slice(None, None, None)
 
-        # Handle the dimension losing behavior of NumPy indexing
+        # Handle the ndim losing behavior of NumPy indexing
         rc = np.atleast_2d(np.arange(self.NumberOfOutputs)[rows_of_c])
         cb = np.arange(self.NumberOfInputs)[cols_of_b]
         n = np.arange(self.NumberOfStates)
@@ -2186,7 +2371,7 @@ class State:
             cb = np.squeeze(cb).tolist()
 
         if self._isgain:
-                return State(self.d[rc, cb], dt=self._SamplingPeriod)
+                return State(self.d[rc, cb], dt=self._dt)
 
         # Enforce fancyness, avoid mixing. Why do we even have to do this?
         btemp = self.b[n[:, None], cb]
@@ -2196,14 +2381,14 @@ class State:
                      btemp if btemp.ndim > 1 else btemp.reshape(rc, cb),
                      ctemp,
                      self.d[rc, cb],
-                     dt=self._SamplingPeriod)
+                     dt=self._dt)
 
     def __setitem__(self, *args):
         raise ValueError('To change the data of a subsystem, set directly\n'
                          'the relevant A,B,C,D attributes.')
 
     def __repr__(self):
-        if self._SamplingSet == 'R':
+        if self._rz == 'R':
             desc_text = '\n Continous-time state represantation\n'
         else:
             desc_text = ('Discrete-Time state representation with '
@@ -2241,6 +2426,17 @@ class State:
                                 self.SamplingPeriod,
                                 output_data=output_data)
     pole_properties.__doc__ = Transfer.pole_properties.__doc__
+
+    def to_array(self):
+        '''
+        If a State representation is a static gain, this method returns
+        a regular 2D-ndarray.
+        '''
+        if self._isgain:
+                return self._d
+        else:
+            raise TypeError('Only static gain models can be converted to '
+                            'ndarrays.')
 
     @staticmethod
     def validate_arguments(a, b, c, d, verbose=False):
@@ -2384,9 +2580,132 @@ class State:
             return a, b, c, d, d.shape, Gain_flag
 
 
+def _investigate_other(self_, other_, method_):
+    '''
+    This helper function checks the argument of the dunder arithmetic
+    methods of State and Transfer classes, such as __mul__(), __add__()
+    etc. and returns informative flags for quick branching.
+
+    Concise two character flag logic (but passed as an integer):
+        '##'
+         ||__ 1 for dynamic, 0 for static models
+         |___ 1 for MIMO, 0 for SISO models
+    hence
+        0 is SISO static gain
+        1 is SISO dynamic model
+        2 is MIMO static gain
+        3 is MIMO dynamic model
+       -1 is numpy.ndarray
+
+    Parameters
+    ----------
+    self_ : State, Transfer
+        State or Transfer instance for which the dunder method is called.
+
+    other_ : object
+        object to be recognized.
+
+    method_ : str
+        Method specifier for proper size checks and error messages
+
+    Returns
+    -------
+
+    '''
+    msg_dict = {'add': 'addition',
+                'mul': 'elementwise multiplication',
+                'matmul': 'multiplication',
+                'radd': 'addition',
+                'rmul': 'elementwise multiplication',
+                'rmatmul': 'left multiplication'}
+
+    # Massage possible real valued complex objects
+    if np.iscomplexobj(other_):
+        # Fine check further
+        if hasattr(other_, 'imag'):
+            if np.any(other_.imag):
+                raise ValueError('Complex valued models are not supported.')
+            else:
+                other_ = other_.real
+        else:
+            # Numpy thinks this a complex object so probably it is arraylike
+            other_ = np.array(other_)
+            if np.any(other_.imag):
+                raise ValueError('Complex valued models are not supported.')
+            else:
+                other_ = other_.real
+
+    # Check for allowed objects
+    if not isinstance(other_, (int, float, np.ndarray, State, Transfer)):
+        raise ValueError('I don\'t know how to perform {0} of {1} and'
+                         ' {2} types.'.format(msg_dict[method_],
+                                      type(self_).__qualname__,
+                                      type(other_).__qualname__)
+                         )
+    # check and forgive size-1 arrays
+    if isinstance(other_, np.ndarray):
+        if other_.ndim == 1:
+            try:
+                other_ = np.atleast_2d(other_).astype(float)
+            except ValueError:
+                raise ValueError('Operand could not be casted to float dtype')
+        elif other_.ndim > 2:
+            raise ValueError('For {0}, the operand dimension must be at '
+                             'most 2d but got a {1}d-array.'
+                             ''.format(msg_dict[method_], other_.ndim))
+        elif other_.size == 1:
+            other_ = float(other_)
+        else:
+            other_ = other_.astype(float)
+        # Reject if the size don't match
+        if method_ in ('add', 'mul'):
+            shape_1 = self_.shape
+            shape_2 = other_.shape
+        else:
+            shape_1 = self_.shape[1]
+            shape_2 = other_.shape[0]
+
+        if shape_1 != shape_2:
+            raise ValueError('For {0}, model shapes don\'t match. The shapes'
+                             ' are {1} vs. {2}'.format(msg_dict[method_],
+                                                       self_.shape,
+                                                       other_.shape)
+                             )
+        other_type = -1
+
+    if isinstance(other_, (int, float)):
+        other_ = np.atleast_2d(other_).astype(float)
+        other_type = -1
+
+    if isinstance(other_, (State, Transfer)):
+
+        if not self_.SamplingPeriod == other_.SamplingPeriod:
+            raise TypeError('The sampling periods of the models don\'t match '
+                            'for {0}.'.format(msg_dict[method_])
+                            )
+        # Reject if the size don't match
+        if method_ in ('add', 'mul'):
+            shape_1 = self_.shape
+            shape_2 = other_.shape
+        else:
+            shape_1 = self_.shape[1]
+            shape_2 = other_.shape[0]
+
+        if shape_1 != shape_2:
+            raise ValueError('For {0}, model shapes don\'t match. The shapes'
+                             ' are {1} vs. {2}'.format(msg_dict[method_],
+                                                       self_.shape,
+                                                       other_.shape)
+                             )
+
+        other_type = 2 * (not other_._isSISO) + (not other_._isgain)
+
+    return other_, other_type
+
+
 def _pole_properties(poles, dt=None, output_data=False):
     '''
-    This method provides the natural frequency, damping and time constant
+    This function provides the natural frequency, damping and time constant
     values of each poles in a tabulated format. Pure integrators have zero
     frequency and NaN as the damping value. Poles at infinity are discarded.
 
@@ -2480,9 +2799,10 @@ def state_to_transfer(*state_or_abcd, output='system'):
     """
     # FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
-    if output not in ('system', 'polynomials'):
-        raise ValueError('The output can either be "system" or "matrices".\n'
-                         'I don\'t know any option as "{0}"'.format(output))
+    if output.lower() not in ('system', 'polynomials'):
+        raise ValueError('The "output" keyword can either be "system" or '
+                         '"polynomials". I don\'t know any option as '
+                         '"{0}"'.format(output))
 
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
@@ -2500,7 +2820,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
         ZR = None
 
     if it_is_gain:
-        if output is 'polynomials':
+        if output.lower() is 'polynomials':
             return D, np.ones_like(D)
         return Transfer(D, dt=ZR)
 
@@ -2567,7 +2887,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
         num_list = num_list[0][0]
         den_list = den_list[0][0]
 
-    if output is 'polynomials':
+    if output.lower() is 'polynomials':
         return (num_list, den_list)
     return Transfer(num_list, den_list, ZR)
 

@@ -296,6 +296,17 @@ def test_State_Instantiations():
                   np.array([0, 0]))
 
 
+def test_State_to_array():
+    G = State(1, 1, 1)
+    H = State(5)
+    with assert_raises(TypeError):
+        G.to_array()
+
+    assert_equal(H.to_array(), np.array([[5]]))
+    H = State(np.ones((4, 4)))
+    assert_equal(H.to_array(), np.ones((4, 4)))
+
+
 def test_State_algebra_mimo_siso():
     static_siso_state = State(5)
     static_mimo_state = State(2.0*np.eye(3))

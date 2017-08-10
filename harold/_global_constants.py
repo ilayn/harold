@@ -33,4 +33,4 @@ _KnownDiscretizationMethods = ('bilinear',
                                'lft', '>>', '<<'
                                )
 
-harold_plot_backend = 'bokeh'
+_harold_plot_backend = 'bokeh'
