@@ -331,7 +331,7 @@ def test_State_algebra_mimo_siso():
     assert_raises(IndexError, static_mimo_state.__add__, dynamic_mimo_state)
     assert_raises(IndexError, static_mimo_state.__add__, static_siso_state)
     assert_raises(IndexError, static_mimo_state.__mul__, static_siso_state)
-    F = static_mimo_state * dynamic_mimo_state
+    F = static_mimo_state @ dynamic_mimo_state
 
     assert_almost_equal(F.c, np.eye(3)*2.0)
     assert_almost_equal((dynamic_square_state + static_mimo_state).d,

@@ -2252,7 +2252,7 @@ class State:
             # 1, 2, 3
             if isinstance(s, State):
                 # 3
-                return State(self.to_array() @ s, dt=self._dt)
+                return self.to_array() @ s
             try:
                 # 2
                 mat = self.to_array() @ s
@@ -2639,8 +2639,8 @@ def _investigate_other(self_, other_, method_):
     if not isinstance(other_, (int, float, np.ndarray, State, Transfer)):
         raise ValueError('I don\'t know how to perform {0} of {1} and'
                          ' {2} types.'.format(msg_dict[method_],
-                                      type(self_).__qualname__,
-                                      type(other_).__qualname__)
+                                              type(self_).__qualname__,
+                                              type(other_).__qualname__)
                          )
     # check and forgive size-1 arrays
     if isinstance(other_, np.ndarray):
