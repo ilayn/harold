@@ -41,15 +41,17 @@ def test_Transfer_Instantiations():
     assert_equal(len(G.num), 1)
     assert_equal(len(G.num[0]), 3)
     assert_equal(G.shape, (1, 3))
-    assert G._isgain
+    assert_(G._isgain)
+    G = Transfer(1, np.array([[2, 1, 1]]))
+    assert_(G._isSISO)
 
     G = Transfer([[1]], [1, 2, 1])
-    assert G._isSISO
+    assert_(G._isSISO)
     assert_equal(G.num.shape, (1, 1))
     assert_equal(G.den.shape, (1, 3))
 
     G = Transfer([[1, 2]], [1, 2, 1])
-    assert not G._isSISO
+    assert_(not G._isSISO)
     assert_equal(len(G.num[0]), 2)
     assert_equal(len(G.den[0]), 2)
     assert_equal(G.shape, (1, 2))
@@ -62,19 +64,19 @@ def test_Transfer_Instantiations():
     assert_equal(G.shape, (2, 2))
 
     G = Transfer(1)
-    assert G._isSISO
+    assert_(G._isSISO)
     assert_equal(G.num, np.array([[1]]))
     assert_equal(G.den, np.array([[1]]))
 
     G = Transfer(None, 1)
-    assert G._isSISO
+    assert_(G._isSISO)
     assert_equal(G.num, np.array([[1]]))
     assert_equal(G.den, np.array([[1]]))
 
     G = Transfer(np.random.rand(3, 2))
-    assert not G._isSISO
+    assert_(not G._isSISO)
     assert_equal(G.shape, (3, 2))
-    assert G.poles.size == 0
+    assert_equal(G.poles.size, 0)
 
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
