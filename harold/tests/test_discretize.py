@@ -23,10 +23,12 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from harold import State, discretize
-from numpy.testing import assert_array_almost_equal, assert_equal
+from harold import State, Transfer, discretize
+from numpy.testing import (assert_array_almost_equal,
+                           assert_equal,
+                           assert_raises)
 
-# Tests are mostly taken from scipy repository for comparison
+# Some tests are taken from scipy repository for comparison
 
 
 def test_simple_zoh():
@@ -89,3 +91,26 @@ def test_simple_tustin():
     assert_array_almost_equal(cd_truth, cd)
     assert_array_almost_equal(dd_truth, dd)
     assert_equal(H.SamplingPeriod, dt_)
+
+
+def test_simple_tustin_prewarp():
+    # Example from B. de Moor's slides
+    H = Transfer([1, 0.5, 9], [1, 5, 9])
+    # prewarp at 3 rad/s
+    Hd = discretize(H, dt=0.5, PrewarpAt=3/2/np.pi, method='bilinear')
+    assert_array_almost_equal(Hd.num, np.array([[0.591468698033,
+                                                -0.0772558231247,
+                                                0.500683964262]]))
+    assert_array_almost_equal(Hd.den, np.array([[1.0,
+                                                 -0.0772558231247,
+                                                 0.0921526622952]]))
+    # while we are at it test the upper Nyquist limit on prewarping
+    assert_raises(ValueError, discretize, H, 0.5, 1)
+
+
+def test_simple_lft():
+    H = Transfer([1, 0.5, 9], [1, 5, 9])
+    Hd = discretize(H, dt=0.25, method="lft", q=np.array([[1, .5], [.5, 0]]))
+    Hdf = discretize(H, dt=0.25, method=">>")
+    assert_array_almost_equal(Hd.num, Hdf.num)
+    assert_array_almost_equal(Hd.den, Hdf.den)

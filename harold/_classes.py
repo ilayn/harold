@@ -1862,16 +1862,10 @@ class State:
                                  ' it. Discretize the model first via '
                                  '\"discretize\" function.')
             else:
-                if value == 'lft':
-                    self._DiscretizedWith = value
-                    print('\"lft\" method also needs an interconnection'
-                          ' matrix. Please don\'t forget to set the '
-                          '\"DiscretizationMatrix\" property as well')
-                else:
-                    self._DiscretizedWith = value
+                self._DiscretizedWith = value
         else:
-            raise ValueError('Excuse my ignorance but I don\'t know '
-                             'that method.')
+            raise ValueError('{0} is not among the known methods:\n{}'
+                             ''.format(value, _KnownDiscretizationMethods))
 
     @DiscretizationMatrix.setter
     def DiscretizationMatrix(self, value):

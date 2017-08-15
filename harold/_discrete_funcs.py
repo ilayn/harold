@@ -103,8 +103,6 @@ def __discretize(T, dt, method, PrewarpAt, q):
             [A | B]   [ exp(A) | int(exp(A))*B ]   [ Ad | Bd ]
         expm[- - -] = [------------------------] = [---------]
             [0 | 0]   [   0    |       I       ]   [ C  | D  ]
-
-        TODO: I really want to display a warning here against 'zoh' use
         """
 
         M = np.r_[np.c_[T.a, T.b], np.zeros((m, m+n))]
@@ -123,34 +121,36 @@ def __discretize(T, dt, method, PrewarpAt, q):
                     |             |    |> this is the lft of (1/s)*I
                     |   -------   |    |
                     --->|     |----    |
-                        |  Q  |        |
+                        |  q  |        |
                     --->|     |----    |
                     |   -------   |   _|
                     |             |
                     |   -------   |
-                    ----|     |<---
+                    ----|     |<--|
                         |  T  |
                     <---|     |<---
                         -------
 
-        Here Q is whatever the rational mapping that links s to z In
-        the floowing sense:
+        Here q is whatever the rational mapping that links s to z in
+        the following sense:
 
-         1         1
-        --- = F_u(---,Q)
-         s         z
+            1         1                    1        1
+           --- = F_u(---,q) = q_22 + q_21 --- (I - --- q_11)⁻¹ q12
+            s         z                    z        z
 
         where F_u denotes the upper linear fractional representation.
-        For exemaple, the usual case of Tustin, Euler etc. the map is
+
+        As an example, for the usual discretization cases, the map is
 
                   [     I     |  sqrt(T)*I ]
               Q = [-----------|------------]
-                  [ sqrt(T)*I |    T*x*I   ]
+                  [ sqrt(T)*I |    T*α*I   ]
 
-        with alpha defined as in Zhang 2007 SICON.
-        x = 0   --> backward diff, (backward euler)
-        x = 0.5 --> Tustin,
-        x = 1   --> forward difference (forward euler)
+        with α defined as in Zhang 2007 SICON.
+
+        α = 0   --> backward diff, (backward euler)
+        α = 0.5 --> Tustin,
+        α = 1   --> forward difference (forward euler)
 
         """
 
@@ -158,8 +158,7 @@ def __discretize(T, dt, method, PrewarpAt, q):
 
         if q is None:
             raise ValueError('\"lft\" method requires an interconnection '
-                             'matrix. Consider providing a matrix \"q". '
-                             )
+                             'matrix \"q" between s and z variables.')
 
         # Copy n times for n integrators
         q11, q12, q21, q22 = (kron(np.eye(n), x) for x in matrix_slice(
@@ -177,19 +176,16 @@ def __discretize(T, dt, method, PrewarpAt, q):
     elif method in ('bilinear', 'tustin', 'trapezoidal'):
         if not PrewarpAt == 0.:
             if 1/(2*dt) < PrewarpAt:
-                raise ValueError('Prewarping Frequency is beyond '
-                                 'the Nyquist rate.\nIt has to '
-                                 'satisfy 0 < w < 1/(2*dt) and dt '
-                                 'being the sampling\nperiod in '
-                                 'seconds (dt={0} is provided, '
-                                 'hence the max\nallowed is '
-                                 '{1} Hz.'.format(dt, 1/(2*dt))
+                raise ValueError('Prewarping Frequency is beyond the Nyquist'
+                                 ' rate. It has to satisfy 0 < w < 1/(2*Δt)'
+                                 ' and Δt being the sampling period in '
+                                 'seconds. Δt={0} is given, hence the max.'
+                                 ' allowed is {1} Hz.'.format(dt, 1/(2*dt))
                                  )
 
-            PrewarpAt *= 2*np.pi
-            TwoTanw_Over_w = 2*np.tan(PrewarpAt*dt/2)/PrewarpAt
-            q = np.array([[1, np.sqrt(TwoTanw_Over_w)],
-                          [np.sqrt(TwoTanw_Over_w), TwoTanw_Over_w]])
+            TwoTanw_Over_w = np.tan(2*np.pi*PrewarpAt*dt/2)/(2*np.pi*PrewarpAt)
+            q = np.array([[1, np.sqrt(2*TwoTanw_Over_w)],
+                          [np.sqrt(2*TwoTanw_Over_w), TwoTanw_Over_w]])
         else:
             q = np.array([[1, np.sqrt(dt)], [np.sqrt(dt), dt/2]])
 
