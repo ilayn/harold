@@ -22,24 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
-from numpy.linalg import cond
-from scipy.linalg import expm, logm, kron, solve
-
+from numpy.linalg import LinAlgError
+from scipy.linalg import expm, logm, inv
+from warnings import warn, simplefilter, catch_warnings
 from ._classes import Transfer, State, transfer_to_state, state_to_transfer
 from ._global_constants import _KnownDiscretizationMethods
-from ._aux_linalg import matrix_slice
+
 
 __all__ = ['discretize', 'undiscretize']
 
 
-def discretize(G, dt, method='tustin', PrewarpAt=0., q=None):
+def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
     if not isinstance(G, (Transfer, State)):
-        raise TypeError('I can only convert State or Transfer objects but I '
-                        'found a \"{0}\" object.'.format(type(G).__name__)
-                        )
+        raise ValueError('I can only convert State or Transfer objects but I '
+                         'found a \"{0}\" object.'.format(type(G).__name__)
+                         )
     if G.SamplingSet == 'Z':
-        raise TypeError('The argument is already modeled as a '
-                        'discrete-time system.')
+        raise ValueError('The argument is already modeled as a '
+                         'discrete-time system.')
 
     if isinstance(G, Transfer):
         T = transfer_to_state(G)
@@ -47,12 +47,12 @@ def discretize(G, dt, method='tustin', PrewarpAt=0., q=None):
         T = G
 
     if G._isgain:
-        Gd = G
+        # Method doesn't matter
+        Gd = Transfer(G.to_array(), dt=dt) if isinstance(G, Transfer) else \
+                                                    State(G.to_array, dt=dt)
         Gd.SamplingPeriod = dt
-
     else:
-
-        discretized_args = __discretize(T, dt, method, PrewarpAt, q)
+        discretized_args = _discretize(T, dt, method, prewarp_at, q)
 
         if isinstance(G, State):
             Gd = State(*discretized_args)
@@ -64,14 +64,15 @@ def discretize(G, dt, method='tustin', PrewarpAt=0., q=None):
 
         if method == 'lft':
             Gd.DiscretizationMatrix = q
-
         elif method in ('tustin', 'bilinear', 'trapezoidal'):
-            Gd.PrewarpFrequency = PrewarpAt
+            Gd.PrewarpFrequency = prewarp_at
+
+        Gd.SamplingPeriod = dt
 
     return Gd
 
 
-def __discretize(T, dt, method, PrewarpAt, q):
+def _discretize(T, dt, method, prewarp_at, q):
     """
     Actually, I think that presenting this topic as a numerical
     integration problem is confusing more than it explains. Most
@@ -90,15 +91,11 @@ def __discretize(T, dt, method, PrewarpAt, q):
 
     if method == 'zoh':
         """
-        Zero-order hold is not much useful for linear systems and
-        in fact it should be discouraged since control problems
-        don't have boundary conditions as in stongly nonlinear
-        FEM simulations of CFDs so on. Most importantly it is not
-        stability-invariant which defeats its purpose. But whatever
-
-
-
-        This conversion is usually done via the expm() identity
+        Zero-order hold should be discouraged in my opinion since
+        control problems don't have boundary conditions as in
+        stongly nonlinear FEM simulations of CFDs so on. Most
+        importantly it is not stability-invariant but anyways.
+        This conversion is done via the expm() identity
 
             [A | B]   [ exp(A) | int(exp(A))*B ]   [ Ad | Bd ]
         expm[- - -] = [------------------------] = [---------]
@@ -109,202 +106,167 @@ def __discretize(T, dt, method, PrewarpAt, q):
         eM = expm(M*dt)
         Ad, Bd, Cd, Dd = eM[:n, :n], eM[:n, n:], T.c, T.d
 
-    elif method == 'lft':
-        """
-        Here we form the following star product
-                                      _
-                       ---------       |
-                       |  1    |       |
-                    ---| --- I |<--    |
-                    |  |  z    |  |    |
-                    |  ---------  |    |
-                    |             |    |> this is the lft of (1/s)*I
-                    |   -------   |    |
-                    --->|     |----    |
-                        |  q  |        |
-                    --->|     |----    |
-                    |   -------   |   _|
-                    |             |
-                    |   -------   |
-                    ----|     |<--|
-                        |  T  |
-                    <---|     |<---
-                        -------
-
-        Here q is whatever the rational mapping that links s to z in
-        the following sense:
-
-            1         1                    1        1
-           --- = F_u(---,q) = q_22 + q_21 --- (I - --- q_11)⁻¹ q12
-            s         z                    z        z
-
-        where F_u denotes the upper linear fractional representation.
-
-        As an example, for the usual discretization cases, the map is
-
-                  [     I     |  sqrt(T)*I ]
-              Q = [-----------|------------]
-                  [ sqrt(T)*I |    T*α*I   ]
-
-        with α defined as in Zhang 2007 SICON.
-
-        α = 0   --> backward diff, (backward euler)
-        α = 0.5 --> Tustin,
-        α = 1   --> forward difference (forward euler)
-
-        """
-
-        # TODO: Check if interconnection is well-posed !!!!
-
-        if q is None:
-            raise ValueError('\"lft\" method requires an interconnection '
-                             'matrix \"q" between s and z variables.')
-
-        # Copy n times for n integrators
-        q11, q12, q21, q22 = (kron(np.eye(n), x) for x in matrix_slice(
-                              q, (-1, -1)))
-
-        # Compute the star product
-        ZAinv = solve(np.eye(n) - q22.dot(T.a), q21)
-        AZinv = solve(np.eye(n) - T.a.dot(q22), T.b)
-
-        Ad = q11 + q12.dot(T.a.dot(ZAinv))
-        Bd = q12.dot(AZinv)
-        Cd = T.c.dot(ZAinv)
-        Dd = T.d + T.c.dot(q22.dot(AZinv))
-
     elif method in ('bilinear', 'tustin', 'trapezoidal'):
-        if not PrewarpAt == 0.:
-            if 1/(2*dt) < PrewarpAt:
-                raise ValueError('Prewarping Frequency is beyond the Nyquist'
+        if prewarp_at == 0.:
+            q = np.array([[1, np.sqrt(dt)], [np.sqrt(dt), dt/2]])
+        else:
+            if 1/(2*dt) < prewarp_at:
+                raise ValueError('Prewarping frequency is beyond the Nyquist'
                                  ' rate. It has to satisfy 0 < w < 1/(2*Δt)'
                                  ' and Δt being the sampling period in '
-                                 'seconds. Δt={0} is given, hence the max.'
+                                 'seconds. Δt={0} is given, hence the maximum'
                                  ' allowed is {1} Hz.'.format(dt, 1/(2*dt))
                                  )
+            prew_rps = 2 * np.pi * prewarp_at
+            sq2tan = np.sqrt(2*np.tan(prew_rps * dt / 2)/prew_rps)
+            q = np.array([[1, sq2tan], [sq2tan, sq2tan**2/2]])
 
-            TwoTanw_Over_w = np.tan(2*np.pi*PrewarpAt*dt/2)/(2*np.pi*PrewarpAt)
-            q = np.array([[1, np.sqrt(2*TwoTanw_Over_w)],
-                          [np.sqrt(2*TwoTanw_Over_w), TwoTanw_Over_w]])
-        else:
-            q = np.array([[1, np.sqrt(dt)], [np.sqrt(dt), dt/2]])
-
-        return __discretize(T, dt, "lft", 0., q)
+        Ad, Bd, Cd, Dd = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
     elif method in ('forward euler', 'forward difference',
                     'forward rectangular', '>>'):
-        return __discretize(T, dt, "lft", 0, q=np.array([[1, np.sqrt(dt)],
-                                                         [np.sqrt(dt), 0]]))
+        q = np.array([[1, np.sqrt(dt)], [np.sqrt(dt), 0]])
+        Ad, Bd, Cd, Dd = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
     elif method in ('backward euler', 'backward difference',
                     'backward rectangular', '<<'):
-        return __discretize(T, dt, "lft", 0, q=np.array([[1, np.sqrt(dt)],
-                                                        [np.sqrt(dt), dt]]))
+        q = np.array([[1, np.sqrt(dt)], [np.sqrt(dt), dt]])
+        Ad, Bd, Cd, Dd = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
+
+    elif method == 'lft':
+        if q is None:
+            raise ValueError('"lft" method requires a 2x2 interconnection '
+                             'matrix "q" between s and z indeterminates.')
+        Ad, Bd, Cd, Dd = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
     else:
-        raise ValueError('I don\'t know that discretization method. But '
-                         'I know {0} methods.'
-                         ''.format(_KnownDiscretizationMethods)
+        raise ValueError('I don\'t know the discretization method "{0}". But '
+                         'I know:\n {1}'
+                         ''.format(method,
+                                   ',\n'.join(_KnownDiscretizationMethods))
                          )
 
     return Ad, Bd, Cd, Dd, dt
 
 
-def undiscretize(G, use_method=None):
+def undiscretize(G, method=None, prewarp_at=0., q=None):
     """
     Converts a discrete time system model continuous system model.
-    If the model has the Discretization Method set, then uses that
-    discretization method to reach back to the continous system model.
+    If the model has the Discretization Method set and no method is given,
+    then uses that discretization method to reach back to the continous
+    system model.
 
     Parameters
     ----------
-    G : State()
-        System to be undiscretized
-    use_method : str
-        The method to use for converting discrete model to continous.
+    G : State, Transfer
+        Discrete-time system to be undiscretized
+    method : str
+        The method to use for converting discrete model to continuous.
+    prewarp_at : float
+        If method is "tustin" or its aliases then this is the prewarping
+        frequency that discretization was corrected for.
+    q : (2, 2) array_like
+        The LFT interconnection matrix.
 
+    Returns
+    -------
+    Gc : State, Transfer
+        Undiscretized continuous-time system
     """
     if not isinstance(G, (Transfer, State)):
-        raise TypeError('The argument is not transfer '
-                        'function or a state\nspace model.'
-                        )
+        raise ValueError('I can only convert State or Transfer objects but I '
+                         'found a \"{0}\" object.'.format(type(G).__name__))
 
     if G.SamplingSet == 'R':
-        raise TypeError('The argument is already modeled as a '
-                        'continuous time system.')
+        raise ValueError('The argument is already modeled as a '
+                         'continuous-time system.')
 
-    if G._isgain:
-        Gc = G
-        Gc.SamplingPeriod = None
-    else:
-        args = __undiscretize(G, use_method)
-        if isinstance(G, State):
-            Gc = State(*args)
-        else:
-            Gss = State(*args)
-            Gc = state_to_transfer(Gss)
-
-    return Gc
-
-
-def __undiscretize(G, method_to_use):
-
-    if isinstance(G, Transfer):
-        T = transfer_to_state(G)
-    else:
-        T = G
-
-    m, n = T.NumberOfInputs, T.NumberOfStates
     dt = G.SamplingPeriod
 
-    if method_to_use is None:
-        if 'with it' in G.DiscretizedWith:  # Check if warning comes back
-            missing_method = True
+    if method is None:
+        if G.DiscretizedWith is None:
+            method = 'tustin'
         else:
-            method_to_use = G.DiscretizedWith
+            method = G.DiscretizedWith
 
-    if method_to_use == 'zoh':
-        M = np.r_[
-                   np.c_[T.a, T.b],
-                   np.c_[np.zeros((m, n)), np.eye(m)]
-                  ]
-        eM = logm(M)*(1/T.SamplingPeriod)
+    if method == 'lft':
+        if G.DiscretizationMatrix is None and q is None:
+            raise ValueError('"lft" method requires also the '
+                             'DiscretizationMatrix property set.')
+        # At least one of them exists
+        else:
+            # Allow for custom q for lft different than the original
+            if q is None:
+                q = G.DiscretizationMatrix
+
+    if isinstance(G, Transfer):
+        if G._isgain:
+            return Transfer(G.to_array)
+        T = transfer_to_state(G)
+        undiscretized_args = _undiscretize(T, dt, method, prewarp_at, q)
+        return state_to_transfer(State(*undiscretized_args))
+    else:
+        if G._isgain:
+            return State(G.to_array)
+        undiscretized_args = _undiscretize(G, dt, method, prewarp_at, q)
+        return State(*undiscretized_args)
+
+
+def _undiscretize(T, dt, method, prewarp_at, q):
+
+    m, n = T.NumberOfInputs, T.NumberOfStates
+
+    if method == 'zoh':
+        M = np.r_[np.c_[T.a, T.b], np.c_[np.zeros((m, n)), np.eye(m)]]
+        eM = logm(M)*(1/dt)
         Ac, Bc, Cc, Dc = eM[:n, :n], eM[:n, n:], T.c, T.d
 
-    elif (method_to_use in ('bilinear', 'tustin',
-                            'trapezoidal') or missing_method):  # Manually
-        X = np.eye(n) + T.a
-        if 1/np.linalg.cond(X) < 1e-8:  # TODO: Totally psychological limit
-            raise ValueError('The discrete A matrix has eigenvalue(s) '
-                             'very close to -1 (rcond of I+Ad is {0})'
-                             ''.format(1/np.linalg.cond(X)))
+    elif method in ('bilinear', 'tustin', 'trapezoidal'):
+        if prewarp_at == 0.:
+            q = np.array([[-2/dt, 2/np.sqrt(dt)], [2/np.sqrt(dt), -1]])
+        else:
+            if 1/(2*dt) <= prewarp_at:
+                raise ValueError('Prewarping frequency is beyond the Nyquist'
+                                 ' rate. It has to satisfy 0 < w < 1/(2*Δt)'
+                                 ' and Δt being the sampling period in '
+                                 'seconds. Δt={0} is given, hence the maximum'
+                                 ' allowed is {1} Hz.'.format(dt, 1/(2*dt)))
+            prew_rps = 2 * np.pi * prewarp_at
+            sq2tan = np.sqrt(2*np.tan(prew_rps * dt / 2)/prew_rps)
+            q = np.array([[-2/sq2tan**2, 1/sq2tan], [1/sq2tan, -1]])
 
-        iX = dt/2*(np.eye(n) + T.a)
-        Ac = solve(-iX, (np.eye(n)-T.a))
-        Bc = solve(iX, T.b)
-        Cc = T.c.dot(np.eye(n) + 0.5*dt*solve(iX, (np.eye(n) - T.a)))
-        Dc = T.d - 0.5*dt*T.c.dot(solve(iX, T.b))
+        Ac, Bc, Cc, Dc = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
-    elif (method_to_use in ('forward euler', 'forward difference',
-                            'forward rectangular', '>>')):
-        Ac = -1/dt * (np.eye(n)-T.a)
-        Bc = 1/dt * (T.b)
-        Cc = T.c
-        Dc = T.d
+    elif method in ('forward euler', 'forward difference',
+                    'forward rectangular', '>>'):
+        q = np.array([[-1/dt, 1/np.sqrt(dt)], [1/np.sqrt(dt), 0]])
+        Ac, Bc, Cc, Dc = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
-    elif (method_to_use in ('backward euler', 'backward difference',
-                            'backward rectangular', '<<')):
-        X = T.a
-        if 1/cond(X) < 1e-8:  # TODO: Totally psychological limit
-            raise ValueError('The discrete A matrix has eigenvalue(s) '
-                             'very close to 0 (rcond of I+Ad is {0})'
-                             ''.format(1/np.linalg.cond(X)))
+    elif method in ('backward euler', 'backward difference',
+                    'backward rectangular', '<<'):
+        # nonproper via lft, compute explicitly.
+        with catch_warnings():
+            simplefilter('error')
+            try:
+                iAd = inv(T.a)
+            except RuntimeWarning:
+                warn('The state matrix has eigenvalues too close to imaginary'
+                     ' axis. This conversion method might give inaccurate '
+                     'results', RuntimeWarning, stacklevel=2)
+            except LinAlgError:
+                raise LinAlgError('The state matrix has eigenvalues at zero'
+                                  'and this conversion method can\'t be used.')
+        Ac = np.eye(n) - iAd
+        Ac /= dt
+        Bc = 1/np.sqrt(dt)*iAd @ T.b
+        Cc = 1/np.sqrt(dt) * T.c @ iAd
+        Dc = T.d - dt*Cc @ iAd @ Bc
 
-        iX = dt*T.a
-        Ac = solve(-iX, (np.eye(n) - T.a))
-        Bc = solve(iX, T.b)
-        Cc = T.c.dot(np.eye(n) + dt*solve(iX, (np.eye(n) - T.a)))
-        Dc = T.d - dt*T.c.dot(solve(iX, T.b))
+    elif method == 'lft':
+        if q is None:
+            raise ValueError('"lft" method requires a 2x2 interconnection '
+                             'matrix "q" between s and z indeterminates.')
+        Ac, Bc, Cc, Dc = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
 
     return Ac, Bc, Cc, Dc
 
@@ -314,3 +276,84 @@ def rediscretize(G, dt, method='tustin', alpha=0.5):
     .. todo:: Not implemented yet!
     """
     pass
+
+
+def _simple_lft_connect(q, A, B, C, D):
+    """
+    A helper function for simple upper LFT connection with well-posedness
+    check for discrete/continuous conversion purposes.
+
+    Here we form the following star product
+                                  _
+                   ---------       |
+                   |  1    |       |
+                ---| --- I |<--    |
+                |  |  z    |  |    |
+                |  ---------  |    \
+                |             |     > this is the lft of (1/s)*I
+                |   -------   |    /
+                --->|     |----    |
+                    |  q  |        |
+                --->|     |----    |
+                |   -------   |   _|
+                |             |
+                |   -------   |
+                ----|     |<---
+                    |  T  |
+                <---|     |<---
+                    -------
+
+    Here q is whatever the rational mapping that links s to z in
+    the following sense:
+
+        1         1                    1        1
+       --- = F_u(---,q) = q_22 + q_21 --- (I - --- q_11)⁻¹ q12
+        s         z                    z        z
+
+    where F_u denotes the upper linear fractional representation.
+
+    As an example, for the usual discretization cases, the map is
+
+              [    1    |    √T   ]
+          Q = [---------|---------]
+              [   √T    |   T*α   ]
+
+    with α defined as
+
+    α = 1   --> backward difference, (backward euler)
+    α = 0.5 --> Tustin, (bilinear)
+    α = 0   --> forward difference (forward euler)
+
+    """
+    q = np.asarray(q)
+    if q.ndim != 2 or q.shape != (2, 2):
+        raise ValueError('q must be exactly a 2x2 array')
+
+    n = A.shape[0]
+    ij = np.eye(n)
+    q11, q12, q21, q22 = q.ravel()
+    if q22 == 0.:
+        NAinv = ij
+    else:
+        with catch_warnings():
+            simplefilter('error')
+            try:
+                NAinv = inv(ij - q22*A)
+            # TODO: SciPy 1.1 will give LinAlgWarning!! And convert to "solve"
+            except RuntimeWarning:
+                warn('The resulting state matrix during this operation '
+                     'has an eigenstructure very close to unity. Hence '
+                     'the final model might be inaccurate', RuntimeWarning,
+                     stacklevel=2)
+            except LinAlgError:
+                raise LinAlgError('The resulting state matrix during this '
+                                  'operation leads to a singular matrix '
+                                  'inversion and hence cannot be computed.')
+
+    # Compute the star product
+    Ad = q11*ij + q12*A @ NAinv*q21
+    Bd = q12*(A @ NAinv*q22 + ij) @ B if q22 != 0. else q12*B
+    Cd = C @ NAinv*q21
+    Dd = D + C @ NAinv*q22 @ B if q22 != 0. else D
+
+    return Ad, Bd, Cd, Dd

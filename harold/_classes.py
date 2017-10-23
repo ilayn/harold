@@ -29,8 +29,7 @@ from tabulate import tabulate
 from itertools import zip_longest, chain
 
 from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
-                              haroldpolymul, haroldcompanion,
-                              haroldtrimleftzeros, haroldlcm)
+                              haroldpolymul, haroldcompanion, haroldlcm)
 
 from ._aux_linalg import e_i, haroldsvd
 from ._global_constants import _KnownDiscretizationMethods
@@ -230,47 +229,17 @@ class Transfer:
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization method associated with it.')
-        elif self._DiscretizedWith is None:
-            return ('It is a discrete-time model with no '
-                    'discretization method associated with it during '
-                    'its creation.')
+        if self.SamplingSet == 'R' or self._DiscretizedWith is None:
+            return None
         else:
             return self._DiscretizedWith
 
     @property
     def DiscretizationMatrix(self):
         """
-        This matrix denoted with :math:`Q` is internally used to represent
+        This 2x2 matrix denoted with ``q`` is used internally to represent
         the upper linear fractional transformation of the operation
-        :math:`\\frac{1}{s} I = \\frac{1}{z} I \\star Q`. For example, the
-        typical tustin, forward/backward difference methods can be represented
-        with
-
-        .. math::
-
-            Q = \\begin{bmatrix} I & \\sqrt{T}I \\\\ \\sqrt{T}I & \\alpha TI
-            \\end{bmatrix}
-
-
-        then for different :math:`\\alpha` values corresponds to the
-        transformation given below:
-
-            =============== ===========================
-            :math:`\\alpha`  method
-            =============== ===========================
-            :math:`0`       backward difference (euler)
-            :math:`0.5`     tustin
-            :math:`1`       forward difference (euler)
-            =============== ===========================
-
-        This operation is usually given with a Riemann sum argument however
-        for control theoretical purposes a proper mapping argument immediately
-        suggests a more precise control over the domain the left half plane is
-        mapped to. For this reason, a discretization matrix option is provided
-        to the user.
+        :math:`\\frac{1}{s} I = \\frac{1}{z} I \\star Q`.
 
         The available methods (and their aliases) can be accessed via the
         internal ``_KnownDiscretizationMethods`` variable.
@@ -286,17 +255,8 @@ class Transfer:
             <http://dx.doi.org/10.1080/00207170802247728>`_
 
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization matrix associated with it.')
-        elif not self.DiscretizedWith == 'lft':
-            return ('This model is discretized with a method that '
-                    'has no discretization matrix associated with '
-                    'it.')
-        elif self._DiscretizedWith is None:
-            return ('It is a discrete-time model with no '
-                    'discretization method associated with it during '
-                    'its creation.')
+        if self.SamplingSet == 'R' or not self.DiscretizedWith == 'lft':
+            return None
         else:
             return self._DiscretizationMatrix
 
@@ -308,14 +268,11 @@ class Transfer:
         response at the frequency band of interest. Via this property, the
         prewarp frequency can be provided.
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization matrix associated with it.')
-        elif self.DiscretizedWith not in ('tustin',
-                                          'bilinear',
-                                          'trapezoidal'):
-            return ('This model is not discretized with Tustin'
-                    'approximation hence prewarping does not apply.')
+        if self.SamplingSet == 'R' or self.DiscretizedWith \
+                not in ('tustin', 'bilinear', 'trapezoidal'):
+            return None
+        else:
+            return self._PrewarpFrequency
 
     @SamplingPeriod.setter
     def SamplingPeriod(self, value):
@@ -387,18 +344,20 @@ class Transfer:
     @DiscretizationMatrix.setter
     def DiscretizationMatrix(self, value):
         if self._DiscretizedWith == 'lft':
-            self._DiscretizationMatrix = np.array(value, dtype='float')
+            value = np.atleast_2d(np.asarray(value, dtype=float))
+            if value.ndim > 2 or value.shape != (2, 2):
+                raise ValueError('The interconnection array needs to be a'
+                                 ' 2x2 real-valued array.')
+            self._DiscretizationMatrix = value
         else:
             raise ValueError('If the discretization method is not '
-                             '\"lft\" then you don\'t need to set '
-                             'this property.')
+                             '\"lft\" then this property is not set.')
 
     @PrewarpFrequency.setter
     def PrewarpFrequency(self, value):
         if self._DiscretizedWith not in ('tustin', 'bilinear', 'trapezoidal'):
-            raise TypeError('If the discretization method is not '
-                            'Tustin then you don\'t need to set '
-                            'this property.')
+            raise ValueError('If the discretization method is not tustin (or '
+                             'its aliases) then this property is not set.')
         else:
             if value > 1/(2*self._dt):
                 raise ValueError('Prewarping Frequency is beyond '
@@ -1207,16 +1166,18 @@ class Transfer:
                 elif all([isinstance(x, (int, float)) for x in numden]):
                     if verbose:
                         print('I found a list that has only scalars')
-                    try:
-                        returned_numden_list[numden_index] = np.atleast_2d(
-                                            np.array(numden, dtype='float')
-                                            )
-                        if numden_index == 1:
-                            Gain_flags[1] = True
-                    except ValueError:
-                        raise ValueError('Something is not a \"float\" inside '
-                                         'the {0} list.'
-                                         ''.format(entrytext[numden_index]))
+
+                    if not any(numden):
+                        if verbose:
+                            print('The list was all zeros hence truncated '
+                                  'to a single zero element.')
+                        returned_numden_list[numden_index] = np.array([[0.]])
+                    else:
+                        returned_numden_list[numden_index] = \
+                            np.atleast_2d(np.array(
+                                    np.trim_zeros(numden, 'f'), dtype=float))
+                    if numden_index == 1:
+                        Gain_flags[1] = True
                 else:
                     raise ValueError('Something is not a \"float\" inside '
                                      'the {0} list.'
@@ -1306,10 +1267,10 @@ class Transfer:
             # zip the num and den entries together and check their array
             # sizes and get the coordinates after trimming the zeros if any
 
-            den_list = [haroldtrimleftzeros(x) for x in
+            den_list = [np.trim_zeros(x[0], 'f') for x in
                         chain.from_iterable(returned_numden_list[1])]
 
-            num_list = [haroldtrimleftzeros(x) for x in
+            num_list = [np.trim_zeros(x[0], 'f') for x in
                         chain.from_iterable(returned_numden_list[0])]
 
             noncausal_flat_indices = [ind for ind, (x, y) in enumerate(
@@ -1339,9 +1300,6 @@ class Transfer:
             #  4- None num, MIMO den
 
             # Get the MIMO flagged entry, 0-num,1-den
-
-            # TODO: Transfer([0,0,0],[1]) leads to error!!
-
             MIMO_flagged = returned_numden_list[MIMO_flags.index(True)]
 
             # Case 3,4
@@ -1373,7 +1331,7 @@ class Transfer:
                         print('Denominator is MIMO, Numerator is SISO')
                     # We have to check noncausal entries
                     # flatten den list of lists and compare the size
-                    num_deg = haroldtrimleftzeros(returned_numden_list[0]).size
+                    num_deg = np.trim_zeros(returned_numden_list[0], 'f').size
 
                     flattened_den = sum(returned_numden_list[1], [])
 
@@ -1457,7 +1415,8 @@ class Transfer:
                         print('Numerator is MIMO, Denominator is SISO')
                     # We have to check noncausal entries
                     # flatten den list of lists and compare the size
-                    den_deg = haroldtrimleftzeros(returned_numden_list[1]).size
+                    den_deg = np.trim_zeros(
+                            returned_numden_list[1][0], 'f').size
 
                     flattened_num = sum(returned_numden_list[0], [])
 
@@ -1782,14 +1741,9 @@ class State:
         response at the frequency band of interest. Via this property, the
         prewarp frequency can be provided.
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization matrix associated with it.')
-        elif self.DiscretizedWith not in ('tustin',
-                                          'bilinear',
-                                          'trapezoidal'):
-            return ('This model is not discretized with Tustin'
-                    'approximation hence prewarping does not apply.')
+        if self.SamplingSet == 'R' or self.DiscretizedWith \
+                not in ('tustin', 'bilinear', 'trapezoidal'):
+            return None
         else:
             return self._PrewarpFrequency
 
@@ -2853,7 +2807,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
             else:
                 s0 = max(np.max(np.abs(np.real(pp))), 1.0)*2
 
-            CAB = c.dot(np.linalg.lstsq((s0*np.eye(n)-A), b)[0])
+            CAB = c @ np.linalg.lstsq((s0*np.eye(n)-A), b, rcond=-1)[0]
             if np.size(zz) != 0:
                 zero_prod = np.real(np.prod(s0*np.ones_like(zz) - zz))
             else:
@@ -2966,8 +2920,8 @@ def transfer_to_state(*tf_or_numden, output='system'):
         A = haroldcompanion(den)
         B = np.vstack((np.zeros((A.shape[0]-1, 1)), 1))
         # num and den are now flattened
-        num = haroldtrimleftzeros(num)
-        den = haroldtrimleftzeros(den)
+        num = np.trim_zeros(num[0], 'f')
+        den = np.trim_zeros(den[0], 'f')
 
         # Monic denominator
         if den[0] != 1.:
@@ -3006,12 +2960,12 @@ def transfer_to_state(*tf_or_numden, output='system'):
                 # 3.  s+1 / s+1             Full cancellation
                 # 4.  3   /  2              Just gains
 
-                datanum = haroldtrimleftzeros(num[x][y].flatten())
-                dataden = haroldtrimleftzeros(den[x][y].flatten())
+                datanum = np.trim_zeros(num[x][y].flatten(), 'f')
+                dataden = np.trim_zeros(den[x][y].flatten(), 'f')
                 nn, nd = datanum.size, dataden.size
 
                 if nd == 1:  # Case 4 : nn should also be 1.
-                    D[x, y] = datanum/dataden
+                    D[x, y] = datanum/dataden if nn > 0 else 0.
                     num[x][y] = np.array([0.])
 
                 elif nd > nn:  # Case 2 : D[x,y] is trivially zero
@@ -3095,11 +3049,11 @@ def transfer_to_state(*tf_or_numden, output='system'):
                     num[y][x] = np.atleast_2d(
                                     haroldpolymul(
                                         num[y][x].flatten(), mults[y],
-                                        trimzeros=False
+                                        trim_zeros=False
                                     )
                                 )
                     # if completely zero, then trim to single entry
-                    num[y][x] = np.atleast_2d(haroldtrimleftzeros(num[y][x]))
+                    num[y][x] = np.atleast_2d(np.trim_zeros(num[y][x][0], 'f'))
 
             coldegrees = [x.size-1 for x in den[0]]
 

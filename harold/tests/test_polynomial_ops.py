@@ -37,9 +37,8 @@ def test_haroldgcd():
     d = array([])
     e = eye(2)
     f = array(1)
-    w = haroldgcd(a, b, c, d, e)
-    z = haroldgcd(a, b, c, d, e, f)
-    assert_almost_equal(w, array([1, 1]))
+    assert_raises(ValueError, haroldgcd, a, e)
+    z = haroldgcd(a, b, c, d, f)
     assert_almost_equal(z, array([1]))
     # Test case 1
     a = array([1, 4, 6, 6, 5, 2])

@@ -26,7 +26,7 @@ import numpy as np
 from numpy.linalg import cond, eig, norm
 from scipy.linalg import svdvals, qr, block_diag
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
-from ._classes import *
+from ._classes import State, Transfer
 
 """
 TODO Though the descriptor code also works up-to-production, I truncated
@@ -327,22 +327,28 @@ def minimal_realization(G, tol=1e-6):
     precision.
     """
 
-    try:
-        if G._isgain:
-            return G
-
-        A, B, C, D = G.matrices
-        Am, Bm, Cm = _minimal_realization_state(A, B, C, tol=tol)
-        return State(Am, Bm, Cm, D, dt=G.SamplingPeriod)
-    except AttributeError:
-        try:
-            num, den = G.polynomials
-            numm, denm = _minimal_realization_transfer(num, den, tol=tol)
-            return Transfer(numm, denm, dt=G.SamplingPeriod)
-        except AttributeError:
-            raise ValueError("The argument G is not a State() or a "
-                             "Transfer() representation. Instead I got"
-                             "{}".format(type(G).__qualname__))
+    if not isinstance(G, (State, Transfer)):
+        raise ValueError("The argument G is not a State() or a "
+                         "Transfer() representation. Instead I got"
+                         "{}".format(type(G).__qualname__))
+    else:
+        if isinstance(G, State):
+            if G._isgain:
+                return State(G.to_array)
+            else:
+                A, B, C, D = G.matrices
+                Am, Bm, Cm = _minimal_realization_state(A, B, C, tol=tol)
+                if Am.size > 0:
+                    return State(Am, Bm, Cm, D, dt=G.SamplingPeriod)
+                else:
+                    return State(D, dt=G.SamplingPeriod)
+        else:
+            if G._isgain:
+                return Transfer(G.to_array)
+            else:
+                num, den = G.polynomials
+                numm, denm = _minimal_realization_transfer(num, den, tol=tol)
+                return Transfer(numm, denm, dt=G.SamplingPeriod)
 
 
 def _minimal_realization_state(A, B, C, tol=1e-6):

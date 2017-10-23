@@ -97,7 +97,7 @@ def test_simple_tustin_prewarp():
     # Example from B. de Moor's slides
     H = Transfer([1, 0.5, 9], [1, 5, 9])
     # prewarp at 3 rad/s
-    Hd = discretize(H, dt=0.5, PrewarpAt=3/2/np.pi, method='bilinear')
+    Hd = discretize(H, dt=0.5, prewarp_at=3/2/np.pi, method='bilinear')
     assert_array_almost_equal(Hd.num, np.array([[0.591468698033,
                                                 -0.0772558231247,
                                                 0.500683964262]]))

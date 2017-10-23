@@ -28,8 +28,8 @@ from scipy.signal import deconvolve
 from scipy.linalg import block_diag, lu
 from ._aux_linalg import haroldsvd, e_i
 
-__all__ = ['haroldlcm', 'haroldgcd', 'haroldcompanion', 'haroldtrimleftzeros',
-           'haroldpoly', 'haroldpolyadd', 'haroldpolymul', 'haroldpolydiv']
+__all__ = ['haroldlcm', 'haroldgcd', 'haroldcompanion', 'haroldpoly',
+           'haroldpolyadd', 'haroldpolymul', 'haroldpolydiv']
 
 
 def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
@@ -176,7 +176,7 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
         mults = c_lcm.dot(
             np.vstack(
                 tuple(
-                    [haroldpolyadd(*w, trimzeros=False) for w in
+                    [haroldpolyadd(*w, trim_zeros=False) for w in
                         tuple(
                             [
                               [
@@ -203,7 +203,7 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
 
         lcmpoly[abs(lcmpoly) < cleanup_threshold] = 0.
         mults[abs(mults) < cleanup_threshold] = 0.
-        mults = [haroldtrimleftzeros(z) for z in mults]
+        mults = [np.trim_zeros(z, 'f') for z in mults]
         return lcmpoly, mults
     else:
         return lcmpoly
@@ -222,23 +222,21 @@ def haroldgcd(*args):
 
     Parameters
     ----------
-    args : 1D Numpy arrays
+    args : tuple of 1d array_like
 
     Returns
     --------
 
-    gcdpoly : 1D Numpy array
+    gcdpoly : 1d array
 
     Example
     -------
 
-    ::
-
-        >>>> a = haroldgcd(*map(haroldpoly,([-1,-1,-2,-1j,1j],
-                                            [-2,-3,-4,-5],
-                                            [-2]*10)))
-        >>>> a
-             array([ 1.,  2.])
+    >>> a = haroldgcd(*map(haroldpoly,([-1,-1,-2,-1j,1j],
+                                       [-2,-3,-4,-5],
+                                       [-2]*10)))
+    >>> a
+    array([ 1.,  2.])
 
 
     .. warning:: It uses the LU factorization of the Sylvester matrix.
@@ -252,29 +250,14 @@ def haroldgcd(*args):
                  over this.
 
     """
-    if not all([isinstance(x, type(np.array([0]))) for x in args]):
-        raise TypeError('Some arguments are not numpy arrays for GCD')
-
-    not_1d_err_msg = ('GCD computations require explicit 1D '
-                      'numpy arrays or\n2D but having one of '
-                      'the dimensions being 1 e.g., (n,1) or (1,n)\narrays.')
-    try:
-        regular_args = [haroldtrimleftzeros(
-                            np.atleast_1d(np.squeeze(x))
-                            ) for x in args]
-    except:
-        raise ValueError(not_1d_err_msg)
-
-    try:
-        dimension_list = [x.ndim for x in regular_args]
-    except AttributeError:
-        raise ValueError(not_1d_err_msg)
+    arr_args = [np.trim_zeros(np.squeeze(np.atleast_1d(x)), 'f') for x in args]
+    dimension_list = [x.ndim for x in arr_args]
 
     # do we have 2d elements?
     if max(dimension_list) > 1:
-        raise ValueError(not_1d_err_msg)
+        raise ValueError('Input arrays must be 1D arrays, rows, or columns')
 
-    degree_list = np.array([x.size - 1 for x in regular_args])
+    degree_list = np.array([x.size-1 for x in arr_args])
     max_degree = np.max(degree_list)
     max_degree_index = np.argmax(degree_list)
 
@@ -285,22 +268,22 @@ def haroldgcd(*args):
         # all degrees are the same
         second_max_degree = max_degree
 
-    n, p, h = max_degree, second_max_degree, len(regular_args) - 1
+    n, p, h = max_degree, second_max_degree, len(arr_args) - 1
 
     # If a single item is passed then return it back
     if h == 0:
-        return regular_args[0]
+        return arr_args[0]
 
     if n == 0:
         return np.array([1])
 
     if n > 0 and p == 0:
-        return regular_args.pop(max_degree_index)
+        return arr_args.pop(max_degree_index)
 
     # pop out the max degree polynomial and zero pad
     # such that we have n+m columns
     S = np.array([np.hstack((
-            regular_args.pop(max_degree_index),
+            arr_args.pop(max_degree_index),
             np.zeros((1, p-1)).squeeze()
             ))]*p)
 
@@ -309,7 +292,7 @@ def haroldgcd(*args):
         S[rows] = np.roll(S[rows], rows)
 
     # do the same to the remaining ones inside the regular_args
-    for item in regular_args:
+    for item in arr_args:
         _ = np.array([np.hstack((item, [0]*(n+p-item.size)))]*(
                       n+p-item.size+1))
         for rows in range(_.shape[0]):
@@ -330,7 +313,7 @@ def haroldgcd(*args):
         else:
             break
 
-    gcdpoly = np.real(haroldtrimleftzeros(u[-1, :]))
+    gcdpoly = np.real(np.trim_zeros(u[-1, :], 'f'))
     # make it monic
     gcdpoly /= gcdpoly[0]
 
@@ -367,7 +350,7 @@ def haroldcompanion(somearray):
     # regularize to flat 1D np.array
     somearray = np.array(somearray).flatten()
 
-    ta = haroldtrimleftzeros(somearray)
+    ta = np.trim_zeros(somearray, 'f')
     # convert to monic polynomial.
     # Note: ta *=... syntax doesn't autoconvert to float
     ta = np.array(1/ta[0])*ta
@@ -382,42 +365,6 @@ def haroldcompanion(somearray):
 
     else:  # Other stuff
         return np.vstack((np.hstack((np.zeros((n-1, 1)), np.eye(n-1))), ta))
-
-
-def haroldtrimleftzeros(somearray):
-    """
-    Trims the insignificant zeros in an array on the left hand side, e.g.,
-    ``[0,0,2,3,1,0]`` becomes ``[2,3,1,0]``.
-
-    Parameters
-    ----------
-
-    somearray : 1D Numpy array
-
-    Returns
-    -------
-
-    anotherarray : 1D Numpy array
-
-    """
-
-    # We trim the leftmost zero entries modeling the absent high-order terms
-    # in an array, i.e., [0,0,2,3,1,0] becomes [2,3,1,0]
-
-    arg = np.atleast_2d(somearray).flatten()
-
-    if arg.ndim > 1:
-        raise ValueError('The argument is not 1D array-like hence cannot be'
-                         ' trimmed unambiguously.')
-
-    if np.count_nonzero(arg) != 0:  # if not all zero
-        try:
-            n = next(x for x, y in enumerate(arg) if y != 0.)
-            return np.array(arg)[n::]
-        except StopIteration:
-            return np.array(arg[::])
-    else:
-        return np.array([0.])
 
 
 def haroldpoly(rootlist):
@@ -446,13 +393,13 @@ def haroldpoly(rootlist):
         return p
 
 
-def haroldpolyadd(*args, trimzeros=True):
+def haroldpolyadd(*args, trim_zeros=True):
     """
     Similar to official polyadd from numpy but allows for
     multiple args and doesn't invert the order,
     """
-    if trimzeros:
-        trimmedargs = tuple(map(haroldtrimleftzeros, args))
+    if trim_zeros:
+        trimmedargs = [np.trim_zeros(x, 'f') for x in args]
     else:
         trimmedargs = args
 
@@ -463,35 +410,45 @@ def haroldpolyadd(*args, trimzeros=True):
     return s[0]
 
 
-def haroldpolymul(*args, trimzeros=True):
+def haroldpolymul(*args, trim_zeros=True):
     """
-    Simple wrapper around the scipy convolve function
-    for polynomial multiplication with multiple args.
-    The arguments are passed through the left zero
-    trimming function first.
+    Simple wrapper around the NumPy convolve() function for polynomial
+    multiplication with multiple args. The arguments are passed through
+    the left zero trimming function first.
 
-    Example: ::
+    Parameters
+    ----------
+    args : iterable
+        An iterable with 1D array-like elements.
+    trim_zeros : bool, optional
+        If True, the zeros at the front of the arrays are truncated.
 
-        >>>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
-        array([ 1.,  4.,  6.,  4.,  1.,  0.])
+    Returns
+    -------
+    p : 1D array
+        The resulting polynomial coefficients.
+
+    Example
+    -------
+
+    >>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
+    array([ 1.,  4.,  6.,  4.,  1.,  0.])
 
 
     """
-    # TODO: Make sure we have 1D arrays for convolution
-    # numpy convolve is too picky.
 
-    if trimzeros:
-        trimmedargs = tuple(map(haroldtrimleftzeros, args))
+    if trim_zeros:
+        trimmedargs = [np.trim_zeros(x.flatten(), 'f') for x in args]
     else:
         trimmedargs = args
 
     p = trimmedargs[0]
 
     for x in trimmedargs[1:]:
-        try:
+            if x.size == 0:  # it was all zeros
+                p = []
+                break
             p = np.convolve(p, x)
-        except ValueError:
-            p = np.convolve(p.flatten(), x.flatten())
 
     return p if np.any(p) else np.array([0.])
 
@@ -505,8 +462,7 @@ def haroldpolydiv(dividend, divisor):
     Returns, two arguments: the factor and the remainder,
     both passed through a left zeros trimming function.
     """
-    h_factor, h_remainder = map(haroldtrimleftzeros,
-                                deconvolve(dividend, divisor)
-                                )
+    h_factor, h_remainder = (np.trim_zeros(x, 'f') for x
+                             in deconvolve(dividend, divisor))
 
     return h_factor, h_remainder
