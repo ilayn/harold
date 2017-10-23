@@ -250,7 +250,8 @@ def haroldgcd(*args):
                  over this.
 
     """
-    arr_args = [np.trim_zeros(np.squeeze(np.atleast_1d(x)), 'f') for x in args]
+    raw_arr_args = [np.squeeze(np.atleast_1d(x)) for x in args]
+    arr_args = [np.trim_zeros(x, 'f') for x in raw_arr_args if x.size > 0]
     dimension_list = [x.ndim for x in arr_args]
 
     # do we have 2d elements?
