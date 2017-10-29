@@ -32,3 +32,4 @@ from ._frequency_domain import *
 from ._system_props import *
 from ._kalman_ops import *
 from ._static_ctrl_design import *
+from ._frequency_domain_plots import *
