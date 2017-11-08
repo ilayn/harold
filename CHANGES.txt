@@ -1,5 +1,19 @@
 ﻿ChangeLog
 ============
+v.0.1.1rc1
+----------
++ Unified State, Transfer checks via arg_utils
++ Fixed transfer_to_state argument signature
++ Added discretization and undiscretization funcs
++ Separated the frequency domain computations and plotting
++ Rewritten the frequency grid generation
++ Fixed some of the unwrapping bugs
++ Added lqr, dlqr, lqry and dlqry with a single signature
++ Refactored minimal_realization related funcs.
++ Fixed hinf-norm bugs
++ Started time domain plots.
+
+
 
 v0.1.1b5
 --------

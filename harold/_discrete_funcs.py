@@ -27,16 +27,15 @@ from scipy.linalg import expm, logm, inv
 from warnings import warn, simplefilter, catch_warnings
 from ._classes import Transfer, State, transfer_to_state, state_to_transfer
 from ._global_constants import _KnownDiscretizationMethods
-
+from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['discretize', 'undiscretize']
 
 
 def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
-    if not isinstance(G, (Transfer, State)):
-        raise ValueError('I can only convert State or Transfer objects but I '
-                         'found a \"{0}\" object.'.format(type(G).__name__)
-                         )
+
+    _check_for_state_or_transfer(G)
+
     if G.SamplingSet == 'Z':
         raise ValueError('The argument is already modeled as a '
                          'discrete-time system.')
@@ -73,19 +72,6 @@ def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
 
 
 def _discretize(T, dt, method, prewarp_at, q):
-    """
-    Actually, I think that presenting this topic as a numerical
-    integration problem is confusing more than it explains. Most
-    items here can be presented as conformal mappings and nobody
-    needs to be limited to riemann sums of particular shape. As
-    I found that scipy version of this, adopts Zhang SICON 2007
-    parametrization which surprisingly fresh!
-
-    Here I "generalized" to any rational function representation
-    if you are into that mathematician lingo (see the 'fancy'
-    ASCII art below). I used LFTs instead, for all real rational
-    approx. mappings (for whoever wants to follow that rabbit).
-    """
 
     m, n = T.shape[1], T.NumberOfStates
 
@@ -173,9 +159,7 @@ def undiscretize(G, method=None, prewarp_at=0., q=None):
     Gc : State, Transfer
         Undiscretized continuous-time system
     """
-    if not isinstance(G, (Transfer, State)):
-        raise ValueError('I can only convert State or Transfer objects but I '
-                         'found a \"{0}\" object.'.format(type(G).__name__))
+    _check_for_state_or_transfer(G)
 
     if G.SamplingSet == 'R':
         raise ValueError('The argument is already modeled as a '

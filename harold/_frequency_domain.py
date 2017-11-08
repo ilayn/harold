@@ -22,14 +22,129 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
-
-from ._classes import State, Transfer
-from ._system_funcs import staircase, minimal_realization
+from numpy import (empty, empty_like, rollaxis, block, diag_indices, logspace,
+                   polyval, zeros, zeros_like, floor, ceil, unique, log10,
+                   real, array)
+from ._classes import State, Transfer, transfer_to_state, transmission_zeros
+from ._system_funcs import staircase, _minimal_realization_state
+from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['frequency_response']
 
 
-def _State_frequency_response_generator(mA, mb, sc, f):
+def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz'):
+    """
+    Computes the frequency response matrix of a State() or Transfer()
+    object.
+
+    The State representations are always checked for minimality and,
+    if any, unobservable/uncontrollable modes are removed.
+
+    Parameters
+    ----------
+    G: State of Transfer
+        The realization for which the frequency response is computed
+    custom_grid : array_like
+        An array of sorted positive numbers denoting the frequencies
+    high : float
+        Power of 10 denoting the maximum frequency. If a discrete
+        realization is given this is overridden by the Nyquist frequency.
+    low : float
+        Power of 10 denoting the minimum frequency.
+    samples: int
+        Number of samples to be created between `high` and `low`
+
+    Returns
+    -------
+    freq_resp_array : Complex_valued numpy array
+        The frequency response of the system G
+    w : 1D numpy array
+        Frequency grid that is used to evaluate the frequency response
+    """
+    ############################################################
+    # TODO: Investigate if *args,*kwargs is a better syntax here for
+    # better argument parsing.
+    ############################################################
+
+    _check_for_state_or_transfer(G)
+
+    for x in (w_unit, output_unit):
+        if x.lower() not in ('hz', 'rad/s'):
+            raise ValueError('Frequency unit must be "Hz" or "rad/s". "{0}"'
+                             ' is not recognized.'.format(x))
+
+    if w is None:
+        w = _get_freq_grid(G, w, samples, w_unit, output_unit)
+    else:
+        w = array(w, dtype=float, ndmin=1)
+
+    # Convert to Hz if necessary
+    if not w_unit == 'Hz':
+        w = np.rad2deg(w)
+
+    if G._isgain:
+        if G._isSISO:
+            if isinstance(G, Transfer):
+                freq_resp_array = array([1]*2)*G.num[0, 0]
+            else:
+                freq_resp_array = array([1]*2)*G.d[0, 0]
+        else:
+            if isinstance(G, Transfer):
+                freq_resp_array = zeros((2,)+G.shape) + array(G.num)
+            else:
+                freq_resp_array = zeros((2,)+G.shape) + array(G.d)
+
+            freq_resp_array = rollaxis(freq_resp_array, 0, 3)
+
+    elif G._isSISO:
+        freq_resp_array = zeros_like(w, dtype='complex')
+
+        if isinstance(G, State):
+            abc = _minimal_realization_state(*G.matrices[:-1])
+            aa, bb, cc = staircase(*abc, form='o', invert=True)
+            freq_resp_array = _State_freq_resp(aa, bb, cc[0, -1], w)
+
+            if np.any(G.d):
+                freq_resp_array += G.d[0, 0]
+
+        else:
+            iw = w.flatten()*1j
+            freq_resp_array = (polyval(G.num[0], iw) / polyval(G.den[0], iw))
+    else:
+        p, m = G.shape
+        freq_resp_array = empty((len(w), m, p), dtype='complex')
+
+        if isinstance(G, State):
+            aa, bb, cc = _minimal_realization_state(*G.matrices[:-1])
+
+            for rows in range(p):
+                aaa, bbb, ccc = staircase(aa, bb, cc[[rows], :], form='o',
+                                          invert=True)
+                freq_resp_array[:, :, rows] = _State_freq_resp(aaa, bbb,
+                                                               ccc[0, -1], w)
+
+            if np.any(G.d):
+                freq_resp_array += G.d[0, 0].T
+
+            # Currently the shape is (freqs,cols,rows) for broadcasting.
+            # roll axes in the correct places to have (row, col, freq) shape
+            freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
+
+        else:
+            iw = w.flatten()*1j
+            freq_resp_array = empty((len(w), m, p), dtype='complex')
+            for rows in range(p):
+                for cols in range(m):
+                    freq_resp_array[:, cols, rows] = (
+                            polyval(G.num[rows][cols].flatten(), iw) /
+                            polyval(G.den[rows][cols].flatten(), iw)
+                            )
+            freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
+
+    return freq_resp_array, w
+
+
+def _State_freq_resp(mA, mb, sc, f):
     """
     This is the low level function to generate the frequency response
     values for a state space representation. The realization must be
@@ -57,11 +172,11 @@ def _State_frequency_response_generator(mA, mb, sc, f):
     """
 
     nn, m = mA.shape[0], mb.shape[1]
-    r = np.empty((f.size, m), dtype=complex)
-    Ab = np.hstack((-mA, mb)).astype(complex)
-    X = np.empty_like(Ab)
+    r = empty((f.size, m), dtype=complex)
+    Ab = block([-mA, mb]).astype(complex)
+    X = empty_like(Ab)
 
-    imag_indices = np.diag_indices(nn)
+    imag_indices = diag_indices(nn)
 
     for ind, val in enumerate(f):
         X[:, :] = Ab  # Working copy
@@ -74,192 +189,120 @@ def _State_frequency_response_generator(mA, mb, sc, f):
     return r*sc
 
 
-def frequency_response(G, custom_grid=None, high=None, low=None, samples=None,
-                       custom_logspace=None,
-                       input_freq_unit='Hz', output_freq_unit='Hz'):
-    """
-    Computes the frequency response matrix of a State() or Transfer()
-    object.
+def _get_freq_grid(G, w, samples, iu, ou):
+    # internally always work with rad/s to comply with conventions(!).
+    # Reconvert at the output if needed
 
-    The State representations are always checked for minimality and,
-    if any, unobservable/uncontrollable modes are removed.
+    isDiscrete = G.SamplingSet == 'Z'
+    dt = G.SamplingPeriod
+    # Check the properties of the user-grid and regularize
+    if w is not None:
+        w_u = np.array(w, ndmin=1, dtype=float).ravel()
+        # needs to be a 1D array
+        if w_u.ndim > 1:
+            raise ValueError('The frequency array should be a 1D float array')
 
-    Parameters
-    ----------
-    G: State of Transfer
-        The realization for which the frequency response is computed
-    custom_grid : array_like
-        An array of sorted positive numbers denoting the frequencies
-    high : float
-        Power of 10 denoting the maximum frequency. If a discrete
-        realization is given this is overridden by the Nyquist frequency.
-    low : float
-        Power of 10 denoting the minimum frequency.
-    samples: int
-        Number of samples to be created between `high` and `low`
-    custom_logspace: 3-tuple
+        # Discrete time behavior doesn't make sense beyond Nyquist freq.
+        if isDiscrete:
+            nyq_freq = 1/(2*dt)
+            if nyq_freq > np.max(w):
+                w_out = w_u[w_u < nyq_freq]
 
+            if w_out.size < 1:
+                raise ValueError('There are no frequency points below the '
+                                 'Nyquist frequency: {} Hz.'.format(nyq_freq))
 
-    Returns
-    -------
-    freq_resp_array : Complex_valued numpy array
-        The frequency response of the system G
-    w : 1D numpy array
-        Frequency grid that is used to evaluate the frequency response
+        # convert the internal array to rad/s
+        if iu == 'Hz':
+            w_out *= 2*np.pi
 
-
-
-    """
-    ############################################################
-    # TODO: Investigate if *args,*kwargs is a better syntax here for
-    # better argument parsing.
-    ############################################################
-
-    if not isinstance(G, (State, Transfer)):
-        raise ValueError('The argument should either be a State() or '
-                         'Transfer() object. I have found a {0}'
-                         ''.format(type(G).__qualname__))
-
-    for x in (input_freq_unit, output_freq_unit):
-        if x not in ('Hz', 'rad/s'):
-            raise ValueError('I can only handle "Hz" and "rad/s" as '
-                             'frequency units. "{0}" is not recognized.'
-                             ''.format(x))
-
-    _is_discrete = G.SamplingSet == 'Z'
-
-    if _is_discrete:
-        nyq_freq = 1/(2*G.SamplingPeriod)
-
-    # We first check whether we need to bother if G is a gain
-    # which overrides the user input for the grid in Hz. except
-    # the output_freq_unit
-
-    if G._isgain:
-        samples = 2
-        if _is_discrete:
-            high = nyq_freq
-            low = np.floor(np.log10(nyq_freq))
-        else:
-            high = 2
-            low = -2
+    # w is None, auto grid creation
     else:
-        pz_list = np.append(G.poles, G.zeros)
-
-        if _is_discrete:
-            nat_freq = np.abs(np.log(pz_list / G.SamplingPeriod))
+        # We first check whether we need to bother if G is static gain which
+        # needs just two samples
+        if G._isgain:
+            if samples is None:
+                samples = 2
+            ud = nyq_freq if isDiscrete else 2.
+            ld = np.floor(np.log10(nyq_freq)) if isDiscrete else -2.
+            return logspace(ld, ud, samples)
         else:
-            nat_freq = np.abs(pz_list)
+            # We acquire the individual SISO system zeros to get a better
+            # frequency grid resolution at each channel of a MIMO response.
+            # Poles are common.
+            pz_list = G.poles.tolist()
+            p, m = G.shape
+            for row in range(p):
+                for col in range(m):
+                    # Get zeros of the subsystems without creating State models
+                    abcd = transfer_to_state(G[row, col], output='matrices')
+                    abc = _minimal_realization_state(*abcd[:-1])
+                    tzs = transmission_zeros(*abc, abcd[-1])
+                    if tzs.size > 0:
+                        pz_list += tzs.tolist()
 
-        smallest_pz = np.max([np.min(nat_freq), 1e-7])
-        largest_pz = np.max([np.max(nat_freq), smallest_pz+10])
+            # ignore multiplicities
+            pz_list = unique(pz_list)
+            # Take a single element from complex pair and remove integrators
+            int_pole = 1. if isDiscrete else 0.
+            pz_list = pz_list[(np.imag(pz_list) >= 0.) & (pz_list != int_pole)]
 
-    # The order of hierarchy is as follows:
-    #  - We first check if a custom frequency grid is supplied
-    #  - If None, then we check if a logspace-like option is given
-    #  - If that's also None we check whether custom logspace
-    #       limits are supplied with defaults for missing
-    #           .. high    --> +2 decade from the fastest pole/zero
-    #           .. low     --> -3 decade from the slowest pole/zero
-    #           .. samples --> 1000 points
-
-    # TODO: Implement a better/nonuniform algo for discovering new points
-    # around  poles and zeros. Right now there is a chance to hit a pole
-    # or a zero head on. matlab coarseness in practice leads to some
-    # weirdness even when granularity = 1.
-
-    if G._isgain:
-        w = np.logspace(low, high, samples)
-    elif custom_grid is None:
-        if custom_logspace is None:
-            high = np.ceil(np.log10(largest_pz)) + 1 if high is None else high
-            low = np.floor(np.log10(smallest_pz)) - 1 if low is None else low
-            samples = 1000 if samples is None else samples
-        else:
-            high, low, samples = custom_logspace
-        w = np.logspace(low, high, samples)
-    else:
-        w = np.asarray(custom_grid, dtype='float')
-
-    # Convert to Hz if necessary
-    if not input_freq_unit == 'Hz':
-        w = np.rad2deg(w)
-
-    if G._isgain:
-        if G._isSISO:
-            if isinstance(G, Transfer):
-                freq_resp_array = np.array([1]*2)*G.num[0, 0]
+            if isDiscrete:
+                nat_freq = np.abs(np.log(pz_list / dt))
             else:
-                freq_resp_array = np.array([1]*2)*G.d[0, 0]
-        else:
-            if isinstance(G, Transfer):
-                freq_resp_array = np.zeros((2,)+G.shape) + np.array(G.num)
-            else:
-                freq_resp_array = np.zeros((2,)+G.shape) + np.array(G.d)
+                nat_freq = np.abs(pz_list)
 
-            freq_resp_array = np.rollaxis(freq_resp_array, 0, 3)
+            damp_fact = np.abs(real(pz_list))/nat_freq
 
-    elif G._isSISO:
-        freq_resp_array = np.zeros_like(w, dtype='complex')
+            # np.sqrt(np.spacing(100.)) ~ 1.2e-7
+            smallest_pz = max(np.min(nat_freq), 1.3e-7)
+            largest_pz = max(np.max(nat_freq), smallest_pz+10)
+            # Add one more decade padding for modes too close to the bounds
+            ud, ld = ceil(log10(largest_pz))+1, floor(log10(smallest_pz))-1
+            nd = ud - ld
 
-        if isinstance(G, State):
-            aa, bb, cc = staircase(
-                            *minimal_realization(G).matrices[:-1],
-                            form='o',
-                            invert=True
-                            )
-            freq_resp_array = _State_frequency_response_generator(
-                                                        aa, bb, cc[0, -1], w)
+        # points per decade
+        ppd = 15
 
-            if np.any(G.d):
-                freq_resp_array += G.d[0, 0]
+        if samples is None:
+            samples = ppd * nd
 
-        else:
-            iw = w.flatten()*1j
-            freq_resp_array = (np.polyval(G.num[0], iw) /
-                               np.polyval(G.den[0], iw)
-                               )
-    else:
-        p, m = G.shape
-        freq_resp_array = np.empty((len(w), m, p), dtype='complex')
+        sqeps = np.sqrt(np.spacing(1.))
+        # Sprinkle more points around modes to get continuous bumps and dents.
+        # If the plot is going to be between [1e-6, 1e6] Hz, it needs more
+        # points than 'ppd' due to the squashed range around a mode. So get a
+        # better number of points depending on the range 'nd'.
 
-        if isinstance(G, State):
-            aa, bb, cc = minimal_realization(G).matrices[:-1]
+        # Peak frequency of an underdamped response is ωp = ωc √̅1̅-̅2̅̅ζ̅²
+        # If solved for 0.5 factor, ζ ~0.61 is the threshold for underdamped
+        # modes.
+        ind = damp_fact < np.sqrt(0.375)
+        wp = nat_freq[ind] * np.sqrt(1-2*damp_fact[ind]**2)
+        underdamp = damp_fact[ind]
+        spread = log10(0.75)
+        w_extra = []
+        for idx, fr in enumerate(wp):
+            # don't include singularity frequency for undamped modes
+            # but miss a little
+            if underdamp[idx] < sqeps:
+                fr += 100*np.sqrt(np.spacing(fr))
 
-            for rows in range(p):
-                aaa, bbb, ccc = staircase(
-                                          aa, bb, cc[[rows], :],
-                                          form='o', invert=True
-                                          )
-                freq_resp_array[:,
-                                :,
-                                rows] = _State_frequency_response_generator(
-                                                            aaa,
-                                                            bbb,
-                                                            ccc[0, -1],
-                                                            w
-                                                            )
+            # TODO: insert points in doubly log-spaced fashion
+            # Spread is [75%, 125%]
+            frl = log10(fr)
+            num = ceil(min(40, 10 - round(5*log10(
+                                        max(underdamp[idx], sqeps))))/2)
+            w_extra += logspace(frl+spread, frl, num=num,
+                                endpoint=True).tolist()
+            w_extra += logspace(frl, frl-spread, num=num,
+                                endpoint=False).tolist()
 
-            if np.any(G.d):
-                freq_resp_array += G.d[0, 0].T
+        # Basis grid
+        w = logspace(ld, ud, samples).tolist()
+        w = np.sort(w + w_extra)
+        # Remove accidental exact undamped mode hits from the tails of others
+        w_out = w[~np.in1d(w, nat_freq[damp_fact < sqeps])]
+        if ou == 'Hz':
+            w_out /= 2*np.pi
 
-            # Currently the shape is (freqs,cols,rows) for broadcasting.
-            # roll axes in the correct places to have (row, col, freq) shape
-            freq_resp_array = np.rollaxis(
-                                          np.rollaxis(freq_resp_array, 0, 3),
-                                          1)
-
-        else:
-            iw = w.flatten()*1j
-            freq_resp_array = np.empty((len(w), m, p), dtype='complex')
-            for rows in range(p):
-                for cols in range(m):
-                    freq_resp_array[:, cols, rows] = (
-                            np.polyval(G.num[rows][cols].flatten(), iw) /
-                            np.polyval(G.den[rows][cols].flatten(), iw)
-                            )
-            freq_resp_array = np.rollaxis(
-                                          np.rollaxis(freq_resp_array, 0, 3),
-                                          1)
-
-    return freq_resp_array, w
+    return w_out

@@ -26,7 +26,8 @@ from scipy.linalg import (solve, eigvals, block_diag,
                           solve_continuous_are as care,
                           solve_discrete_are as dare)
 
-from ._classes import State, Transfer, transfer_to_state
+from ._arg_utils import _check_for_state_or_transfer
+from ._classes import Transfer, transfer_to_state
 from ._aux_linalg import matrix_slice
 
 __all__ = ['lqr']
@@ -87,8 +88,7 @@ def lqr(G, Q, R=None, S=None, weight_on='state'):
     always guaranteed to be the stabilizing solution.
 
     """
-    if not isinstance(G, (State, Transfer)):
-        raise ValueError('First argument should be a State or Transfer model')
+    _check_for_state_or_transfer(G)
 
     if G._isgain:
         raise ValueError('State feedback design requires dynamic system'

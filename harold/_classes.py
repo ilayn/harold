@@ -386,7 +386,7 @@ class Transfer:
                     self.zeros = eigvals(haroldcompanion(self._num))
             else:
                 # Create a dummy statespace and check the zeros there
-                zzz = transfer_to_state(self._num, self._den,
+                zzz = transfer_to_state((self._num, self._den),
                                         output='matrices')
                 self.zeros = transmission_zeros(*zzz)
                 self.poles = eigvals(zzz[0])
@@ -875,6 +875,10 @@ class Transfer:
         # Eliminate all slices and colons but only indices
         rc = np.arange(self.NumberOfOutputs)[rows_of_c].tolist()
         cb = np.arange(self.NumberOfInputs)[cols_of_b].tolist()
+
+        # if a SISO is sliced only [0,0] will pass, then return self
+        if self._isSISO:
+            return self
 
         # Is the result goint to be SISO ?
         if isinstance(rc, int) and isinstance(cb, int):
@@ -2840,7 +2844,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
     return Transfer(num_list, den_list, ZR)
 
 
-def transfer_to_state(*tf_or_numden, output='system'):
+def transfer_to_state(G, output='system'):
     """
     Given a Transfer() object of a tuple of numerator and denominator,
     converts the argument into the state representation. The output can
@@ -2857,50 +2861,47 @@ def transfer_to_state(*tf_or_numden, output='system'):
     W.A. Wolowich, Linear Multivariable Systems (1974). The denominators
     are equaled with haroldlcm() Least Common Multiple function.
 
-
-
     Parameters
     ----------
-    tf_or_numden : Transfer() or a tuple of numerator and denominator.
-        For MIMO numerator and denominator arguments see Transfer()
-        docstring.
+    G : {Transfer, State, (num, den)}
+        The system or a tuple containing the numerator and the denominator
     output : {'system','matrices'}
         Selects whether a State() object or individual state matrices
         will be returned.
 
     Returns
     -------
-    G : State()
+    Gs : State()
         If 'output' keyword is set to 'system'
     A,B,C,D : {(nxn),(nxm),(p,n),(p,m)} 2D Numpy-arrays
         If the 'output' keyword is set to 'matrices'
+
+    Notes
+    -----
+    If G is a State object, it is returned directly.
     """
-    if output not in ('system', 'matrices'):
+    if output.lower() not in ('system', 'matrices'):
         raise ValueError('The output can either be "system" or "polynomials".'
                          '\nI don\'t know any option as "{0}"'.format(output))
 
     # mildly check if we have a transfer,state, or (num,den)
-    if len(tf_or_numden) > 1:
-        num, den = tf_or_numden[:2]
+    if isinstance(G, tuple):
+        num, den = G
         num, den, (p, m), it_is_gain = Transfer.validate_arguments(num, den)
         dt = None
-    elif isinstance(tf_or_numden[0], State):
-        return tf_or_numden[0]
+    elif isinstance(G, State):
+        return G.matrices if output == 'matrices' else G
+    elif isinstance(G, Transfer):
+        G = deepcopy(G)
+        num = G.num
+        den = G.den
+        m, p = G.NumberOfInputs, G.NumberOfOutputs
+        it_is_gain = G._isgain
+        dt = G.SamplingPeriod
     else:
-        try:
-            G = deepcopy(tf_or_numden[0])
-            num = G.num
-            den = G.den
-            m, p = G.NumberOfInputs, G.NumberOfOutputs
-            it_is_gain = G._isgain
-            dt = G.SamplingPeriod
-        except AttributeError:
-            raise TypeError('I\'ve checked the argument for being a Transfer, '
-                            'a State,\nor a pair for (num,den) but'
-                            ' none of them turned out to be the\ncase. Hence'
-                            ' I don\'t know how to convert a {0} to a State'
-                            ' object.'
-                            ''.format(type(tf_or_numden[0]).__qualname__))
+        custom_msg = 'The argument should be a Transfer or a State'\
+                     '. Instead found a {}'.format(type(G).__qualname__)
+        raise ValueError(custom_msg)
 
     # Arguments should be regularized here.
     # Check if it is just a gain
@@ -2946,14 +2947,13 @@ def transfer_to_state(*tf_or_numden, output='system'):
 
             D = np.atleast_2d(NumOrEmpty).astype(float)
 
-    else:  # MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
-
+    # MIMO ! Implement a "Wolowich LMS-Section 4.4 (1974)"-variant.
+    else:
         # Allocate D matrix
         D = np.zeros((p, m))
 
         for x in range(p):
             for y in range(m):
-
                 # Possible cases (not minimality,only properness checked!!!):
                 # 1.  3s^2+5s+3 / s^2+5s+3  Proper
                 # 2.  s+1 / s^2+5s+3        Strictly proper
@@ -2970,7 +2970,6 @@ def transfer_to_state(*tf_or_numden, output='system'):
 
                 elif nd > nn:  # Case 2 : D[x,y] is trivially zero
                     pass  # D[x,y] is already 0.
-
                 else:
                     NumOrEmpty, datanum = haroldpolydiv(datanum, dataden)
                     # Case 3: If all cancelled datanum is returned empty
@@ -3027,7 +3026,6 @@ def transfer_to_state(*tf_or_numden, output='system'):
 
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
-
         else:  # Off to LCM computation
             # Get every column denominators and compute the LCM
             # and mults then modify denominators accordingly and

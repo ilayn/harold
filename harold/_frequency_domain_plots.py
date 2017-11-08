@@ -24,10 +24,8 @@ THE SOFTWARE.
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-from ._classes import State, Transfer
 from ._frequency_domain import frequency_response
-
+from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['bode_plot', 'nyquist_plot']
 
@@ -54,9 +52,8 @@ def bode_plot(G, w=None, use_db=False, use_radians=False):
     plot : matplotlib.figure.Figure
 
     """
-    if not isinstance(G, (State, Transfer)):
-        raise TypeError('The first argument should be a system'
-                        ' representation.')
+    _check_for_state_or_transfer(G)
+
     db_scale = 20 if use_db else 1
     if w is not None:
         fre, ww = frequency_response(G, w)
@@ -64,7 +61,9 @@ def bode_plot(G, w=None, use_db=False, use_radians=False):
         fre, ww = frequency_response(G)
 
     mag = db_scale * np.log10(np.abs(fre))
-    pha = np.unwrap(np.angle(fre, deg=False if use_radians else True))
+    pha = np.unwrap(np.angle(fre))
+    if not use_radians:
+        pha = np.rad2deg(pha)
 
     if G._isSISO:
         fig, axs = plt.subplots(2, 1, sharex=True)
@@ -118,9 +117,7 @@ def nyquist_plot(G, w=None):
     plot : matplotlib.figure.Figure
 
     """
-    if not isinstance(G, (State, Transfer)):
-        raise TypeError('The first argument should be a system'
-                        ' representation.')
+    _check_for_state_or_transfer(G)
 
     if w is not None:
         fre, ww = frequency_response(G, w)
