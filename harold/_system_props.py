@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
-from numpy import count_nonzero, unique, average, block, zeros_like
+from numpy import count_nonzero, block
 from ._frequency_domain import frequency_response
 from ._classes import Transfer, transfer_to_state
 from ._solvers import lyapunov_eq_solver
 from ._system_funcs import _minimal_realization_state
-from scipy.linalg import solve, eigvals, svd, svdvals, LinAlgError
+from scipy.linalg import solve, eigvals, svdvals, LinAlgError
 from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['system_norm']
@@ -124,7 +124,8 @@ def system_norm(G, p=np.inf, max_iter_limit=100, hinf_tol=1e-6, eig_tol=1e-12):
         else:
             low_damp_freq = np.min(np.abs(T.poles))
 
-        f, w = frequency_response(T, w=[0, low_damp_freq])
+        f, w = frequency_response(T, w=[0, low_damp_freq], w_unit='rad/s',
+                                  output_unit='rad/s')
         if T._isSISO:
             lb = np.max(np.abs(f))
         else:
@@ -174,7 +175,8 @@ def system_norm(G, p=np.inf, max_iter_limit=100, hinf_tol=1e-6, eig_tol=1e-12):
 
                 # TODO : Still needs five times speed-up
 
-                f, w = frequency_response(T, w=m_i)
+                f, w = frequency_response(T, w=m_i, w_unit='rad/s',
+                                          output_unit='rad/s')
                 if T._isSISO:
                     gamma_lb = np.max(np.abs(f))
                 else:
