@@ -30,7 +30,7 @@ from ._arg_utils import _check_for_state_or_transfer
 __all__ = ['bode_plot', 'nyquist_plot']
 
 
-def bode_plot(G, w=None, use_db=False, use_radians=False):
+def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
     """
     Draws the Bode plot of the system G. As the name implies, this only
     creates a plot and for the data that is used `frequency_response()`
@@ -42,35 +42,36 @@ def bode_plot(G, w=None, use_db=False, use_radians=False):
         The system for which the Bode plot will be drawn
     w : array_like
         Range of frequencies
-    use_db : bool
+    use_db : bool, optional
         Uses the deciBell unit for the magnitude plots.
-    use_radians : bool
-        Uses radians per second for the frequencies.
-
+    use_hz : bool, optional
+        Uses Hz unit for the output frequencies. This also assumes the input
+        frequencies are in Hz.
+    use_degree : bool, optional
+        The phase angle is shown in degrees or in radians.
     Returns
     -------
     plot : matplotlib.figure.Figure
 
     """
     _check_for_state_or_transfer(G)
-
+    f_unit = 'Hz' if use_hz else 'rad/s'
     db_scale = 20 if use_db else 1
     if w is not None:
-        fre, ww = frequency_response(G, w)
+        fre, ww = frequency_response(G, w=f_unit, output_unit=f_unit)
     else:
-        fre, ww = frequency_response(G)
+        fre, ww = frequency_response(G, output_unit=f_unit)
 
     mag = db_scale * np.log10(np.abs(fre))
     pha = np.unwrap(np.angle(fre))
-    if not use_radians:
+    if use_degree:
         pha = np.rad2deg(pha)
 
     if G._isSISO:
         fig, axs = plt.subplots(2, 1, sharex=True)
         axs[0].semilogx(ww, mag)
         axs[1].semilogx(ww, pha)
-        axs[1].set_xlabel(r'Frequency ({})'
-                          ''.format('rad/s' if use_radians else 'Hz'))
+        axs[1].set_xlabel(r'Frequency ({})'.format(f_unit))
         axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
         axs[1].set_ylabel(r'Phase (deg)')
         for x in range(2):
@@ -96,8 +97,7 @@ def bode_plot(G, w=None, use_db=False, use_radians=False):
                                                 ' (dB)' if use_db else ''))
                 axs[2*row+1, col].set_ylabel(r'Phase (deg)')
             if row == p - 1:
-                axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(
-                                        'rad/s' if use_radians else 'Hz'))
+                axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(f_unit))
     return fig
 
 

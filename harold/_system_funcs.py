@@ -46,13 +46,14 @@ def staircase(A, B, C,
     system matrices have the block-form (x denoting the possibly nonzero
     blocks)
 
-    [x x x x x|x]
-    [x x x x x|0]
-    [0 x x x x|0]
-    [0 0 x x x|0]
-    [0 0 0 x x|0]
-    [x x x x x|x]
-    [x x x x x|x]
+                                [x x x x x|x]
+                                [x x x x x|0]
+                                [0 x x x x|0]
+                                [0 0 x x x|0]
+                                [0 0 0 x x|0]
+                                [---------|-]
+                                [x x x x x|x]
+                                [x x x x x|x]
 
     For controllability and observability, the existence of zero-rank
     subdiagonal blocks can be checked, as opposed to forming the Kalman
@@ -77,7 +78,7 @@ def staircase(A, B, C,
         System Matrices to be converted
     compute_T : bool, optional
         Whether the transformation matrix T should be computed or not
-    form : { 'c' , 'o' }, optional
+    form : {'c', 'o'}, optional
         Determines whether the controller- or observer-Hessenberg form
         will be computed.
     invert : bool, optional
@@ -147,14 +148,14 @@ def staircase(A, B, C,
         # Since we deal with submatrices, we need to increase the
         # default tolerance to reasonably high values that are
         # related to the original data to get exact zeros
-        tol_from_A = n*norm(A, 1)*np.finfo(float).eps
+        tol_from_A = n*norm(A, 1)*np.spacing(1.)
 
         # Region of interest
         m = m0
         ROI_start = 0
         ROI_size = 0
 
-        for dummy_row_counter in range(A.shape[0]):
+        for _ in range(A.shape[0]):
             ROI_start += ROI_size
             ROI_size = m
             h1, h2, h3, h4 = matrix_slice(A0[ROI_start:, ROI_start:],

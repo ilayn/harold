@@ -23,8 +23,7 @@ THE SOFTWARE.
 """
 import numpy as np
 from numpy import (empty, empty_like, rollaxis, block, diag_indices, logspace,
-                   polyval, zeros, zeros_like, floor, ceil, unique, log10,
-                   real, array)
+                   polyval, zeros, floor, ceil, unique, log10, real, array)
 from ._classes import State, Transfer, transfer_to_state, transmission_zeros
 from ._system_funcs import staircase, _minimal_realization_state
 from ._arg_utils import _check_for_state_or_transfer
@@ -61,10 +60,8 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz'):
     w : 1D numpy array
         Frequency grid that is used to evaluate the frequency response
     """
-    ############################################################
     # TODO: Investigate if *args,*kwargs is a better syntax here for
     # better argument parsing.
-    ############################################################
 
     _check_for_state_or_transfer(G)
 
@@ -74,13 +71,12 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz'):
                              ' is not recognized.'.format(x))
 
     if w is None:
-        w = _get_freq_grid(G, w, samples, w_unit, output_unit)
+        w = _get_freq_grid(G, w, samples, w_unit, 'rad/s')
     else:
         w = array(w, dtype=float, ndmin=1)
-
-    # Convert to Hz if necessary
-    if not w_unit == 'Hz':
-        w = np.rad2deg(w)
+        # Convert to rad/s if necessary
+        if w_unit == 'Hz':
+            w *= 2*np.pi
 
     if G._isgain:
         if G._isSISO:
@@ -95,53 +91,43 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz'):
                 freq_resp_array = zeros((2,)+G.shape) + array(G.d)
 
             freq_resp_array = rollaxis(freq_resp_array, 0, 3)
-
-    elif G._isSISO:
-        freq_resp_array = zeros_like(w, dtype='complex')
-
-        if isinstance(G, State):
-            abc = _minimal_realization_state(*G.matrices[:-1])
-            aa, bb, cc = staircase(*abc, form='o', invert=True)
-            freq_resp_array = _State_freq_resp(aa, bb, cc[0, -1], w)
-
-            if np.any(G.d):
-                freq_resp_array += G.d[0, 0]
-
-        else:
-            iw = w.flatten()*1j
-            freq_resp_array = (polyval(G.num[0], iw) / polyval(G.den[0], iw))
     else:
         p, m = G.shape
         freq_resp_array = empty((len(w), m, p), dtype='complex')
 
         if isinstance(G, State):
-            aa, bb, cc = _minimal_realization_state(*G.matrices[:-1])
-
-            for rows in range(p):
-                aaa, bbb, ccc = staircase(aa, bb, cc[[rows], :], form='o',
-                                          invert=True)
-                freq_resp_array[:, :, rows] = _State_freq_resp(aaa, bbb,
-                                                               ccc[0, -1], w)
+            for row in range(p):
+                aa, bb, cc = staircase(G.a, G.b, G.c[[row], :], form='o',
+                                       invert=True)
+                aaa, bbb, ccc = _minimal_realization_state(aa, bb, cc)
+                freq_resp_array[:, :, row] = _State_freq_resp(aaa, bbb,
+                                                              ccc[0, -1], w)
 
             if np.any(G.d):
-                freq_resp_array += G.d[0, 0].T
+                freq_resp_array += G.d[None, :, :]
 
-            # Currently the shape is (freqs,cols,rows) for broadcasting.
-            # roll axes in the correct places to have (row, col, freq) shape
-            freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
-
+            if G._isSISO:
+                # Get rid of singleton dimensions
+                freq_resp_array = freq_resp_array.ravel()
+            else:
+                # Currently the shape is (freqs,cols,rows) for broadcasting.
+                # roll axes to have (row, col, freq) shape
+                freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
         else:
-            iw = w.flatten()*1j
-            freq_resp_array = empty((len(w), m, p), dtype='complex')
-            for rows in range(p):
-                for cols in range(m):
-                    freq_resp_array[:, cols, rows] = (
-                            polyval(G.num[rows][cols].flatten(), iw) /
-                            polyval(G.den[rows][cols].flatten(), iw)
-                            )
-            freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
+            iw = w*1j
+            if G._isSISO:
+                freq_resp_array = (polyval(G.num[0], iw)/polyval(G.den[0], iw))
+            else:
+                freq_resp_array = empty((len(w), m, p), dtype='complex')
+                for rows in range(p):
+                    for cols in range(m):
+                        freq_resp_array[:, cols, rows] = (
+                                polyval(G.num[rows][cols].flatten(), iw) /
+                                polyval(G.den[rows][cols].flatten(), iw)
+                                )
+                freq_resp_array = rollaxis(rollaxis(freq_resp_array, 0, 3), 1)
 
-    return freq_resp_array, w
+    return freq_resp_array, w if output_unit == 'rad/s' else w/2/np.pi
 
 
 def _State_freq_resp(mA, mb, sc, f):
@@ -174,17 +160,17 @@ def _State_freq_resp(mA, mb, sc, f):
     nn, m = mA.shape[0], mb.shape[1]
     r = empty((f.size, m), dtype=complex)
     Ab = block([-mA, mb]).astype(complex)
-    X = empty_like(Ab)
+    U = empty_like(Ab)
 
     imag_indices = diag_indices(nn)
-
+    # Triangularization of a Hessenberg matrix
     for ind, val in enumerate(f):
-        X[:, :] = Ab  # Working copy
-        X[imag_indices] += val*1j
+        U[:, :] = Ab  # Working copy
+        U[imag_indices] += val*1j
         for x in range(1, nn):
-            X[x] -= (X[x, x-1] / X[x-1, x-1]) * X[x-1]
+            U[x, x:] -= (U[x, x-1] / U[x-1, x-1]) * U[x-1, x:]
 
-        r[ind, :] = X[-1, -m:]/X[-1, -1-m]
+        r[ind, :] = U[-1, -m:] / U[-1, -1-m]
 
     return r*sc
 
@@ -301,7 +287,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
         w = logspace(ld, ud, samples).tolist()
         w = np.sort(w + w_extra)
         # Remove accidental exact undamped mode hits from the tails of others
-        w_out = w[~np.in1d(w, nat_freq[damp_fact < sqeps])]
+        w_out = w[np.in1d(w, nat_freq[damp_fact < sqeps], invert=True)]
         if ou == 'Hz':
             w_out /= 2*np.pi
 
