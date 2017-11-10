@@ -903,6 +903,7 @@ class Transfer:
     # ================================================================
 
     def __repr__(self):
+        p, m = self.NumberOfOutputs, self.NumberOfInputs
         if self.SamplingSet == 'R':
             desc_text = 'Continous-Time Transfer function\n'
         else:
@@ -912,13 +913,11 @@ class Transfer:
                                    1/float(self.SamplingPeriod)))
 
         if self._isgain:
-            desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
-                                                        self.NumberOfInputs)
+            desc_text += '\n{}x{} Static Gain\n'.format(p, m)
         else:
-            desc_text += ' {0} input(s) and {1} output(s)\n'.format(
-                                                        self.NumberOfInputs,
-                                                        self.NumberOfOutputs
-                                                        )
+            desc_text += ' {0} input{2} and {1} output{3}\n'\
+                         ''.format(m, p, 's' if m > 1 else '',
+                                   's' if p > 1 else '')
 
             pole_zero_table = zip_longest(np.real(self.poles),
                                           np.imag(self.poles),
@@ -2340,6 +2339,7 @@ class State:
                          'the relevant A,B,C,D attributes.')
 
     def __repr__(self):
+        p, m, n = self._p, self._m, self.NumberOfStates
         if self._rz == 'R':
             desc_text = '\n Continous-time state represantation\n'
         else:
@@ -2349,13 +2349,14 @@ class State:
                                    1/float(self.SamplingPeriod)))
 
         if self._isgain:
-            desc_text += '\n{}x{} Static Gain\n'.format(self.NumberOfOutputs,
-                                                        self.NumberOfInputs)
+            desc_text += '\n{}x{} Static Gain\n'.format(p, m)
         else:
-            desc_text += ' {0} input(s) and {1} output(s)\n'.format(
-                                                        self.NumberOfInputs,
-                                                        self.NumberOfOutputs
-                                                        )
+            desc_text += '{0} state{3}, {1} input{4}, and {2} output{5}'\
+                         ''.format(n, m, p,
+                                   's' if n > 1 else '',
+                                   's' if m > 1 else '',
+                                   's' if p > 1 else ''
+                                   )
 
             pole_zero_table = zip_longest(np.real(self.poles),
                                           np.imag(self.poles),
