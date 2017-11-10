@@ -3,7 +3,7 @@
 harold
 ======
 
-A control and systems enginnering package for Python3.
+A control systems package for Python3.
 
 Introduction
 ============
@@ -11,7 +11,7 @@ Introduction
 This package is written with the ambition of becoming a daily work-horse of
 a control engineer/student/researcher with complete access to the source code
 with full rights (see ``LICENSE`` file) while still working inside a
-full-fledged programming language. This means working in any medium that
+full-fledged programming language. This allows for working in any medium that
 supports Python and its scientific packages NumPy and SciPy.
 
 ``harold`` fully supports the mantra of reproducible research and thus aims
@@ -21,10 +21,9 @@ tools.
 Usage
 =====
 
-``harold`` currently comes with two representation models: State and Transfer.
-All is based around such object classes and the rest is just (lots of)
-functions. You create a state or transfer representation via the following
-syntax::
+``harold`` currently comes with two representation models: ``State`` and ``Transfer``.
+All is based around such object classes and the rest is just (lots of) functions.
+You create a state or transfer representation via the following syntax ::
 
     >>> G = State([[0,1],[-2,-1]],[[0],[1]],[[1,0]]) # you can skip D if zero!
     >>> H = Transfer([1,2,1],[1,4,5,6])
@@ -67,7 +66,8 @@ of a 348-state Clamped Beam model from the SLICOT collections::
 This model is numerically quite ill-conditioned to be converted to a Transfer
 model because of the numerical error build-up. Thus, harold tries to
 stay with whatever representation model given to it if an algorithm exists for
-that particular representation.
+that particular representation (though our top experts --just kidding only I-- are
+working on this conversion problem too).
 
 What can I do with ``harold`` ?
 -------------------------------
@@ -94,7 +94,7 @@ Still on the pipeline:
 
   - Step, Impulse responses
   - Riccati-based H∞, H₂ controllers
-  - Lead, Lag and notch filters with semi-recommendations about where to place them
+  - PID, Lead, Lag and notch filters with semi-recommendations about where to place them
 
 
 For example, you would like to have a row compressed, observable Hessenberg
@@ -176,8 +176,9 @@ Coherence and others.
 What about ...?
 ===============
 
-Yes, yes, LMIs are coming. I have to learn ``cvxpy`` a bit faster. Other stuff
-you need to let me know what the need is.
+Yes, yes, I would love to have LMIs but there are no competitive SDP solvers around
+except ``CVXOPT`` and ``PICOS`` and I don't know how to use them sufficiently enough
+yet.
 
 Documentation
 =============
@@ -203,15 +204,15 @@ Help Wanted!
 
 ``harold`` is built on rainy days and boring evenings. If you are missing out
 a feature, don't be shy and contact. User-feedback has higher priority over
-the general development or shout out in the Gitter chatroom.
+the general development.
 
-Or if you want to jump into development, PR submissions are more than welcome.
+Bug reports and PR submissions are more than welcome!
 
 Contact
 --------
 
 If you have questions/comments feel free to shoot one to
-``harold.of.python@gmail.com``
+``harold.of.python@gmail.com`` or join the Gitter chatroom.
 
 .. _click for the Github page: https://github.com/python-control/python-control
 .. _Sphinx documentation: http://harold.readthedocs.org/en/latest/
