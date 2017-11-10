@@ -62,7 +62,7 @@ of a 348-state Clamped Beam model from the SLICOT collections::
     >>> G = State(A,B,C)
     >>> bode_plot(G, use_db=True) # Default, 10^x is used in the mag plots
 
-.. image:: https://user-images.githubusercontent.com/1303842/32674179-7bba5f54-c652-11e7-91bf-3d113188a8fb.PNG
+.. image:: https://user-images.githubusercontent.com/1303842/32674281-e3fd23d0-c652-11e7-9d5d-0564fac07843.PNG
 
 This model is numerically quite ill-conditioned to be converted to a Transfer
 model because of the numerical error build-up. Thus, harold tries to
