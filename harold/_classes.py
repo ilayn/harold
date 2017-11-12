@@ -41,94 +41,32 @@ __all__ = ['Transfer', 'State', 'state_to_transfer', 'transfer_to_state',
 
 class Transfer:
     """
-    Transfer is the one of two main system classes in harold (together
-    with State()).
 
-    Main types of instantiation of this class depends on whether the
-    user wants to create a Single Input/Single Output system (SISO) or
-    a Multiple Input/Multiple Output system (MIMO) model.
+    Transfer() is a system representation class.
 
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
     e.g.,::
 
         >>>> G = Transfer(1,[1,2,1])
 
-    For MIMO systems, depending on the shared denominators, there are
-    two distinct ways of entering a MIMO transfer function:
+    For MIMO systems, the array like objects are expected to be inside the
+    appropriate shaped list of lists ::
 
-        1.  Entering "list of lists of lists" such that every element of the
-        inner lists are numpy array-able (explicitly checked) for numerator
-        and entering a 1D list or 1D numpy array for denominator (and
-        similarly for numerator)::
+        >>>> G = Transfer([[ [1,3,2], [1,3] ],
+                           [   [1]  , [1,0] ]],# end of num
+                           [[ [1,2,1] ,  [1,3,3]  ],
+                            [ [1,0,0] , [1,2,3,4] ]])
 
-            >>>> G = Transfer([[[1,3,2],[1,3]],[[1],[1,0]]],[1,4,5,2])
-            >>>> G.shape
-            (2,2)
+    If the denominator is common then the denominator can be given as a single
+    array like object.
 
-        2. Entering the denominator also as a list of lists for individual
-        entries as a bracket nightmare (thanks to Python's nonnative support
-        for arrays and tedious array syntax)::
+        >>>> G = Transfer([[ [1,3,2], [1,3] ],
+                           [   [1]  , [1,0] ]],# end of num
+                           [1, 2, 3, 4, 5]) # common den
 
-            >>>> G = Transfer([
-                     [ [1,3,2], [1,3] ],
-                     [   [1]  , [1,0] ]
-                   ],# end of num
-                   [
-                      [ [1,2,1] ,  [1,3,3]  ],
-                      [ [1,0,0] , [1,2,3,4] ]
-                   ])
-           >>>> G.shape
-           (2,2)
-
-
-
-    There is a very involved validator and if you would like to know
-    why or how this input is handled ,provide the same numerator and
-    denominator to the static method below with 'verbose=True' keyword
-    argument, e.g. ::
-
-        >>>> n , d , shape , is_it_static = Transfer.validate_arguments(
-                  [1,3,2], # common numerator
-                  [[[1,2,1],[1,3,3]],[[1,0,0],[1,2,3,4]]],# explicit den
-                  verbose=True # print the logic it followed
-                  )
-
-    would give information about the context together with the
-    regularized numerator, denominator, resulting system shape
-    and boolean whether or not the system has dynamics.
-
-    However, the preferred way is to make everything a numpy array inside
-    the list of lists. That would skip many compatibility checks.
-    Once created the shape of the numerator and denominator cannot be
-    changed. But compatible sized arrays can be supplied and it will
-    recalculate the pole/zero locations etc. properties automatically.
-
-    The Sampling Period can be given as a last argument or a keyword
-    with 'dt' key or changed later with the property access.::
-
-        >>>> G = Transfer([1],[1,4,4],0.5)
-        >>>> G.SamplingSet
-        'Z'
-        >>>> G.SamplingPeriod
-        0.5
-        >>>> F = Transfer([1],[1,2])
-        >>>> F.SamplingSet
-        'R'
-        >>>> F.SamplingPeriod = 0.5
-        >>>> F.SamplingSet
-        'Z'
-        >>>> F.SamplingPeriod
-        0.5
-
-    Providing 'False' value to the SamplingPeriod property will make
+    Setting  SamplingPeriod property to 'False' value to the will make
     the system continous time again and relevant properties are reset
-    to CT properties.
-
-    .. warning:: Unlike matlab or other tools, a discrete time system
-        needs a specified sampling period (and possibly a discretization
-        method if applicable) because a model without a sampling period
-        doesn't make sense for analysis. If you don't care, then make up
-        a number, say, a million, since you don't care.
+    to continuous-time properties.
     """
     def __init__(self, num, den=None, dt=False):
 
@@ -1499,47 +1437,20 @@ class Transfer:
 
 class State:
     """
-
-    State() is the one of two main system classes in harold (together with
-    Transfer() ).
+    State() is a system representation class.
 
     A State object can be instantiated in a straightforward manner by
-    entering 2D arrays, floats, 1D arrays for row vectors and so on.::
+    entering array like objects.::
 
         >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)
 
-
-    However, the preferred way is to make everything a numpy array.
-    That would skip many compatibility checks. Once created the shape
-    of the system matrices cannot be changed. But compatible
-    sized arrays can be supplied and it will recalculate the pole/zero
-    locations etc. properties automatically.
-
-    The Sampling Period can be given as a last argument or a keyword
-    with 'dt' key or changed later with the property access.::
-
-        >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],[1],0.5)
-        >>>> G.SamplingSet
-        'Z'
-        >>>> G.SamplingPeriod
-        0.5
-        >>>> F = State(1,2,3,4)
-        >>>> F.SamplingSet
-        'R'
-        >>>> F.SamplingPeriod = 0.5
-        >>>> F.SamplingSet
-        'Z'
-        >>>> F.SamplingPeriod
-        0.5
+    For zero feedthrough (strictly proper) models, "d" matrix can be skipped
+    and will be replaced with the zeros array whose shape is inferred from
+    the rows/columns of "c"/"b" arrays.
 
     Setting  SamplingPeriod property to 'False' value to the will make
     the system continous time again and relevant properties are reset
     to continuous-time properties.
-
-    Warning: A discrete time system needs a specified sampling period
-    (and better a discretization method if known) because a model without
-    a sampling period doesn't make sense for analysis. If you don't care,
-    then make up a number, say, a million, since you don't care.
     """
     def __init__(self, a, b=None, c=None, d=None, dt=False):
 
