@@ -15,8 +15,8 @@ directly modify since everything under the hood is visible to the user.
 Prerequisites
 -------------
 
-harold works with Python >= 3.6.  It uses the packages NumPy, SciPy, `tabulate`,
-matplotlib and also relies on `itertools`, `collections` modules. 
+harold works with Python >= 3.6.  It uses the packages ``numpy``, ``scipy``,
+``tabulate``, and ``matplotlib``. 
 
 Installation
 ------------

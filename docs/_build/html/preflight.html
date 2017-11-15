@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -30,8 +32,11 @@
   
 
   
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="harold 0.1.1b1 documentation" href="index.html"/>
-        <link rel="next" title="Model Objects" href="tut_models.html"/>
+        <link rel="next" title="Conversion of Dynamic Models" href="tut_convert.html"/>
         <link rel="prev" title="Introduction" href="intro.html"/> 
 
   
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -81,25 +87,33 @@
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#python-and-its-scientific-stack">Python and its scientific stack</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#python-and-its-strange-syntax">Python and its strange syntax</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#initializing-harold">Initializing harold</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#system-representations">System Representations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#creating-models">Creating models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#state-models"><code class="docutils literal"><span class="pre">State()</span></code> models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transfer-models"><code class="docutils literal"><span class="pre">Transfer()</span></code> models</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#model-arithmetic">Model Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#context-discovery">Context Discovery</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
@@ -116,8 +130,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">harold</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">harold</a>
+        
       </nav>
 
 
@@ -126,23 +142,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Getting Started</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Getting Started</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/preflight.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/preflight.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -150,257 +183,283 @@
             
   <div class="section" id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
-<p>Using Python and other open-source tools are great only if one
-gets acquainted with the ecosystem sufficiently. Otherwise, usually
-an online search frenzy and then the frustration is around the corner.</p>
-<p>Hence, before we move to the harold documentation, maybe a general
-information about the related concepts can soften the fall.</p>
-<div class="section" id="python-and-its-scientific-stack">
-<h2>Python and its scientific stack<a class="headerlink" href="#python-and-its-scientific-stack" title="Permalink to this headline">¶</a></h2>
-<p>For the newcomer, a slightly distorted story of the tools required to work
-with harold might save some headaches. To emphasize, <strong>the story is roughly
-correct but precisely informative</strong> !</p>
-<p>Since the late 70s, there has been an enormous effort went into the numerical
-computing. For reasons that are really not relevant now, Fortran (yes that old
-weirdo language) is still considered to be one of the fastest if not the fastest
-runtime performance platform. On top of this performance, people with great
-numerical algebra expertise had been optimizing these implementations since then.</p>
-<p>The result is now known as BLAS, LAPACK and other key libraries optimized to the
-bone with almost literally manipulating the memory addresses manually. And what
-happens is that many commercial software suites actually somehow find a way to
-utilize this performance even though they are not coding in Fortran directly.
-You have to appreciate how generous the authors were and why I&#8217;m humbly replicating
-their style with the MIT license.</p>
-<p>Hence, without knowingly, you have been mostly using compiled Fortran code with
-various front ends including matlab and other software. However, this high performance
-doesn&#8217;t come for free. The price to pay is to be extremely verse with low-level
-operations to benefit from these tools.  Hence, every language/software somehow designs
-a front end that communicates with the user, understands the context, say
-a matrix turns out to be triangular, then prepares the data in a very strict
-format and sends to these libraries. In turn, picks up the result, shuffles the
-output format and converts it to something that the user can utilize further.</p>
-<p>In Python, this front end is called the scientific stack, that is NumPy and SciPy.
-These involve C and Fortran bindings to low-level tools and wrap them with the
-typical easy-to-use Python syntax.</p>
-<p>That&#8217;s why, if you are not the faint-hearted user and installing everything by
-yourself, you have to provide a compiler that is capable of providing the compiled
-versions of these libraries. You might have noticed that some sources ship precompiled
-flavors of NumPy, SciPy to ease the pain of building the libraries from scratch.
-While being very useful, if the compiler does not like your particular system,
-the result is often a glorious crash. Hence, it is more of an art rather than
-following a manual</p>
+<p>The user is assumed to have some acquientance with Python, NumPy, and SciPy in
+order to go through the tutorial. However, it is strongly recommended to get
+versed in these impressive tools regardless.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The compiler problem is almost-universally a Windows problem since it doesn&#8217;t
-come with a proper compiler because microsoft being microsoft. The unfortunate
-users (including me) who have no idea even what a compiler is, have to find
-a compiler that crashes depending on the weather conditions of the installation
-date.</p>
+<p>It was actually 2014 that Python developers included a symbol for matrix
+multiplication that is the <code class="docutils literal"><span class="pre">&#64;</span></code> character (again almost everything else is
+reserved and the regular <code class="docutils literal"><span class="pre">*</span></code> is meant for element-wise multiplication).</p>
+<p class="last">Another point that might annoy the users is the complex number syntax. In Python,
+you are obliged to use the letter <code class="docutils literal"><span class="pre">j</span></code> for the complex unit but cannot use <code class="docutils literal"><span class="pre">i</span></code>.</p>
 </div>
-<p>For this reason, some groups have come up with precompiled and matched version
-packages that are ready to be installed without bothering the users such as
-Anaconda, pythonxy etc. See the <a class="reference external" href="http://www.scipy.org/install.html">installation page of Scientific stack</a> and cross your fingers.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Python is also mostly written in C hence the story is more involved but
-for the math oriented users it is not relevant at this point.</p>
+<div class="admonition hint">
+<p class="first admonition-title">Tip : An almost exhaustive NumPy cheat sheet</p>
+<p>The following link is actually one of the first hits on any search engine
+but here it is for completeness. Please have some time spared to check out
+the differences between numpy and matlab syntax. It might even teach you
+a thing or two about matlab.</p>
+<p class="last"><a class="reference external" href="http://mathesaurus.sourceforge.net/matlab-numpy.html">Click here for “Numpy for matlab users”</a></p>
 </div>
-</div>
-<div class="section" id="python-and-its-strange-syntax">
-<h2>Python and its strange syntax<a class="headerlink" href="#python-and-its-strange-syntax" title="Permalink to this headline">¶</a></h2>
-<p>Python did not start its life as a programming language involving a mathematics
-module. It actually took quite some time to reach to the current situation that
-is arguably dominated the data science and machine learning fields. Consequently,
-most of the common english keyboard characters are reserved for other programming
-languages. Even worse, most of the brackets and delimiters are used for internal
-structures. For example, a matlab native square brackets <code class="docutils literal"><span class="pre">[...]</span></code> are used to
-create objects that go by the name <cite>lists</cite>. Hence, the scientific stack creators
-had to come up with more verbose and kind of annoying syntax compared to the
-native syntax of the well-known scientific computing software suites. As an
-example, the moment you open up a Python console, you need to import the NumPy
-module via <code class="docutils literal"><span class="pre">import</span> <span class="pre">numpy</span></code> and then obtain the possibility of array manipulations,
-math functions:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
-<span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">d</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">],[</span><span class="mi">2</span><span class="p">],[</span><span class="mi">3</span><span class="p">],[</span><span class="mi">4</span><span class="p">]])</span> <span class="c1"># creates a tall vector</span>
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The situation is slightly more complicated than this because what first above
-command creates is a one dimensional array. That is to say, matlab users will
-be baffled when they try to transpose it as it will spit out exactly the same
-array but not the tall vector. The reason for this is that the array is theoretically
-have only one dimension hence transpose is not well-defined as there is no
-second dimension to swap the elements. There are of course ways to handle
-this but none is fun.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">There is also a limited math library in Python and that is not to be
-confused with the <em>scientific</em> library of Python.</p>
-</div>
-<p>It was actually 2014 that Python developers finally(!!) decided to reserve
-a symbol for matrix multiplication that is the <code class="docutils literal"><span class="pre">&#64;</span></code> character (again almost
-everything else is reserved and core Python developers don&#8217;t care that much
-about <em>math stuff</em> and the regular <code class="docutils literal"><span class="pre">*</span></code> is meant for element-wise multiplication
-). The actual matrix multiplication is actually a function
-with a surprisingly accurate name : <code class="docutils literal"><span class="pre">a.dot(b)</span></code>. However, this becomes über-tedious
-if a chain of matrices are multiplied, especially when we don&#8217;t have the
-amazing (I mean it) backslash operator of matlab via <code class="docutils literal"><span class="pre">A\B*(C+D*E)*F</span></code>, e.g.,</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">C</span><span class="o">+</span><span class="n">D</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">E</span><span class="p">))</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">F</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">Never, ever, never use <code class="docutils literal"><span class="pre">inv()</span></code> in your computations on any software
-(unless you want to see what the inverse is explicitly). You have been warned
-with a colored box.</p>
-</div>
-<p>But in turn, probably, you get the most sought after operation: continuous
-slicing and functional chains (I don&#8217;t know what nerds call this). What I
-mean: imagine you want to slice a matrix then do something with
-another slice of another matrix and index the result .... and so on.</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">m</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:</span><span class="mi">4</span><span class="p">,:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">5</span><span class="p">,:])[</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>This example can be arbitrarily long and complicated so don&#8217;t get fooled by counter
-arguments: there is no substitute for this and once you get the hang of it, it pays
-off. For some reason, NumPy/SciPy/IPython prefer the mathematica syntax
-for linear algebra objects and I have no idea why. Arguably, Mathematica is the
-least matrix algebra friendly software suite but anyway. There is no decision
-to be made here unless we recode the array parsing parts all from scratch.</p>
-<p>The indexing of the arrays start from zero and not one !! This debate is stupid
-and I don&#8217;t care. I recommend you to do so. Computer scientists are not the best
-people to design front-ends. You wouldn&#8217;t ask the owner of the Facebook to meet
-your best friends now, do you? It would be a guaranteed disaster.</p>
-<p>Moreover, the array indexing is semi-exclusive, in math notation whatever is
-given is used as <cite>[a,b[</cite>. In english, this notation <cite>[1,5]</cite> is meant to be
-read as <em>from one up to five, excluding five</em>. It sometimes makes things
-extremely natural and convenient, sometimes you might consider watching the
-paint dry instead of debugging the mismatched array sizes.</p>
-<p>Another point that might annoy the users is the complex number syntax. In Python,
-you are obliged to use the letter <code class="docutils literal"><span class="pre">j</span></code> for the complex unit but cannot <code class="docutils literal"><span class="pre">i</span></code>.</p>
-<p>Hopefully, this would convince you that Python framework is not yet another
-matlab clone. I cannot do justice to demonstrate all the nuances since not
-only I don&#8217;t have the resources but also some of the stuff still don&#8217;t make
-too much sense to me. But in defense of Python, most of the stuff in matlab
-never made sense to me either. So it is a major upgrade.</p>
-</div>
-<div class="section" id="an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">
-<h2>An almost exhaustive cheat sheet for recovering matlab users<a class="headerlink" href="#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users" title="Permalink to this headline">¶</a></h2>
-<p>The following link is actually one of the first hits on any search engine but here
-it is for completeness. Please have some time spared to check out the
-differences between numpy and matlab syntax. It might even teach you
-some matlab too.</p>
-<p><a class="reference external" href="http://mathesaurus.sourceforge.net/matlab-numpy.html">Click here for &#8220;Numpy for matlab users&#8221;</a></p>
 <p>Now assuming that you have mastered the art of finding your way through
 gazillion of blogs, filtering StackOverflow nerd anger, decrypting the
-documentation of Numpy, let&#8217;s start doing some familiar things in harold.</p>
-<div class="admonition-todo admonition" id="index-0">
-<p class="first admonition-title">Todo</p>
-<p class="last">Finish this as soon as possible</p>
-</div>
-</div>
-<div class="section" id="a-humble-advice-to-python-beginners">
-<h2>A humble advice to Python beginners<a class="headerlink" href="#a-humble-advice-to-python-beginners" title="Permalink to this headline">¶</a></h2>
-<p>Since Python is a programming language and not a front-end software, the
-code we write usually needs to be executed somehow. Without going into
-the details, Python code needs to be interpreted (similar to matlab)
-as opposed to compiling C code.</p>
-<p>The native way of doing this is simply typing <code class="docutils literal"><span class="pre">python</span></code> on the command
-line and making it a Python interpreter. However, this is hardly ever
-useful for any practical purposes, let alone resuming or reproducing
-previous work. Having said that, you don&#8217;t need a scary Visual blabla
-suite that looks like an airplane cockpit either. There are many options
-to make your life easier.</p>
-<blockquote>
-<div><ol class="arabic simple">
-<li>The first option is simply working with an editor, e.g., <a class="reference external" href="https://pythonhosted.org/spyder/">Spyder</a>
-(I had a very positive experience with it), Eclipse, PyCharm, vim,
-emacs so on.</li>
-<li>Using the recent and very very powerful <a class="reference external" href="http://jupyter.org">Jupyter</a> (previously known</li>
-</ol>
-<blockquote>
-<div>as IPython) which converts your web browser into a mathematica like
-environment with explicit cells but you can embed even Youtube videos.
-Moreover, it also works on the command window too which is not limited
-to Python, but as the name implies Julia, Python, R and so on.</div></blockquote>
-</div></blockquote>
-<p>I would strongly recommend Jupyter notebook option. It also makes sharing
-your work with others extremely easy. Please follow the link to Jupyter
-and install accordingly to your liking.</p>
-<blockquote>
-<div></div></blockquote>
-</div>
+documentation of Numpy, let’s start doing some familiar things in <code class="docutils literal"><span class="pre">harold</span></code>.</p>
 <div class="section" id="initializing-harold">
 <h2>Initializing harold<a class="headerlink" href="#initializing-harold" title="Permalink to this headline">¶</a></h2>
-<p>Once you have managed to make Jupyter work you will have to import harold
-as a library. And when you do you have to access the function names properly
-depending on how you imported harold.</p>
-<p>This point is a pretty confusing and a source for heated arguments but I&#8217;ll
-just cut to the chase. Almost all proper programming languages involve the
-concept of <strong>namespaces</strong> (you guess correctly, matlab doesn&#8217;t have this).
-Sticking to the part that is relevant for us, this concept actually makes
-it possible to attach all the function names to a particular name family
-which is represented by the dot notation e.g.,
-<code class="docutils literal"><span class="pre">mypackage.myfunction.myattribute</span> <span class="pre">=</span> <span class="pre">45</span></code> etc.</p>
-<p>One obvious reason for this is that separate name families avoid name
-clashes which is a nightmare in matlab if you have two folders on the
-path and both have the variants of the same function. You can never be
-sure which one matlab is going to read if you decide to call this
-function from somewhere else.</p>
-<p>Long story short when you import harold you can simply write on top of
-your notebook</p>
+<p>Once harold is installed you can import it via one of the following ways</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span>
+<span class="kn">import</span> <span class="nn">harold</span> <span class="k">as</span> <span class="nn">har</span>
+<span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
 </pre></div>
 </div>
-<p>then it is possible to access the functions with the <code class="docutils literal"><span class="pre">harold.</span></code> prefix
-such as, say, for frequency response calculations:</p>
+<p>While the 3rd option is frowned upon by programmers, for working engineers it
+might be the most convenient option since the functions would not require a top
+level namespace. In other words, the first two options would require the
+functions to be used with a prefix such as</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">harold</span><span class="o">.</span><span class="n">frequency_response</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Alternatively, you can use an abbreviation for the package name</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">harold</span> <span class="k">as</span> <span class="nn">har</span>
+<p>or</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">har</span><span class="o">.</span><span class="n">frequency_response</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>and then you can access the functions with <code class="docutils literal"><span class="pre">har.</span></code> prefix. Lastly,
-there is another way which is, as is for almost everything involving
-professional programmers, another battlefield. You can basically decide
-to skip the namespace and import all functions with their original name
-to the parent namespace:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Almost all proper programming languages involve the concept of
+<strong>namespaces</strong> (guess which one doesn’t). This concept actually makes it
+possible to attach all the function names to a particular name family which
+is represented by the dot notation e.g.,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">mypackage</span><span class="o">.</span><span class="n">myfunction</span><span class="o">.</span><span class="n">myattribute</span> <span class="o">=</span> <span class="mi">45</span>
 </pre></div>
 </div>
-<p>This will scan the harold library and import every object whose name
-doesn&#8217;t start with <code class="docutils literal"><span class="pre">_</span></code> or <code class="docutils literal"><span class="pre">__</span></code>. For interactive notebooks, this
-is pretty convenient if you are not importing libraries that have
-similar function names (in turn, you can never be sure).</p>
-<p>Conclusion, if you don&#8217;t have any worries about name clashes use the
-last syntax. The typical first cell of the notebook is the importing
-declarations. Here is the boilerplate code to start with:</p>
+<p>One obvious reason for this is that separate name families avoid name clashes
+which is a nightmare in matlab if you have two folders on the path and both have
+the variants of a function with the same name. You can never be sure which
+one matlab will read if you decide to call this function from somewhere else.</p>
+<p class="last">Hence you need to assess the risk whether there will be name clashes if you use
+the 3rd option before you import all the names to the main namespace. This will
+scan the harold library and import every object whose name doesn’t start with
+<code class="docutils literal"><span class="pre">_</span></code> or <code class="docutils literal"><span class="pre">__</span></code>. For interactive notebooks, this is pretty convenient if you
+are not importing libraries that have similar function names (in turn, you can
+never be sure).</p>
+</div>
+<p>Here is the boilerplate code to start with:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scipy</span> <span class="k">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">harold</span> <span class="k">import</span> <span class="o">*</span>
 </pre></div>
 </div>
-<p>You can of course extend this to your liking with your own packages.
-Finally, let&#8217;s do some control stuff</p>
+<p>You can of course extend this to your liking with other packages. Now, let’s
+invesatigate how we can build dynamic models and do some control stuff.</p>
+</div>
+</div>
+<div class="section" id="system-representations">
+<h1>System Representations<a class="headerlink" href="#system-representations" title="Permalink to this headline">¶</a></h1>
+<p>For creating dynamic/static models, <code class="docutils literal"><span class="pre">harold</span></code> currently offers two options:
+A <code class="docutils literal"><span class="pre">State()</span></code> and a <code class="docutils literal"><span class="pre">Transfer()</span></code> object for representing systems with
+state models and transfer matrices.</p>
+<div class="section" id="creating-models">
+<h2>Creating models<a class="headerlink" href="#creating-models" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="state-models">
+<h3><code class="docutils literal"><span class="pre">State()</span></code> models<a class="headerlink" href="#state-models" title="Permalink to this headline">¶</a></h3>
+<p>The initialization of these objects are pretty straightforward. Note that you
+can skip <code class="docutils literal"><span class="pre">D</span></code> term and it will be assumed to be zero:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]],[[</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">]],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]],[[</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">]],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the second example, we create a discrete-time model but to avoid the clash with
+a <code class="docutils literal"><span class="pre">D</span></code> term we add the <code class="docutils literal"><span class="pre">dt</span></code> keyword explicitly. If there was also a nonzero
+feedthrough element then we can also skip that too:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]],[[</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">]],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As obvious to everyone who used this syntax even in matlab’s convenient bracket
+semicolon notation, creating four individual matrices everytime just to pass
+to the function becomes increasingly annoying. Instead a matrix slicer is
+available in <code class="docutils literal"><span class="pre">harold</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="o">*</span><span class="n">matrix_slice</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">corner</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">corner</span><span class="o">=</span><span class="s1">&#39;nw&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>As shown above, the model creation is a straightforward enumeration of
+the involved <code class="docutils literal"><span class="pre">A,B,C,D</span></code> matrices in the arguments. For discrete time
+models, you simply add a fifth argument, if you have not omitted any
+or explicitly mentioning <code class="docutils literal"><span class="pre">dt=&lt;sampling</span> <span class="pre">period&gt;</span></code> as an argument.</p>
+<p>To create a static models, just provide an array</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">)),</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here again, <code class="docutils literal"><span class="pre">dt=&lt;sampling</span> <span class="pre">period&gt;</span></code> should be provided explicitly as it would
+be confused about the second argument being the <code class="docutils literal"><span class="pre">B</span></code> element.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.001</span><span class="p">)</span>    <span class="c1"># Will lead to error</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span> <span class="c1"># Will work</span>
+</pre></div>
+</div>
+<p>If the model is discretized we can also check</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span><span class="o">.</span><span class="n">SamplingPeriod</span>  <span class="c1"># returns the sampling period</span>
+<span class="n">G</span><span class="o">.</span><span class="n">SamplingSet</span>     <span class="c1"># returns &#39;Z&#39; for discrete-time, &#39;R&#39; otherwise</span>
+<span class="n">G</span><span class="o">.</span><span class="n">DiscretizedWith</span> <span class="c1"># returns the discretization method if applicable</span>
+</pre></div>
+</div>
+<p>These make sure that the discretization remembers how it got there in
+the first place if harold is used. Or if the model is already given
+as a discrete time model, the method can be set such that <code class="docutils literal"><span class="pre">undiscretize</span></code>
+can use the correct method.</p>
+</div>
+<div class="section" id="transfer-models">
+<h3><code class="docutils literal"><span class="pre">Transfer()</span></code> models<a class="headerlink" href="#transfer-models" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div>H = Transfer([1,2,3],[7,5,3])</div></blockquote>
+<p>As mentioned previously, numpy array syntax is strange and a bit
+verbose. Hence, it makes it difficult to type every time <code class="docutils literal"><span class="pre">np.array</span></code>
+or some other alias for creation of an array tobe used in the transfer
+representation definitions. Hence, harold actually goes a long way to
+make sense what is entered for the <code class="docutils literal"><span class="pre">Transfer()</span></code> initialization.</p>
+<p>First, it can understand even if the user enters a scalar or a Python
+list, instead of numpy arrays. It will be checked and converted if the
+input is sensible.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">Transfer</span><span class="p">(</span><span class="mi">1</span><span class="p">,[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">G</span> <span class="o">=</span> <span class="n">Transfer</span><span class="p">(</span><span class="mi">1</span><span class="p">,[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]])</span>
+</pre></div>
+</div>
+<p>The second example might confuse the user since it will spit out a
+transfer representation of a <span class="math">\(1\times 3\)</span> static gain.</p>
+<p>What happens is that when the parses find a list of lists, it assumes
+that the user is trying to create a MIMO object. Thus, it changes its
+context to make sense with the missing information. It first checks
+that numerator has a single element and thus assumes that this is a
+common numerator. Then it parses the denominator and finds only scalars
+thus creates the static gain of fractions one, one half, and one third.</p>
+<p>Discrete time models are handled similarly.</p>
+<p>After the initialization of the models, we can see the model properties</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span><span class="o">.</span><span class="n">NumberOfOutputs</span> <span class="c1"># returns the number of rows of numerator</span>
+<span class="n">G</span><span class="o">.</span><span class="n">NumberOfOutputs</span> <span class="c1"># returns the number of cols of numerator</span>
+<span class="n">G</span><span class="o">.</span><span class="n">shape</span>           <span class="c1"># returns a tuple of (# of outs,# of ins)</span>
+
+<span class="n">G</span><span class="o">.</span><span class="n">polynomials</span>     <span class="c1"># returns the polynomials ala tfdata</span>
+<span class="n">G</span><span class="o">.</span><span class="n">poles</span>           <span class="c1"># returns the poles</span>
+<span class="n">G</span><span class="o">.</span><span class="n">zeros</span>           <span class="c1"># returns the zeros</span>
+<span class="n">G</span><span class="o">.</span><span class="n">num</span><span class="p">,</span><span class="n">G</span><span class="o">.</span><span class="n">den</span>       <span class="c1"># returns the individual polynomials</span>
+</pre></div>
+</div>
+<p>If the model is discretized we can also check</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span><span class="o">.</span><span class="n">SamplingPeriod</span>  <span class="c1"># returns the sampling period</span>
+<span class="n">G</span><span class="o">.</span><span class="n">SamplingSet</span>     <span class="c1"># returns &#39;Z&#39; for discrete-time, &#39;R&#39; otherwise</span>
+<span class="n">G</span><span class="o">.</span><span class="n">DiscretizedWith</span> <span class="c1"># returns the discretization method if applicable</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="model-arithmetic">
+<h2>Model Arithmetic<a class="headerlink" href="#model-arithmetic" title="Permalink to this headline">¶</a></h2>
+<p>Both <code class="docutils literal"><span class="pre">Transfer</span></code> and <code class="docutils literal"><span class="pre">State</span></code> instances support basic model arithmetic.
+You can add/multiply/subtract models that are compatible (division is
+a completely different story hence omitted). Again, <cite>harold</cite> tries its
+best to explain what went wrong. Let’s take the same discrete time
+SISO system and set another random MIMO model <code class="docutils literal"><span class="pre">H</span></code> with 3 states:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">State</span><span class="p">(</span><span class="o">*</span><span class="n">matrix_slice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">)))</span>
+    <span class="n">G</span><span class="o">*</span><span class="n">H</span>
+
+    <span class="ne">TypeError</span><span class="p">:</span> <span class="n">The</span> <span class="n">sampling</span> <span class="n">periods</span> <span class="n">don</span><span class="s1">&#39;t match so I cannot multiply these</span>
+    <span class="n">systems</span><span class="o">.</span> <span class="n">If</span> <span class="n">you</span> <span class="n">still</span> <span class="n">want</span> <span class="n">to</span> <span class="n">multiply</span> <span class="n">them</span> <span class="n">asif</span> <span class="n">they</span> <span class="n">are</span> <span class="n">compatible</span><span class="p">,</span>
+    <span class="n">carry</span> <span class="n">the</span> <span class="n">data</span> <span class="n">to</span> <span class="n">a</span> <span class="n">compatible</span> <span class="n">system</span> <span class="n">model</span> <span class="ow">and</span> <span class="n">then</span> <span class="n">multiply</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Even after making <code class="docutils literal"><span class="pre">G</span></code> a continous time system</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span><span class="o">.</span><span class="n">SamplingPeriod</span> <span class="o">=</span> <span class="mf">0.</span>
+<span class="n">G</span><span class="o">*</span><span class="n">H</span>
+
+<span class="ne">IndexError</span><span class="p">:</span> <span class="n">Multiplication</span> <span class="n">of</span> <span class="n">systems</span> <span class="n">requires</span> <span class="n">their</span> <span class="n">shape</span> <span class="n">to</span> <span class="n">match</span> <span class="n">but</span>
+<span class="n">the</span> <span class="n">system</span> <span class="n">shapes</span> <span class="n">I</span> <span class="n">got</span> <span class="n">are</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="n">vs</span><span class="o">.</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Notice the system sizes are repeated in the error message hence we
+don’t need to constantly check which part is the culprit for both
+systems.</p>
+<p>For <cite>Transfer</cite> models, another useful property is recognition of
+common poles when doing simple addition/subtraction. For example,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">G</span> <span class="o">=</span> <span class="n">Transfer</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">H</span> <span class="o">=</span> <span class="n">Transfer</span><span class="p">([</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="n">F</span> <span class="o">=</span> <span class="n">G</span><span class="o">+</span><span class="n">H</span>
+<span class="n">F</span><span class="o">.</span><span class="n">polynomials</span> <span class="c1">#check num,den</span>
+<span class="p">(</span><span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">,</span>  <span class="mf">2.</span><span class="p">,</span>  <span class="mf">2.</span><span class="p">]]),</span> <span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">,</span>  <span class="mf">3.</span><span class="p">,</span>  <span class="mf">2.</span><span class="p">]]))</span>
+</pre></div>
+</div>
+<p>As you can see the cancellations are performed at the computations such that
+the model order does not increase artificially.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This is currently not the case for <code class="docutils literal"><span class="pre">State</span></code> instances that is
+to say the state matrices are directly augmented without any cancellation
+checks. This is probably going to change in the future.</p>
+</div>
+</div>
+<div class="section" id="context-discovery">
+<h2>Context Discovery<a class="headerlink" href="#context-discovery" title="Permalink to this headline">¶</a></h2>
+<p>For both <code class="docutils literal"><span class="pre">State()</span></code> and <code class="docutils literal"><span class="pre">Transfer()</span></code> argument parsing, <code class="docutils literal"><span class="pre">harold</span></code> can
+tell what happened during the context discovery. For that, there is a
+<code class="docutils literal"><span class="pre">validate_arguments()</span></code> class method for each class. This will return
+the regularized version of the input arguments and also include a flag
+in case the resulting system is a static gain:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Transfer</span><span class="o">.</span><span class="n">validate_arguments</span><span class="p">(</span><span class="mi">1</span><span class="p">,[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]],</span><span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>will print out the following for the example we discussed above</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">========================================</span>
+<span class="n">Handling</span> <span class="n">numerator</span>
+<span class="o">========================================</span>
+<span class="n">I</span> <span class="n">found</span> <span class="n">only</span> <span class="n">a</span> <span class="nb">float</span>
+<span class="o">========================================</span>
+<span class="n">Handling</span> <span class="n">denominator</span>
+<span class="o">========================================</span>
+<span class="n">I</span> <span class="n">found</span> <span class="n">a</span> <span class="nb">list</span>
+<span class="n">I</span> <span class="n">found</span> <span class="n">a</span> <span class="nb">list</span> <span class="n">that</span> <span class="n">has</span> <span class="n">only</span> <span class="n">lists</span>
+<span class="n">Every</span> <span class="n">row</span> <span class="n">has</span> <span class="n">consistent</span> <span class="n">number</span> <span class="n">of</span> <span class="n">elements</span>
+<span class="o">==================================================</span>
+<span class="n">Handling</span> <span class="n">raw</span> <span class="n">entries</span> <span class="n">are</span> <span class="n">done</span><span class="o">.</span>
+<span class="n">Now</span> <span class="n">checking</span> <span class="n">the</span> <span class="n">SISO</span><span class="o">/</span><span class="n">MIMO</span> <span class="n">context</span> <span class="ow">and</span> <span class="n">regularization</span><span class="o">.</span>
+<span class="o">==================================================</span>
+<span class="n">One</span> <span class="n">of</span> <span class="n">the</span> <span class="n">MIMO</span> <span class="n">flags</span> <span class="n">are</span> <span class="n">true</span>
+<span class="n">Denominator</span> <span class="ow">is</span> <span class="n">MIMO</span><span class="p">,</span> <span class="n">Numerator</span> <span class="ow">is</span> <span class="n">something</span> <span class="k">else</span>
+<span class="n">Denominator</span> <span class="ow">is</span> <span class="n">MIMO</span><span class="p">,</span> <span class="n">Numerator</span> <span class="ow">is</span> <span class="n">SISO</span>
+<span class="n">In</span> <span class="n">the</span> <span class="n">MIMO</span> <span class="n">context</span> <span class="ow">and</span> <span class="n">proper</span> <span class="n">entries</span><span class="p">,</span> <span class="n">I</span><span class="s1">&#39;ve found</span>
+<span class="n">scalar</span> <span class="n">denominator</span> <span class="n">entries</span> <span class="n">hence</span> <span class="n">flagging</span> <span class="k">as</span> <span class="n">a</span> <span class="n">static</span> <span class="n">gain</span><span class="o">.</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span>
+<span class="p">([[</span><span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">]]),</span> <span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">]]),</span> <span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">]])]],</span>
+ <span class="p">[[</span><span class="n">array</span><span class="p">([[</span> <span class="mf">1.</span><span class="p">]]),</span> <span class="n">array</span><span class="p">([[</span> <span class="mf">2.</span><span class="p">]]),</span> <span class="n">array</span><span class="p">([[</span> <span class="mf">3.</span><span class="p">]])]],</span>
+ <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+ <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As seen from the resulting arrays, the numerator is now
+three numpy float arrays containing the common entry.
+Both the numerator and denominator are converted to list
+of lists.</p>
+<p>This method can also be used to verify whether a certain input
+is a valid argument for creating model objects hence the name.</p>
+<p>Same class method is also available for the <code class="docutils literal"><span class="pre">State()</span></code> class.</p>
 </div>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
            </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tut_models.html" class="btn btn-neutral float-right" title="Model Objects" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tut_convert.html" class="btn btn-neutral float-right" title="Conversion of Dynamic Models" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="intro.html" class="btn btn-neutral" title="Introduction" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="intro.html" class="btn btn-neutral" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -434,13 +493,14 @@ Finally, let&#8217;s do some control stuff</p>
             VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
   
 

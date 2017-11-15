@@ -12,7 +12,6 @@ Contents:
 
    intro
    preflight
-   tut_models
    tut_convert
    tut_discrete
    tut_kalman

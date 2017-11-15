@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -30,6 +32,9 @@
   
 
   
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="harold 0.1.1b1 documentation" href="index.html"/>
         <link rel="prev" title="Frequently Asked Questions" href="faq.html"/> 
 
@@ -40,6 +45,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -80,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
@@ -90,12 +99,16 @@
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">ChangeLog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#v-0-1-1rc1">v.0.1.1rc1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v0-1-1b5">v0.1.1b5</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v0-1-1b4">v0.1.1b4</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v0-1-1b3">v0.1.1b3</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-1-1b2">v0.1.1b2</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-1-1b1">v0.1.1b1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-1-1a">v0.1.1a</a></li>
@@ -113,8 +126,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">harold</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">harold</a>
+        
       </nav>
 
 
@@ -123,23 +138,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>ChangeLog</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>ChangeLog</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/changelog.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/changelog.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -147,13 +179,62 @@
             
   <div class="section" id="changelog">
 <h1>ChangeLog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="v-0-1-1rc1">
+<h2>v.0.1.1rc1<a class="headerlink" href="#v-0-1-1rc1" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Unified State, Transfer checks via arg_utils</li>
+<li>Fixed transfer_to_state argument signature</li>
+<li>Added discretization and undiscretization funcs</li>
+<li>Separated the frequency domain computations and plotting</li>
+<li>Rewritten the frequency grid generation</li>
+<li>Fixed some of the unwrapping bugs</li>
+<li>Added lqr, dlqr, lqry and dlqry with a single signature</li>
+<li>Refactored minimal_realization related funcs.</li>
+<li>Fixed hinf-norm bugs</li>
+<li>Started time domain plots.</li>
+</ul>
+</div>
+<div class="section" id="v0-1-1b5">
+<h2>v0.1.1b5<a class="headerlink" href="#v0-1-1b5" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Requirement of NumPy is changed to 1.13 and above. Among others, we need
+<cite>__array_ufunc__</cite> override mechanism for representation algebra. This
+should not be an issue since noone seems to use this.</li>
+<li>The representations can now be sliced with <cite>G[:,1:3]</cite> etc.</li>
+</ul>
+</div>
+<div class="section" id="v0-1-1b4">
+<h2>v0.1.1b4<a class="headerlink" href="#v0-1-1b4" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Sanitized the circular dependencies a bit more</li>
+<li>minimal_realization is changed to accept models instead of A,B,C triplet</li>
+<li>minimal_realization for Transfer uses the pole zero cancellation check</li>
+<li>more housekeeping and bug fixes</li>
+<li>added damping, natural frequency properties of poles</li>
+</ul>
+<ul class="simple">
+<li>state_to_transfer does not return minimal realizations (per request)</li>
+</ul>
+</div>
+<div class="section" id="v0-1-1b3">
+<h2>v0.1.1b3<a class="headerlink" href="#v0-1-1b3" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>More tests</li>
+<li>bode, nyquist plots with matplotlib</li>
+<li>Rewritten the transmission_zeros to improve accuracy</li>
+</ul>
+<ul class="simple">
+<li>Removed the single file and replaced it with modular files.</li>
+<li>Refactored Riccati solvers to SciPy official repo</li>
+<li>Lyapunov solver safety net is moot. Created PR #6775 in SciPy</li>
+</ul>
+</div>
 <div class="section" id="v0-1-1b2">
 <h2>v0.1.1b2<a class="headerlink" href="#v0-1-1b2" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>Added Riccati solvers</li>
 <li>More documentation</li>
-<li>Added safety net for lyapunov solvers
-in case there is no solution.</li>
+<li>Added safety net for lyapunov solvers in case there is no solution</li>
 </ul>
 </div>
 <div class="section" id="v0-1-1b1">
@@ -178,13 +259,16 @@ in case there is no solution.</li>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="faq.html" class="btn btn-neutral" title="Frequently Asked Questions" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="faq.html" class="btn btn-neutral" title="Frequently Asked Questions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -218,13 +302,14 @@ in case there is no solution.</li>
             VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
   
 

@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -30,9 +32,12 @@
   
 
   
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="harold 0.1.1b1 documentation" href="index.html"/>
         <link rel="next" title="ChangeLog" href="changelog.html"/>
-        <link rel="prev" title="Frequency Domain Computations" href="tut_solvers.html"/> 
+        <link rel="prev" title="Matrix Equations" href="tut_solvers.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -81,7 +87,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
@@ -91,8 +100,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html">Model Properties</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_model_props.html#auxilliary-functions">Auxilliary Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_polyfuncs.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Polynomial Operations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
@@ -116,8 +125,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">harold</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">harold</a>
+        
       </nav>
 
 
@@ -126,23 +137,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Frequently Asked Questions</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Frequently Asked Questions</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/faq.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/faq.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -153,7 +181,7 @@
 <p>This page answers some of the often asked questions about harold.</p>
 <div class="section" id="is-it-really-free">
 <h2>Is it really free?<a class="headerlink" href="#is-it-really-free" title="Permalink to this headline">¶</a></h2>
-<p>Yes. Please search &#8220;MIT Expat&#8221; license or see a summary in <a class="reference external" href="https://tldrlegal.com/license/mit-license">TL;DR Legal</a>.</p>
+<p>Yes. Please search “MIT Expat” license or see a summary in <a class="reference external" href="https://tldrlegal.com/license/mit-license">TL;DR Legal</a>.</p>
 </div>
 <div class="section" id="how-fast-is-it">
 <h2>How fast is it?<a class="headerlink" href="#how-fast-is-it" title="Permalink to this headline">¶</a></h2>
@@ -181,12 +209,12 @@ of completeness, there are some keyword options available to select it.</p>
 <div class="section" id="why-is-it-called-harold">
 <h2>Why is it called harold?<a class="headerlink" href="#why-is-it-called-harold" title="Permalink to this headline">¶</a></h2>
 <p>Originally, it was planned to be called as <cite>pykant</cite> which is a wordplay
-between the Dutch words &#8220;spicy&#8221; and &#8220;Py(thon) side&#8221;. But it also has a
-pretty strong slang side to it too in english. So that didn&#8217;t fly.</p>
+between the Dutch words “spicy” and “Py(thon) side”. But it also has a
+pretty strong slang side to it too in english. So that didn’t fly.</p>
 <p>Then, after accidentally reading the wildly off-target manuscript of
 David A. Mindell <a class="footnote-reference" href="#f1" id="id1">[1]</a>, I was saddened by witnessing yet another instance of
 the math snobbery that has poisoned the control engineering field in the
-last decades; I wanted something that resembles the good ol&#8217; days of automation.</p>
+last decades; I wanted something that resembles the good ol’ days of automation.</p>
 <p>In this specific manuscript Mindell attempts to, in a quite skilful
 tongue-in-cheek fashion, belittle the invention of negative feedback amplifier
 by Black to a mere coincidence involving a layman that is S.H. Black. Because
@@ -194,12 +222,12 @@ Black was too generous about the scale of his achievements, he cannot be the act
 inventor because then the classical <em>über-humble genius</em> storyline that needs to
 follow would not follow. Mindell, later finds his heroes;  it should have been the
 smart PhD floor of Bell Labs that created all the smaller mountains (which is indeed
-true for other things). Quoting from his introduction, <em>&#8220;As it turns out, Black did
-not understand as much about feedback as he later recalled.&#8221;</em>, Mindell later
+true for other things). Quoting from his introduction, <em>“As it turns out, Black did
+not understand as much about feedback as he later recalled.”</em>, Mindell later
 demonstrates clearly that himself too, does not understand feedback theory that much
 and fails to identify his anachronistic focus and hindsight bias. Consequently,
 he misinterprets these milestones and thus chooses the easiest way out by polishing
-the elitist trophies and dismisses a truly gigantic discovery based on its inventor&#8217;s
+the elitist trophies and dismisses a truly gigantic discovery based on its inventor’s
 personality.</p>
 <p>Hence, the name <cite>harold</cite> to pay some tribute to the real people as opposed to
 the pantheon of stainless characters.</p>
@@ -207,7 +235,7 @@ the pantheon of stainless characters.</p>
 <table class="docutils footnote" frame="void" id="f1" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>D.A. Mindell, &#8220;Opening Black&#8217;s Box: Rethinking Feedback&#8217;s Myth of Origin&#8221;, Technology and Culture, Volume 41, Number 3, pp. 405-434, July 2000. Accessed: 17 February 2015</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>D.A. Mindell, “Opening Black’s Box: Rethinking Feedback’s Myth of Origin”, Technology and Culture, Volume 41, Number 3, pp. 405-434, July 2000. Accessed: 17 February 2015</td></tr>
 </tbody>
 </table>
 </div>
@@ -215,15 +243,18 @@ the pantheon of stainless characters.</p>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="changelog.html" class="btn btn-neutral float-right" title="ChangeLog" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="ChangeLog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tut_solvers.html" class="btn btn-neutral" title="Frequency Domain Computations" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tut_solvers.html" class="btn btn-neutral" title="Matrix Equations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -257,13 +288,14 @@ the pantheon of stainless characters.</p>
             VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
   
 

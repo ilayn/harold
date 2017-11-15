@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -30,6 +32,9 @@
   
 
   
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="harold 0.1.1b1 documentation" href="#"/>
         <link rel="next" title="Introduction" href="intro.html"/> 
 
@@ -40,6 +45,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -80,10 +86,13 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preflight.html#system-representations">System Representations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_discrete.html">Discretization Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_kalman.html">Controllability and Observability</a></li>
@@ -108,8 +117,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="#">harold</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">harold</a>
+        
       </nav>
 
 
@@ -118,30 +129,47 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="#">Docs</a> &raquo;</li>
-      
-    <li>Welcome to harold&#8217;s documentation!</li>
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>Welcome to harold’s documentation!</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
   <div class="section" id="welcome-to-harold-s-documentation">
-<h1>Welcome to harold&#8217;s documentation!<a class="headerlink" href="#welcome-to-harold-s-documentation" title="Permalink to this headline">¶</a></h1>
+<h1>Welcome to harold’s documentation!<a class="headerlink" href="#welcome-to-harold-s-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="contents">
 <h2>Contents:<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
@@ -153,21 +181,17 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="preflight.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-scientific-stack">Python and its scientific stack</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#python-and-its-strange-syntax">Python and its strange syntax</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#an-almost-exhaustive-cheat-sheet-for-recovering-matlab-users">An almost exhaustive cheat sheet for recovering matlab users</a></li>
-<li class="toctree-l2"><a class="reference internal" href="preflight.html#a-humble-advice-to-python-beginners">A humble advice to Python beginners</a></li>
 <li class="toctree-l2"><a class="reference internal" href="preflight.html#initializing-harold">Initializing harold</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tut_models.html">Model Objects</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tut_models.html#creating-models">Creating models</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tut_models.html#state-models"><code class="docutils literal"><span class="pre">State()</span></code> models</a></li>
-<li class="toctree-l3"><a class="reference internal" href="tut_models.html#transfer-models"><code class="docutils literal"><span class="pre">Transfer()</span></code> models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preflight.html#system-representations">System Representations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="preflight.html#creating-models">Creating models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="preflight.html#state-models"><code class="docutils literal"><span class="pre">State()</span></code> models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="preflight.html#transfer-models"><code class="docutils literal"><span class="pre">Transfer()</span></code> models</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="tut_models.html#model-arithmetic">Model Arithmetic</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tut_models.html#context-discovery">Context Discovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="preflight.html#model-arithmetic">Model Arithmetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="preflight.html#context-discovery">Context Discovery</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tut_convert.html">Conversion of Dynamic Models</a><ul>
@@ -187,6 +211,7 @@
 <li class="toctree-l1"><a class="reference internal" href="tut_freq_domain.html">Frequency Domain Computations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tut_solvers.html">Matrix Equations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tut_solvers.html#lyapunov-equation">Lyapunov Equation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tut_solvers.html#riccati-equation">Riccati Equation</a></li>
 </ul>
 </li>
 </ul>
@@ -205,6 +230,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v-0-1-1rc1">v.0.1.1rc1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b5">v0.1.1b5</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b4">v0.1.1b4</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b3">v0.1.1b3</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b2">v0.1.1b2</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1b1">v0.1.1b1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#v0-1-1a">v0.1.1a</a></li>
@@ -225,12 +254,15 @@
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="intro.html" class="btn btn-neutral float-right" title="Introduction" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="intro.html" class="btn btn-neutral float-right" title="Introduction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>
@@ -265,13 +297,14 @@
             VERSION:'0.1.1b1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
   
 
