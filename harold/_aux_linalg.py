@@ -327,24 +327,24 @@ def e_i(width, nth=0, output='c'):
 
     Examples
     --------
-    >>>> e_i(7, 5, output='r') # The 5th row of 7x7 identity matrix
+    >>> e_i(7, 5, output='r') # The 5th row of 7x7 identity matrix
     array([[ 0.,  0.,  0.,  0.,  0.,  1.,  0.]])
 
-    >>>> e_i(5, [0, 4, 4, 4, 1])  # Sequences can also be used
+    >>> e_i(5, [0, 4, 4, 4, 1])  # Sequences can also be used
     array([[ 1.,  0.,  0.,  0.,  0.],
            [ 0.,  0.,  0.,  0.,  1.],
            [ 0.,  0.,  0.,  0.,  0.],
            [ 0.,  0.,  0.,  0.,  0.],
            [ 0.,  1.,  1.,  1.,  0.]])
 
-    >>>> e_i(5,np.s_[1:3])  # or NumPy index expressions
+    >>> e_i(5,np.s_[1:3])  # or NumPy index expressions
     array([[ 0.,  0.],
            [ 1.,  0.],
            [ 0.,  1.],
            [ 0.,  0.],
            [ 0.,  0.]])
 
-    >>>> e_i(5,slice(1,5,2),output='r')  # or Python slice objects
+    >>> e_i(5,slice(1,5,2),output='r')  # or Python slice objects
     array([[ 0.,  1.,  0.,  0.,  0.],
            [ 0.,  0.,  0.,  1.,  0.]])
 
@@ -366,7 +366,7 @@ def e_i(width, nth=0, output='c'):
 def matrix_slice(M, corner_shape, corner='nw'):
     """
     Takes a two dimensional array ``M`` and slices into four parts dictated
-    by the ``corner_shape`` and the corner string ``corner``.
+    by the ``corner_shape`` and the corner string ``corner``. ::
 
             m   n
         p [ A | B ]
@@ -374,7 +374,7 @@ def matrix_slice(M, corner_shape, corner='nw'):
         q [ C | D ]
 
     If the given corner and the shape is the whole array then the remaining
-    arrays are returned as ``numpy.array([])``.
+    arrays are returned as empty arrays, ``numpy.array([])``.
 
     Parameters
     ----------
@@ -386,46 +386,44 @@ def matrix_slice(M, corner_shape, corner='nw'):
         Defines which corner should be used to start slicing. Possible
         options are the compass abbreviations: ``'nw', 'ne', 'sw', 'se'``.
         The default is the north-west corner.
+
     Returns
     -------
     A : ndarray
-        The upper left corner
+        Upper left corner slice
     B : ndarray
-        The upper right corner
+        Upper right corner slice
     C : ndarray
-        The lower left corner
+        Lower left corner slice
     D : ndarray
-        The lower right corner
+        Lower right corner slice
 
     Examples
     --------
-    >>>> A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-
-    >>>> matrix_slice(A,(1,1))
-    (array([[1]]),
-     array([[2, 3]]),
-     array([[4],
-            [7]]),
-     array([[5, 6],
-            [8, 9]])
-    )
-
-    >>>> matrix_slice(A, (2,2), 'sw')
-    (array([[1, 2]]),
-     array([[3]]),
-     array([[4, 5],
-            [7, 8]]),
-     array([[6],
-            [9]])
-     )
-
-    >>>> matrix_slice(A, (0, 0))  % empty A
-    (array([], shape=(0, 0), dtype=int32),
-     array([], shape=(0, 3), dtype=int32),
-     array([], shape=(3, 0), dtype=int32),
-     array([[1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 9]]))
+        >>> A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        >>> matrix_slice(A,(1,1))
+        (array([[1]]),
+         array([[2, 3]]),
+         array([[4],
+                [7]]),
+         array([[5, 6],
+                [8, 9]])
+        )
+        >>> matrix_slice(A, (2,2), 'sw')
+        (array([[1, 2]]),
+         array([[3]]),
+         array([[4, 5],
+                [7, 8]]),
+         array([[6],
+                [9]])
+         )
+        >>> matrix_slice(A, (0, 0))  % empty A
+        (array([], shape=(0, 0), dtype=int32),
+         array([], shape=(0, 3), dtype=int32),
+         array([], shape=(3, 0), dtype=int32),
+         array([[1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9]]))
     """
     if corner not in ('ne', 'nw', 'se', 'sw'):
         raise ValueError('The corner string needs to be one of'

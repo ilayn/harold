@@ -37,14 +37,13 @@ the answer to such question is always a yes).
 __all__ = ['staircase', 'cancellation_distance', 'minimal_realization']
 
 
-def staircase(A, B, C,
-              compute_T=False, form='c', invert=False, block_indices=False):
+def staircase(A, B, C, compute_T=False, form='c', invert=False):
     """
     The staircase form is used very often to assess system properties.
-    Given a state system matrix triplet A,B,C, this function computes
-    the so-called controller/observer-Hessenberg form such that the resulting
-    system matrices have the block-form (x denoting the possibly nonzero
-    blocks)
+    Given a state system matrix triplet ``A``, ``B``, ``C``, this function
+    computes the so-called controller/observer-Hessenberg form such that the
+    resulting system matrices have the block-form (x denoting the possibly
+    nonzero blocks) ::
 
                                 [x x x x x|x]
                                 [x x x x x|0]
@@ -66,35 +65,34 @@ def staircase(A, B, C,
     Notice that, if we use the pertransposed data, then we have the
     observer form which is usually asked from the user to supply
     the data as :math:`A,B,C \Rightarrow A^T,C^T,B^T` and then transpose
-    back the result. This is just silly to ask the user to do that. Hence
-    the additional ``form`` option denoting whether it is the observer or
-    the controller form that is requested.
-
+    back the result. Instead, the additional ``form`` option denoting
+    whether it is the observer or the controller form that is requested.
 
     Parameters
     ----------
-
-    A,B,C : {(n,n),(n,m),(p,n)} array_like
-        System Matrices to be converted
+    A : (n, n) array_like
+        State array
+    B : (n, m) array_like
+        Input array
+    C : (p, n) array_like
+        Output array
     compute_T : bool, optional
         Whether the transformation matrix T should be computed or not
-    form : {'c', 'o'}, optional
+    form : str, optional
         Determines whether the controller- or observer-Hessenberg form
-        will be computed.
+        will be computed via ``'c'`` or ``'o'`` values.
     invert : bool, optional
         Whether to select which side the B or C matrix will be compressed.
         For example, the default case returns the B matrix with (if any)
         zero rows at the bottom. invert option flips this choice either in
         B or C matrices depending on the "form" switch.
-    block_indices : bool, optional
 
 
     Returns
     -------
-
-    Ah,Bh,Ch : {(n,n),(n,m),(p,n)} 2D numpy arrays
-        Converted system matrices
-    T : (n,n) 2D numpy array
+    Ah,Bh,Ch : (n, n), (n, m), (p, n) ndarray
+        Converted system arrays
+    T : (n, n) ndarray
         If the boolean ``compute_T`` is true, returns the transformation
         matrix such that
 
@@ -106,10 +104,6 @@ def staircase(A, B, C,
             \\end{array}\\right]
 
         is in the desired staircase form.
-    k: Numpy array
-        If the boolean ``block_indices`` is true, returns the array
-        of controllable/observable block sizes identified during block
-        diagonalization
 
     """
 
@@ -122,14 +116,12 @@ def staircase(A, B, C,
 
     n = A.shape[0]
     ub, sb, vb, m0 = haroldsvd(B, also_rank=True)
-    cble_block_indices = np.empty((1, 0))
 
     # Trivially  Uncontrollable Case
     # Skip the first branch of the loop by making m0 greater than n
     # such that the matrices are returned as is without any computation
     if m0 == 0:
         m0 = n + 1
-        cble_block_indices = np.array([0])
 
     # After these, start the regular case
     if n > m0:  # If it is not a square system with full rank B
@@ -140,7 +132,6 @@ def staircase(A, B, C,
         B0 = sb.dot(vb)
         B0[m0:, :] = 0.
         C0 = C.dot(ub)
-        cble_block_indices = np.append(cble_block_indices, m0)
 
         if compute_T:
             P = block_diag(np.eye(n-ub.T.shape[0]), ub.T)
@@ -168,7 +159,6 @@ def staircase(A, B, C,
 
             # If the resulting subblock is not full row or zero rank
             if 0 < m < h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices, m)
                 if compute_T:
                     P = block_diag(np.eye(n-uh3.shape[1]), uh3.T).dot(P)
                 A0[ROI_start:, ROI_start:] = np.r_[np.c_[h1, h2],
@@ -179,9 +169,6 @@ def staircase(A, B, C,
                 # Clean up
                 A0[abs(A0) < tol_from_A] = 0.
                 C0[abs(C0) < tol_from_A] = 0.
-            elif m == h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices, m)
-                break
             else:
                 break
 
@@ -196,31 +183,18 @@ def staircase(A, B, C,
             A0, B0, C0 = A0.T, C0.T, B0.T
 
         if compute_T:
-            if block_indices:
-                return A0, B0, C0, P.T, cble_block_indices
-            else:
-                return A0, B0, C0, P.T
+            return A0, B0, C0, P.T
         else:
-            if block_indices:
-                return A0, B0, C0, cble_block_indices
-            else:
-                return A0, B0, C0
+            return A0, B0, C0
 
     else:  # Square system B full rank ==> trivially controllable
-        cble_block_indices = np.array([n])
         if form == 'o':
             A, B, C = A.T, C.T, B.T
 
         if compute_T:
-            if block_indices:
-                return A, B, C, np.eye(n), cble_block_indices
-            else:
-                return A, B, C, np.eye(n)
+            return A, B, C, np.eye(n)
         else:
-            if block_indices:
-                return A, B, C, cble_block_indices
-            else:
-                return A, B, C
+            return A, B, C
 
 
 def cancellation_distance(F, G):
@@ -309,19 +283,21 @@ def minimal_realization(G, tol=1e-6):
 
     Returns
     -------
-    G_min : realization
-        Minimal realization of the input G
+    G_min : State, Transfer
+        Minimal realization of the input `G`
 
     Notes
     -----
     For State() inputs the alogrithm uses ``cancellation_distance()`` and
     ``staircase()`` for the tests. A basic two pass algorithm performs:
-     1- First distance to mode cancellation is computed then also
-     the Hessenberg form is obtained with the identified o'ble/c'ble
-     block numbers.
-     2- If staircase form reports that there are no cancellations but the
-     distance is less than the tolerance, distance wins and the corresponding
-     mode is removed.
+
+        1- First distance to mode cancellation is computed then also
+        the Hessenberg form is obtained with the identified o'ble/c'ble
+        block numbers.
+
+        2- If staircase form reports that there are no cancellations but the
+        distance is less than the tolerance, distance wins and the
+        corresponding mode is removed.
 
     For Transfer() inputs, every entry of the representation is checked for
     pole/zero cancellations and ``tol`` is used to decide for the decision

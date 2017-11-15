@@ -45,11 +45,11 @@ def system_norm(G, p=np.inf, max_iter_limit=100, hinf_tol=1e-6, eig_tol=1e-12):
     controllability grammian, that can be found elsewhere is used.
 
     Currently, the :math:`\\mathcal{H}_\\infty` norm is computed via
-    so-called Boyd-Balakhrishnan-Bruinsma-Steinbuch algorithm [2]_.
+    so-called Boyd-Balakhrishnan-Bruinsma-Steinbuch algorithm [1]_.
 
-    [2] N.A. Bruinsma, M. Steinbuch: Fast Computation of
-    :math:`\\mathcal{H}_\\infty`-norm of transfer function. System and Control
-    Letters, 14, 1990
+    .. [1] N.A. Bruinsma, M. Steinbuch: Fast Computation of
+        :math:`\\mathcal{H}_\\infty`-norm of transfer function. System and
+        Control Letters, 14, 1990
 
     Parameters
     ----------
