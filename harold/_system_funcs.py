@@ -42,6 +42,7 @@ def staircase(A, B, C,
     computes the so-called controller/observer-Hessenberg form such that the
     resulting system matrices have the block-form (x denoting the possibly
     nonzero blocks) ::
+
                                 [x x x x x|x]
                                 [x x x x x|0]
                                 [0 x x x x|0]

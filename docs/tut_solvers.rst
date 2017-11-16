@@ -22,12 +22,12 @@ The Lyapunov equations are defined as follows,
 
 .. math::
 
-    \\begin{align}
-    X A + A^T X + Y &= 0 \\tag{1} \\\\
-    A^T X A - X + Y &= 0 \\tag{1'} \\\\
-    E^T X A + A^T X E + Y &= 0 \\tag{2} \\\\
-    A^T X A - E^T X E + Y &= 0   \\tag{2'}
-    \\end{align}
+    \begin{align}
+    X A + A^T X + Y &= 0 \tag{1} \\\\
+    A^T X A - X + Y &= 0 \tag{1'} \\\\
+    E^T X A + A^T X E + Y &= 0 \tag{2} \\\\
+    A^T X A - E^T X E + Y &= 0   \tag{2'}
+    \end{align}
 
 
 .. py:currentmodule:: harold    

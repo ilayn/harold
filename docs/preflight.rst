@@ -186,7 +186,7 @@ If the model is discretized we can also check ::
     
 
 
-.. autoclass:: Transfer
+.. autoclass:: harold.Transfer
     :members:
 	
 
@@ -224,19 +224,19 @@ systems.
 For `Transfer` models, another useful property is recognition of 
 common poles when doing simple addition/subtraction. For example, ::
 
-	G = Transfer([1,1],[1,2])
-	H = Transfer([1],[1,3,2])
+	>>> G = Transfer([1,1],[1,2])
+	>>> H = Transfer([1],[1,3,2])
 	
-	F = G+H
-	F.polynomials #check num,den
+	>>> F = G+H
+	>>> F.polynomials #check num,den
 	(array([[ 1.,  2.,  2.]]), array([[ 1.,  3.,  2.]]))
 	
 As you can see the cancellations are performed at the computations such that 
-the model order does not increase artificially. 
+the model order does not increase artificially for numerically well-conditioned
+expressions. Minimality is not guaranteed.
 
-.. note:: This is currently not the case for ``State`` instances that is
-    to say the state matrices are directly augmented without any cancellation
-    checks. This is probably going to change in the future. 
+.. note:: This is not the case for ``State`` instances that is state matrices
+    are directly augmented without any cancellation checks.
 
 
 Context Discovery
@@ -252,37 +252,37 @@ in case the resulting system is a static gain::
 
 will print out the following for the example we discussed above ::
 
-	========================================
-	Handling numerator
-	========================================
-	I found only a float
-	========================================
-	Handling denominator
-	========================================
-	I found a list
-	I found a list that has only lists
-	Every row has consistent number of elements
-	==================================================
-	Handling raw entries are done.
-	Now checking the SISO/MIMO context and regularization.
-	==================================================
-	One of the MIMO flags are true
-	Denominator is MIMO, Numerator is something else
-	Denominator is MIMO, Numerator is SISO
-	In the MIMO context and proper entries, I've found
-	scalar denominator entries hence flagging as a static gain.
-	Out[7]: 
-	([[array([[ 1.]]), array([[ 1.]]), array([[ 1.]])]],
-	 [[array([[ 1.]]), array([[ 2.]]), array([[ 3.]])]],
-	 (1, 3),
-	 True)
+    ========================================
+    Handling numerator
+    ========================================
+    I found only a float
+    ========================================
+    Handling denominator
+    ========================================
+    I found a list
+    I found a list that has only lists
+    Every row has consistent number of elements
+    ==================================================
+    Handling raw entries are done.
+    Now checking the SISO/MIMO context and regularization.
+    ==================================================
+    One of the MIMO flags are true
+    Denominator is MIMO, Numerator is something else
+    Denominator is MIMO, Numerator is SISO
+    In the MIMO context and proper entries, I've found
+    scalar denominator entries hence flagging as a static gain.
+    Out[2]: 
+    ([[array([[1.]]), array([[1.]]), array([[1.]])]],
+     [[array([[1.]]), array([[2.]]), array([[3.]])]],
+     (1, 3),
+     True)
 
-As seen from the resulting arrays, the numerator is now 
-three numpy float arrays containing the common entry. 
-Both the numerator and denominator are converted to list
-of lists. 
+As seen from the resulting arrays, the numerator is now three numpy float 
+arrays containing the common entry. This is because the denominator is given
+as a list of lists which is taken as MIMO intention. Both the numerator and
+denominator are converted to list of lists. 
 
-This method can also be used to verify whether a certain input
-is a valid argument for creating model objects hence the name. 
+This method can also be used to verify whether a certain input is a valid
+argument for creating model objects hence the name. 
 
 Same class method is also available for the ``State()`` class. 
