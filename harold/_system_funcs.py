@@ -28,23 +28,20 @@ from scipy.linalg import svdvals, qr, block_diag
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
 from ._classes import State, Transfer
 from ._arg_utils import _check_for_state_or_transfer
-"""
-TODO Though the descriptor code also works up-to-production, I truncated
-to explicit systems. I better ask around if anybody needs them (though
-the answer to such question is always a yes).
-"""
+
 
 __all__ = ['staircase', 'cancellation_distance', 'minimal_realization']
 
 
-def staircase(A, B, C, compute_T=False, form='c', invert=False):
+# TODO : Too much matlab-ish coding, clean up !!
+def staircase(A, B, C,
+              compute_T=False, form='c', invert=False, block_indices=False):
     """
     The staircase form is used very often to assess system properties.
     Given a state system matrix triplet ``A``, ``B``, ``C``, this function
     computes the so-called controller/observer-Hessenberg form such that the
     resulting system matrices have the block-form (x denoting the possibly
     nonzero blocks) ::
-
                                 [x x x x x|x]
                                 [x x x x x|0]
                                 [0 x x x x|0]
@@ -61,7 +58,6 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
     introduce large errors (for some A that have entries with varying
     order of magnitudes). But it is also prone to numerical rank guessing
     mismatches.
-
     Notice that, if we use the pertransposed data, then we have the
     observer form which is usually asked from the user to supply
     the data as :math:`A,B,C \Rightarrow A^T,C^T,B^T` and then transpose
@@ -86,24 +82,29 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
         For example, the default case returns the B matrix with (if any)
         zero rows at the bottom. invert option flips this choice either in
         B or C matrices depending on the "form" switch.
-
+    block_indices : bool, optional
 
     Returns
     -------
-    Ah,Bh,Ch : (n, n), (n, m), (p, n) ndarray
-        Converted system arrays
-    T : (n, n) ndarray
+    Ah : (n, n) array_like
+        Resulting State array
+    Bh : (n, m) array_like
+        Resulting Input array
+    Ch : (p, n) array_like
+        Resulting Output array
+    T : (n,n) 2D numpy array
         If the boolean ``compute_T`` is true, returns the transformation
-        matrix such that
+        matrix such that ::
 
-        .. math::
-
-            \\left[\\begin{array}{c|c}
-                T^{-1}AT &T^{-1}B \\\\ \\hline
-                CT & D
-            \\end{array}\\right]
+            [ T⁻¹AT | T⁻¹B ]   [ Ah | Bh ]
+            [-------|------] = [----|----]
+            [   CT  |      ]   [ Ch |    ]
 
         is in the desired staircase form.
+    k: Numpy array
+        If the boolean ``block_indices`` is true, returns the array
+        of controllable/observable block sizes identified by the algorithm
+        during elimination.
 
     """
 
@@ -116,12 +117,14 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
 
     n = A.shape[0]
     ub, sb, vb, m0 = haroldsvd(B, also_rank=True)
+    cble_block_indices = np.empty((1, 0))
 
     # Trivially  Uncontrollable Case
     # Skip the first branch of the loop by making m0 greater than n
     # such that the matrices are returned as is without any computation
     if m0 == 0:
         m0 = n + 1
+        cble_block_indices = np.array([0])
 
     # After these, start the regular case
     if n > m0:  # If it is not a square system with full rank B
@@ -132,6 +135,7 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
         B0 = sb.dot(vb)
         B0[m0:, :] = 0.
         C0 = C.dot(ub)
+        cble_block_indices = np.append(cble_block_indices, m0)
 
         if compute_T:
             P = block_diag(np.eye(n-ub.T.shape[0]), ub.T)
@@ -159,6 +163,7 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
 
             # If the resulting subblock is not full row or zero rank
             if 0 < m < h3.shape[0]:
+                cble_block_indices = np.append(cble_block_indices, m)
                 if compute_T:
                     P = block_diag(np.eye(n-uh3.shape[1]), uh3.T).dot(P)
                 A0[ROI_start:, ROI_start:] = np.r_[np.c_[h1, h2],
@@ -169,6 +174,9 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
                 # Clean up
                 A0[abs(A0) < tol_from_A] = 0.
                 C0[abs(C0) < tol_from_A] = 0.
+            elif m == h3.shape[0]:
+                cble_block_indices = np.append(cble_block_indices, m)
+                break
             else:
                 break
 
@@ -183,18 +191,31 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False):
             A0, B0, C0 = A0.T, C0.T, B0.T
 
         if compute_T:
-            return A0, B0, C0, P.T
+            if block_indices:
+                return A0, B0, C0, P.T, cble_block_indices
+            else:
+                return A0, B0, C0, P.T
         else:
-            return A0, B0, C0
+            if block_indices:
+                return A0, B0, C0, cble_block_indices
+            else:
+                return A0, B0, C0
 
     else:  # Square system B full rank ==> trivially controllable
+        cble_block_indices = np.array([n])
         if form == 'o':
             A, B, C = A.T, C.T, B.T
 
         if compute_T:
-            return A, B, C, np.eye(n)
+            if block_indices:
+                return A, B, C, np.eye(n), cble_block_indices
+            else:
+                return A, B, C, np.eye(n)
         else:
-            return A, B, C
+            if block_indices:
+                return A, B, C, cble_block_indices
+            else:
+                return A, B, C
 
 
 def cancellation_distance(F, G):
@@ -206,30 +227,27 @@ def cancellation_distance(F, G):
 
     Parameters
     ----------
-
-    F,G : 2D arrays
-        Pencil matrices to be checked for rank deficiency distance
+    A : (n, n) array_like
+        Square array
+    B : (n, m) array_like
+        Input array
 
     Returns
     -------
-
     upper2 : float
-        Upper bound on the norm of the perturbation
-        :math:`\\left[\\begin{array}{c|c}dF & dG\\end{array}\\right]` such
-        that :math:`\\left[\\begin{array}{c|c}F+dF-pI & G+dG \\end{array}
-        \\right]` is rank deficient.
+        Upper bound on the norm of the perturbation ``[dF | dG]`` such
+        that ``[F+dF-pI | G+dG]` is rank deficient for some ``p``.
     upper1 : float
-        A theoretically softer upper bound than the upper2 for the
-        same quantity.
+        A theoretically softer upper bound than ``upper2`` for the same
+        norm.
     lower0 : float
-        Lower bound on the same quantity given in upper2
-    e_f    : complex
-        Indicates the eigenvalue that renders [F + dF - pI | G + dG ]
-        rank deficient i.e. equals to the p value at the closest rank
-        deficiency.
+        Lower bound on the norm given in ``upper2``
+    e_f : complex
+        Indicates the eigenvalue that renders ``[F+dF-pI | G+dG ]`` rank
+        deficient
     radius : float
-        The perturbation with the norm bound "upper2" is located within
-        a disk in the complex plane whose center is on "e_f" and whose
+        The perturbation with the norm bound ``upper2`` is located within
+        a disk in the complex plane whose center is on ``e_f`` and whose
         radius is bounded by this output.
 
     Notes
