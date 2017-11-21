@@ -31,7 +31,16 @@ from numpy.testing import (assert_,
                            assert_equal,
                            assert_array_equal,
                            assert_raises,
-                           assert_almost_equal)
+                           assert_almost_equal,
+                           assert_array_almost_equal)
+
+
+def test_concatenate_state_matrices():
+    G = State(1, 2, 3, 4)
+    M = concatenate_state_matrices(G)
+    assert_array_equal(M, np.array([[1, 2], [3, 4]]))  # 1
+    G = State(np.eye(4))
+    assert_array_equal(concatenate_state_matrices(G), np.eye(4))
 
 
 def test_Transfer_Instantiations():
@@ -270,32 +279,21 @@ def test_Transfer_slicing():
 def test_State_Instantiations():
     assert_raises(TypeError, State)
     G = State(5)
-    assert G.a.size == 0
-    assert G._isSISO
-    assert G._isgain
+    assert_(G.a.size == 0)
+    assert_(G._isSISO)
+    assert_(G._isgain)
     assert_equal(G.d, np.array([[5.]]))
 
     G = State(np.eye(2))
     assert_equal(G.shape, (2, 2))
-    assert G._isgain
-    assert not G._isSISO
+    assert_(G._isgain)
+    assert_(not G._isSISO)
 
-    assert_raises(ValueError, State,
-                  np.eye(2),
-                  np.array([[1], [2], [3]]),
-                  np.array([1, 2]),
-                  0)
-
-    assert_raises(ValueError, State,
-                  np.eye(2),
-                  np.array([[1], [2]]),
-                  np.array([1, 2, 3]),
-                  0)
-    assert_raises(ValueError, State,
-                  np.eye(2),
-                  np.array([[1], [2]]),
-                  np.array([1, 2]),
-                  np.array([0, 0]))
+    # Wrong sized A, B, C, D
+    assert_raises(ValueError, State, np.ones((3, 2)), [[1], [2]], [1, 2])
+    assert_raises(ValueError, State, np.eye(2), [[1], [2], [3]], [1, 2])
+    assert_raises(ValueError, State, np.eye(2), [[1], [2]], [1, 2, 3])
+    assert_raises(ValueError, State, np.eye(2), [[1], [2]], [1, 2], [0, 0])
 
 
 def test_State_to_array():
@@ -309,7 +307,85 @@ def test_State_to_array():
     assert_equal(H.to_array(), np.ones((4, 4)))
 
 
-def test_State_algebra_mimo_siso():
+def test_State_algebra_mul_rmul_dt():
+    G = State(1, 2, 3, 4, dt=0.1)
+    F = State(4, 3, 2, 1)
+    with assert_raises(TypeError):
+        F*G
+    with assert_raises(TypeError):
+        G*F
+
+
+def test_State_algebra_truediv_rtruediv():
+    G = State(1, 2, 3, 4)
+    F = G/0.5
+    assert_equal(F.b, np.array([[4.]]))
+    assert_equal(F.d, np.array([[8.]]))
+
+    with assert_raises(TypeError):
+        G/G
+    with assert_raises(TypeError):
+        G/3j
+
+
+def test_State_algebra_mul_rmul_scalar_array():
+    G = State(np.diag([-1, -2]), [[1, 2], [3, 4]], np.eye(2))
+    GI = np.array([[-1., 0., -0., 0., -0., 0., -0., 0., 1., 0.],
+                   [0., -2., 0., -0., 0., -0., 0., -0., 3., 0.],
+                   [-0., 0., -1., 0., -0., 0., -0., 0., 0., 0.],
+                   [0., -0., 0., -2., 0., -0., 0., -0., 0., 0.],
+                   [-0., 0., -0., 0., -1., 0., -0., 0., 0., 0.],
+                   [0., -0., 0., -0., 0., -2., 0., -0., 0., 0.],
+                   [-0., 0., -0., 0., -0., 0., -1., 0., 0., 2.],
+                   [0., -0., 0., -0., 0., -0., 0., -2., 0., 4.],
+                   [1., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+                   [0., 0., 0., 1., 0., 0., 0., 1., 0., 0.]])
+
+    F = G*np.eye(2)
+    assert_equal(concatenate_state_matrices(F), GI)
+    F = np.eye(2)*G
+    assert_equal(concatenate_state_matrices(F), GI)
+    H = 1/2*G
+    assert_equal(H.b, 0.5*G.b)
+
+
+def test_State_matmul_rmatmul_ndarray():
+    H = State([[-5, -2], [1, 0]], [[2], [0]], [-1, 1], 1)
+    J1 = np.array([[-5., -2., 0., 0., 0., 0., 2., 4., 6., 8.],
+                   [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+                   [0., 0., -5., -2., 0., 0., 10., 12., 14., 16.],
+                   [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
+                   [0., 0., 0., 0., -5., -2., 18., 20., 22., 24.],
+                   [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+                   [-1., 1., 0., 0., 0., 0., 1., 2., 3., 4.],
+                   [0., 0., -1., 1., 0., 0., 5., 6., 7., 8.],
+                   [0., 0., 0., 0., -1., 1., 9., 10., 11., 12.]])
+
+    J2 = np.array([[-5., -2., 0., 0., 0., 0., 2., 0., 0.],
+                   [1., 0., 0., 0., 0., 0., 0., 0., 0.],
+                   [0., 0., -5., -2., 0., 0., 0., 2., 0.],
+                   [0., 0., 1., 0., 0., 0., 0., 0., 0.],
+                   [0., 0., 0., 0., -5., -2., 0., 0., 2.],
+                   [0., 0., 0., 0., 1., 0., 0., 0., 0.],
+                   [-1., 1., -2., 2., -3., 3., 1., 2., 3.],
+                   [-4., 4., -5., 5., -6., 6., 4., 5., 6.],
+                   [-7., 7., -8., 8., -9., 9., 7., 8., 9.],
+                   [-10., 10., -11., 11., -12., 12., 10., 11., 12.]])
+
+    mat = np.arange(1, 13).reshape(3, 4)
+    Fm = concatenate_state_matrices(mat @ H)
+    assert_array_almost_equal(J1, Fm)
+    Fm = concatenate_state_matrices(H @ mat)
+    assert_array_almost_equal(J1, Fm)
+
+    mat = np.arange(1, 13).reshape(4, 3)
+    Fm = concatenate_state_matrices(mat @ H)
+    assert_array_almost_equal(J2, Fm)
+    Fm = concatenate_state_matrices(H @ mat)
+    assert_array_almost_equal(J2, Fm)
+
+
+def test_State_algebra_mul_rmul_mimo_siso():
     static_siso_state = State(5)
     static_mimo_state = State(2.0*np.eye(3))
     dynamic_siso_state = State(haroldcompanion([1, 3, 3, 1]),
@@ -328,19 +404,46 @@ def test_State_algebra_mimo_siso():
                                  np.zeros((3, 3))
                                  )
 
-    assert_raises(IndexError, dynamic_siso_state.__mul__, static_mimo_state)
+    G = dynamic_siso_state * dynamic_mimo_state
+    J = np.array([[0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+                  [0., 0., 1., 0., 1., 0., 0., 0., 0., 0., 0.],
+                  [-1., -3., -3., 0., 0., 0., 0., 1., 0., 0., 0.],
+                  [0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
+                  [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+                  [0., 0., 0., -1., -3., -3., 0., 0., 0., 1., 0.],
+                  [0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0.],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0.],
+                  [0., 0., 0., 0., 0., 0., -1., -3., -3., 0., 1.],
+                  [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+                  [0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+                  [0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.]])
+    assert_array_almost_equal(concatenate_state_matrices(G), J)
+    G = dynamic_mimo_state * dynamic_siso_state
+    assert_array_almost_equal(concatenate_state_matrices(G), J)
+
+    G = dynamic_mimo_state * static_siso_state
+    assert_array_almost_equal(G.b, 5*dynamic_mimo_state.b)
+    assert_array_almost_equal(G.d, 5*dynamic_mimo_state.d)
     assert_raises(IndexError, dynamic_siso_state.__add__, static_mimo_state)
     assert_raises(IndexError, static_mimo_state.__add__, dynamic_mimo_state)
     assert_raises(IndexError, static_mimo_state.__add__, static_siso_state)
-    assert_raises(IndexError, static_mimo_state.__mul__, static_siso_state)
     F = static_mimo_state @ dynamic_mimo_state
-
-    assert_almost_equal(F.c, np.eye(3)*2.0)
+    J = np.array([[0., 1., 0., 0., 0.],
+                  [0., 0., 1., 1., 0.],
+                  [-1., -3., -3., 0., 1.],
+                  [2., 0., 0., 0., 0.],
+                  [0., 2., 0., 0., 0.],
+                  [0., 0., 2., 0., 0.]])
+    assert_array_almost_equal(concatenate_state_matrices(F), J)
     assert_almost_equal((dynamic_square_state + static_mimo_state).d,
                         2*np.eye(3))
 
 
 def test_State_slicing():
+    F = State(1, 2, 3, 4)
+    F0 = F[0, 0]
+    assert_equal(concatenate_state_matrices(F), concatenate_state_matrices(F0))
+
     F = State(np.random.rand(4, 4))
     H = State(F.d, np.random.rand(4, 3), np.random.rand(5, 4))
     Hind = [(1, 3), (5, 1),
@@ -442,11 +545,3 @@ def test_static_model_conversion_sampling_period():
     assert_equal(H.SamplingPeriod, 0.001)  # 2
     K = transfer_to_state(H)
     assert_equal(K.SamplingPeriod, 0.001)  # 3
-
-
-def test_concatenate_state_matrices():
-    G = State(1, 2, 3, 4)
-    M = concatenate_state_matrices(G)
-    assert_array_equal(M, np.array([[1, 2], [3, 4]]))  # 1
-    G = State(np.eye(4))
-    assert_array_equal(concatenate_state_matrices(G), np.eye(4))

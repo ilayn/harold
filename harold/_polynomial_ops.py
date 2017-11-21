@@ -37,7 +37,7 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     Takes n-many 1D numpy arrays and computes the numerical
     least common multiple polynomial. The polynomials are
     assumed to be in decreasing powers, e.g. s^2 + 5 should
-    be given as numpy.array([1,0,5])
+    be given as ``[1,0,5]``
 
     Returns a numpy array holding the polynomial coefficients
     of LCM and a list, of which entries are the polynomial
@@ -50,7 +50,9 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
 
     Parameters
     ----------
-    args : 1D Numpy array
+    args : array_like
+        Input arrays. 1-D arrays or array_like sequences of polynomial
+        coefficients
     compute_multipliers : boolean, optional
         After the computation of the LCM, this switch decides whether the
         multipliers of the given arguments should be computed or skipped.
@@ -64,50 +66,58 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
 
     Returns
     --------
-    lcmpoly : 1D Numpy array
-        Resulting polynomial coefficients for the LCM.
-    mults : List of 1D Numpy arrays
-        The multipliers for each given argument.
+    lcmpoly : ndarray
+        Resulting 1D polynomial coefficient array for the LCM.
+    mults : list
+        The multipliers given as a list of 1D arrays, for each given argument.
+
+    Notes
+    -----
+    If complex-valued arrays are given, only real parts are taken into account.
 
     Example
     -------
-    ::
-
-        >>>> a , b = haroldlcm(*map(np.array,
-                                    ([1,3,0,-4],
-                                    [1,-4,-3,18],
-                                    [1,-4,3],
-                                    [1,-2,-8])))
-        >>>> a
-            (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
-
-        >>>> b
-            [array([  1., -10.,  33., -36.]),
-             array([  1.,  -3.,  -6.,   8.]),
-             array([  1.,  -3., -12.,  20.,  48.]),
-             array([  1.,  -5.,   1.,  21., -18.])]
-
-        >>>> np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult
-            (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
+    >>> a , b = haroldlcm([1,3,0,-4], [1,-4,-3,18], [1,-4,3], [1,-2,-8])
+    >>> a
+    (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
+    >>> b
+    [array([  1., -10.,  33., -36.]),
+     array([  1.,  -3.,  -6.,   8.]),
+     array([  1.,  -3., -12.,  20.,  48.]),
+     array([  1.,  -5.,   1.,  21., -18.])]
+    >>> np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult
+    (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
 
     """
-    # As typical, it turns out that the minimality and c'ble subspace for
-    # this is done already (Karcanias, Mitrouli, 2004). They also have a
-    # clever extra step for the multipliers thanks to the structure of
-    # adjoint which I completely overlooked.
-    if not all([isinstance(x, type(np.array([0]))) for x in args]):
-        raise TypeError('Some arguments are not numpy arrays for LCM')
+
+    args = [np.atleast_1d(np.array(a).squeeze().real) for a in args]
+    if not all([x.ndim == 1 for x in args]):
+        raise ValueError('Input arrays must be 1D.')
+    if not all([x.size > 0 for x in args]):
+        raise ValueError('Empty arrays are not allowed.')
+
+    # All scalars
+    if all([x.size == 1 for x in args]):
+        if compute_multipliers:
+            return np.array([1.]), [np.array([1.]) for _ in range(len(args))]
+        else:
+            return np.array([1.])
 
     # Remove if there are constant polynomials but return their multiplier!
-    poppedargs = tuple([x for x in args if x.size > 1])
+    poppedargs = [x for x in args if x.size > 1]
     # Get the index number of the ones that are popped
     poppedindex = tuple([ind for ind, x in enumerate(args) if x.size == 1])
-    a = block_diag(*tuple(map(haroldcompanion, poppedargs)))  # Companion A
-    b = np.concatenate(tuple(map(lambda x: e_i(x-1, -1),
-                                 [z.size for z in poppedargs])))  # Companion B
-    c = block_diag(*tuple(map(lambda x: e_i(x-1, 0).T,
-                              [z.size for z in poppedargs])))
+    a = block_diag(*(map(haroldcompanion, poppedargs)))  # Companion A
+    b = np.concatenate([e_i(x.size-1, -1) for x in poppedargs])  # Companion B
+    c = block_diag(*[e_i(x.size-1, 0).T for x in poppedargs])
     n = a.shape[0]
+
+    # As typical, it turns out that the minimality and c'ble subspace for
+    # this is done already (Karcanias, Mitrouli, 2004) with a clever extra
+    # step for the multipliers thanks to the structure of adjoint
+
+    # Computing full c'bility matrix is redundant we just need to see where
+    # the rank drop is (if any!). Also due matrix power, things grow quickly.
 
     # TODO: Below two lines feel like matlab programming, revisit again
     C = b
