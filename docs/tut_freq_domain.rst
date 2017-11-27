@@ -5,7 +5,7 @@ Frequency Domain Computations
 
 .. py:currentmodule:: harold    
 .. autofunction:: frequency_response
-.. autofunction:: bodeplot
+.. autofunction:: bode_plot
 .. autofunction:: pair_complex_numbers
 
 

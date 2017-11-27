@@ -22,14 +22,5 @@ functionalities (hopefully), they would become obsolete.
 .. autofunction:: haroldker
 .. autofunction:: matrix_slice
 .. autofunction:: e_i
-.. autofunction:: haroldtrimleftzeros
 .. autofunction:: haroldcompanion
-
-
-The following function is particularly useful if there is a 
-significant amount of copy/pasting to matlab. Hence this small
-function when used inside a ``print`` prints a numpy array 
-in matlab syntax. 
-
-.. autofunction:: matrix_printer
 

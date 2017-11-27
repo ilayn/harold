@@ -28,23 +28,20 @@ from scipy.linalg import svdvals, qr, block_diag
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
 from ._classes import State, Transfer
 from ._arg_utils import _check_for_state_or_transfer
-"""
-TODO Though the descriptor code also works up-to-production, I truncated
-to explicit systems. I better ask around if anybody needs them (though
-the answer to such question is always a yes).
-"""
+
 
 __all__ = ['staircase', 'cancellation_distance', 'minimal_realization']
 
 
+# TODO : Too much matlab-ish coding, clean up !!
 def staircase(A, B, C,
               compute_T=False, form='c', invert=False, block_indices=False):
     """
     The staircase form is used very often to assess system properties.
-    Given a state system matrix triplet A,B,C, this function computes
-    the so-called controller/observer-Hessenberg form such that the resulting
-    system matrices have the block-form (x denoting the possibly nonzero
-    blocks)
+    Given a state system matrix triplet ``A``, ``B``, ``C``, this function
+    computes the so-called controller/observer-Hessenberg form such that the
+    resulting system matrices have the block-form (x denoting the possibly
+    nonzero blocks) ::
 
                                 [x x x x x|x]
                                 [x x x x x|0]
@@ -62,25 +59,25 @@ def staircase(A, B, C,
     introduce large errors (for some A that have entries with varying
     order of magnitudes). But it is also prone to numerical rank guessing
     mismatches.
-
     Notice that, if we use the pertransposed data, then we have the
     observer form which is usually asked from the user to supply
     the data as :math:`A,B,C \Rightarrow A^T,C^T,B^T` and then transpose
-    back the result. This is just silly to ask the user to do that. Hence
-    the additional ``form`` option denoting whether it is the observer or
-    the controller form that is requested.
-
+    back the result. Instead, the additional ``form`` option denoting
+    whether it is the observer or the controller form that is requested.
 
     Parameters
     ----------
-
-    A,B,C : {(n,n),(n,m),(p,n)} array_like
-        System Matrices to be converted
+    A : (n, n) array_like
+        State array
+    B : (n, m) array_like
+        Input array
+    C : (p, n) array_like
+        Output array
     compute_T : bool, optional
         Whether the transformation matrix T should be computed or not
-    form : {'c', 'o'}, optional
+    form : str, optional
         Determines whether the controller- or observer-Hessenberg form
-        will be computed.
+        will be computed via ``'c'`` or ``'o'`` values.
     invert : bool, optional
         Whether to select which side the B or C matrix will be compressed.
         For example, the default case returns the B matrix with (if any)
@@ -88,28 +85,27 @@ def staircase(A, B, C,
         B or C matrices depending on the "form" switch.
     block_indices : bool, optional
 
-
     Returns
     -------
-
-    Ah,Bh,Ch : {(n,n),(n,m),(p,n)} 2D numpy arrays
-        Converted system matrices
+    Ah : (n, n) array_like
+        Resulting State array
+    Bh : (n, m) array_like
+        Resulting Input array
+    Ch : (p, n) array_like
+        Resulting Output array
     T : (n,n) 2D numpy array
         If the boolean ``compute_T`` is true, returns the transformation
-        matrix such that
+        matrix such that ::
 
-        .. math::
-
-            \\left[\\begin{array}{c|c}
-                T^{-1}AT &T^{-1}B \\\\ \\hline
-                CT & D
-            \\end{array}\\right]
+            [ T⁻¹AT | T⁻¹B ]   [ Ah | Bh ]
+            [-------|------] = [----|----]
+            [   CT  |      ]   [ Ch |    ]
 
         is in the desired staircase form.
     k: Numpy array
         If the boolean ``block_indices`` is true, returns the array
-        of controllable/observable block sizes identified during block
-        diagonalization
+        of controllable/observable block sizes identified by the algorithm
+        during elimination.
 
     """
 
@@ -232,30 +228,27 @@ def cancellation_distance(F, G):
 
     Parameters
     ----------
-
-    F,G : 2D arrays
-        Pencil matrices to be checked for rank deficiency distance
+    A : (n, n) array_like
+        Square array
+    B : (n, m) array_like
+        Input array
 
     Returns
     -------
-
     upper2 : float
-        Upper bound on the norm of the perturbation
-        :math:`\\left[\\begin{array}{c|c}dF & dG\\end{array}\\right]` such
-        that :math:`\\left[\\begin{array}{c|c}F+dF-pI & G+dG \\end{array}
-        \\right]` is rank deficient.
+        Upper bound on the norm of the perturbation ``[dF | dG]`` such
+        that ``[F+dF-pI | G+dG]` is rank deficient for some ``p``.
     upper1 : float
-        A theoretically softer upper bound than the upper2 for the
-        same quantity.
+        A theoretically softer upper bound than ``upper2`` for the same
+        norm.
     lower0 : float
-        Lower bound on the same quantity given in upper2
-    e_f    : complex
-        Indicates the eigenvalue that renders [F + dF - pI | G + dG ]
-        rank deficient i.e. equals to the p value at the closest rank
-        deficiency.
+        Lower bound on the norm given in ``upper2``
+    e_f : complex
+        Indicates the eigenvalue that renders ``[F+dF-pI | G+dG ]`` rank
+        deficient
     radius : float
-        The perturbation with the norm bound "upper2" is located within
-        a disk in the complex plane whose center is on "e_f" and whose
+        The perturbation with the norm bound ``upper2`` is located within
+        a disk in the complex plane whose center is on ``e_f`` and whose
         radius is bounded by this output.
 
     Notes
@@ -309,19 +302,21 @@ def minimal_realization(G, tol=1e-6):
 
     Returns
     -------
-    G_min : realization
-        Minimal realization of the input G
+    G_min : State, Transfer
+        Minimal realization of the input `G`
 
     Notes
     -----
     For State() inputs the alogrithm uses ``cancellation_distance()`` and
     ``staircase()`` for the tests. A basic two pass algorithm performs:
-     1- First distance to mode cancellation is computed then also
-     the Hessenberg form is obtained with the identified o'ble/c'ble
-     block numbers.
-     2- If staircase form reports that there are no cancellations but the
-     distance is less than the tolerance, distance wins and the corresponding
-     mode is removed.
+
+        1- First distance to mode cancellation is computed then also
+        the Hessenberg form is obtained with the identified o'ble/c'ble
+        block numbers.
+
+        2- If staircase form reports that there are no cancellations but the
+        distance is less than the tolerance, distance wins and the
+        corresponding mode is removed.
 
     For Transfer() inputs, every entry of the representation is checked for
     pole/zero cancellations and ``tol`` is used to decide for the decision

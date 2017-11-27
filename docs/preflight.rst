@@ -1,256 +1,288 @@
 ﻿Getting Started  
 ===============
 
-Using Python and other open-source tools are great only if one
-gets acquainted with the ecosystem sufficiently. Otherwise, usually
-an online search frenzy and then the frustration is around the corner. 
-
-Hence, before we move to the harold documentation, maybe a general 
-information about the related concepts can soften the fall. 
-
-Python and its scientific stack
--------------------------------
-
-For the newcomer, a slightly distorted story of the tools required to work 
-with harold might save some headaches. To emphasize, **the story is roughly
-correct but precisely informative** !
-
-Since the late 70s, there has been an enormous effort went into the numerical
-computing. For reasons that are really not relevant now, Fortran (yes that old
-weirdo language) is still considered to be one of the fastest if not the fastest
-runtime performance platform. On top of this performance, people with great 
-numerical algebra expertise had been optimizing these implementations since then.
-
-The result is now known as BLAS, LAPACK and other key libraries optimized to the
-bone with almost literally manipulating the memory addresses manually. And what
-happens is that many commercial software suites actually somehow find a way to 
-utilize this performance even though they are not coding in Fortran directly. 
-You have to appreciate how generous the authors were and why I'm humbly replicating
-their style with the MIT license. 
-
-Hence, without knowingly, you have been mostly using compiled Fortran code with
-various front ends including matlab and other software. However, this high performance
-doesn't come for free. The price to pay is to be extremely verse with low-level 
-operations to benefit from these tools.  Hence, every language/software somehow designs 
-a front end that communicates with the user, understands the context, say
-a matrix turns out to be triangular, then prepares the data in a very strict 
-format and sends to these libraries. In turn, picks up the result, shuffles the
-output format and converts it to something that the user can utilize further.
-
-In Python, this front end is called the scientific stack, that is NumPy and SciPy. 
-These involve C and Fortran bindings to low-level tools and wrap them with the 
-typical easy-to-use Python syntax. 
-
-That's why, if you are not the faint-hearted user and installing everything by 
-yourself, you have to provide a compiler that is capable of providing the compiled
-versions of these libraries. You might have noticed that some sources ship precompiled
-flavors of NumPy, SciPy to ease the pain of building the libraries from scratch. 
-While being very useful, if the compiler does not like your particular system, 
-the result is often a glorious crash. Hence, it is more of an art rather than
-following a manual
-
-.. note:: The compiler problem is almost-universally a Windows problem since it doesn't 
-    come with a proper compiler because microsoft being microsoft. The unfortunate 
-    users (including me) who have no idea even what a compiler is, have to find 
-    a compiler that crashes depending on the weather conditions of the installation 
-    date.
-
-For this reason, some groups have come up with precompiled and matched version 
-packages that are ready to be installed without bothering the users such as 
-Anaconda, pythonxy etc. See the `installation page of Scientific stack 
-<http://www.scipy.org/install.html>`_ and cross your fingers. 
-
-.. note:: Python is also mostly written in C hence the story is more involved but 
-    for the math oriented users it is not relevant at this point. 
-
-Python and its strange syntax
------------------------------
-
-Python did not start its life as a programming language involving a mathematics 
-module. It actually took quite some time to reach to the current situation that 
-is arguably dominated the data science and machine learning fields. Consequently, 
-most of the common english keyboard characters are reserved for other programming
-languages. Even worse, most of the brackets and delimiters are used for internal
-structures. For example, a matlab native square brackets ``[...]`` are used to 
-create objects that go by the name `lists`. Hence, the scientific stack creators
-had to come up with more verbose and kind of annoying syntax compared to the 
-native syntax of the well-known scientific computing software suites. As an 
-example, the moment you open up a Python console, you need to import the NumPy
-module via ``import numpy`` and then obtain the possibility of array manipulations,
-math functions::
-
-    a = numpy.array([1,2,3,4])
-    b = numpy.atleast_2d(a)
-    c = a.reshape(4,1)
-    d = numpy.array([[1],[2],[3],[4]]) # creates a tall vector
-
-.. note:: The situation is slightly more complicated than this because what first above
-    command creates is a one dimensional array. That is to say, matlab users will
-    be baffled when they try to transpose it as it will spit out exactly the same 
-    array but not the tall vector. The reason for this is that the array is theoretically
-    have only one dimension hence transpose is not well-defined as there is no 
-    second dimension to swap the elements. There are of course ways to handle 
-    this but none is fun. 
-
-
-.. note:: There is also a limited math library in Python and that is not to be 
-    confused with the *scientific* library of Python.
-
+The user is assumed to have some acquientance with Python, NumPy, and SciPy in
+order to go through the tutorial. However, it is strongly recommended to get
+versed in these impressive tools regardless.
     
-It was actually 2014 that Python developers finally(!!) decided to reserve
-a symbol for matrix multiplication that is the ``@`` character (again almost 
-everything else is reserved and core Python developers don't care that much
-about *math stuff* and the regular ``*`` is meant for element-wise multiplication
-). The actual matrix multiplication is actually a function 
-with a surprisingly accurate name : ``a.dot(b)``. However, this becomes über-tedious
-if a chain of matrices are multiplied, especially when we don't have the 
-amazing (I mean it) backslash operator of matlab via ``A\B*(C+D*E)*F``, e.g., ::
+.. note :: It was actually 2014 that Python developers included a symbol for matrix
+    multiplication that is the ``@`` character (again almost everything else is
+    reserved and the regular ``*`` is meant for element-wise multiplication).
 
-    x = numpy.linalg.solve(A,B).dot(C+D.dot(E)).dot(F)
+    Another point that might annoy the users is the complex number syntax. In Python,
+    you are obliged to use the letter ``j`` for the complex unit but cannot use ``i``.
 
-.. warning:: Never, ever, never use ``inv()`` in your computations on any software
-    (unless you want to see what the inverse is explicitly). You have been warned
-    with a colored box. 
 
-But in turn, probably, you get the most sought after operation: continuous
-slicing and functional chains (I don't know what nerds call this). What I
-mean: imagine you want to slice a matrix then do something with 
-another slice of another matrix and index the result .... and so on. ::
+.. admonition :: Tip : An almost exhaustive NumPy cheat sheet
+    :class: admonition hint
 
-    m = A[:4,:3].dot(B[2:5,:])[3,2].dot(C)
+    The following link is actually one of the first hits on any search engine
+    but here it is for completeness. Please have some time spared to check out
+    the differences between numpy and matlab syntax. It might even teach you
+    a thing or two about matlab. 
+    
+    `Click here for \"Numpy for matlab users\" <http://mathesaurus.sourceforge.net/matlab-numpy.html>`_
 
-This example can be arbitrarily long and complicated so don't get fooled by counter
-arguments: there is no substitute for this and once you get the hang of it, it pays
-off. For some reason, NumPy/SciPy/IPython prefer the mathematica syntax 
-for linear algebra objects and I have no idea why. Arguably, Mathematica is the 
-least matrix algebra friendly software suite but anyway. There is no decision
-to be made here unless we recode the array parsing parts all from scratch. 
-
-The indexing of the arrays start from zero and not one !! This debate is stupid 
-and I don't care. I recommend you to do so. Computer scientists are not the best
-people to design front-ends. You wouldn't ask the owner of the Facebook to meet 
-your best friends now, do you? It would be a guaranteed disaster. 
-
-Moreover, the array indexing is semi-exclusive, in math notation whatever is 
-given is used as `[a,b[`. In english, this notation `[1,5]` is meant to be 
-read as *from one up to five, excluding five*. It sometimes makes things 
-extremely natural and convenient, sometimes you might consider watching the 
-paint dry instead of debugging the mismatched array sizes. 
-
-Another point that might annoy the users is the complex number syntax. In Python,
-you are obliged to use the letter ``j`` for the complex unit but cannot ``i``. 
-
-Hopefully, this would convince you that Python framework is not yet another 
-matlab clone. I cannot do justice to demonstrate all the nuances since not 
-only I don't have the resources but also some of the stuff still don't make 
-too much sense to me. But in defense of Python, most of the stuff in matlab
-never made sense to me either. So it is a major upgrade. 
-
-An almost exhaustive cheat sheet for recovering matlab users
--------------------------------------------------------------
-
-The following link is actually one of the first hits on any search engine but here 
-it is for completeness. Please have some time spared to check out the 
-differences between numpy and matlab syntax. It might even teach you 
-some matlab too. 
-
-`Click here for \"Numpy for matlab users\" <http://mathesaurus.sourceforge.net/matlab-numpy.html>`_
 
 Now assuming that you have mastered the art of finding your way through
 gazillion of blogs, filtering StackOverflow nerd anger, decrypting the
-documentation of Numpy, let's start doing some familiar things in harold.
-
-.. todo:: Finish this as soon as possible
-
-A humble advice to Python beginners
------------------------------------
-
-Since Python is a programming language and not a front-end software, the 
-code we write usually needs to be executed somehow. Without going into 
-the details, Python code needs to be interpreted (similar to matlab) 
-as opposed to compiling C code. 
-
-The native way of doing this is simply typing ``python`` on the command 
-line and making it a Python interpreter. However, this is hardly ever 
-useful for any practical purposes, let alone resuming or reproducing 
-previous work. Having said that, you don't need a scary Visual blabla 
-suite that looks like an airplane cockpit either. There are many options 
-to make your life easier.
-
-
-  1. The first option is simply working with an editor, e.g., `Spyder`_ 
-     (I had a very positive experience with it), Eclipse, PyCharm, vim, 
-     emacs so on. 
-  2. Using the recent and very very powerful `Jupyter`_ (previously known 
-    as IPython) which converts your web browser into a mathematica like 
-    environment with explicit cells but you can embed even Youtube videos. 
-    Moreover, it also works on the command window too which is not limited 
-    to Python, but as the name implies Julia, Python, R and so on. 
-	
-
-I would strongly recommend Jupyter notebook option. It also makes sharing 
-your work with others extremely easy. Please follow the link to Jupyter 
-and install accordingly to your liking. 
-
-  .. _Spyder : https://pythonhosted.org/spyder/
-  .. _Jupyter : http://jupyter.org
+documentation of Numpy, let's start doing some familiar things in ``harold``.
 
 Initializing harold
 -------------------
 
-Once you have managed to make Jupyter work you will have to import harold 
-as a library. And when you do you have to access the function names properly 
-depending on how you imported harold. 
-
-
-This point is a pretty confusing and a source for heated arguments but I'll 
-just cut to the chase. Almost all proper programming languages involve the 
-concept of **namespaces** (you guess correctly, matlab doesn't have this). 
-Sticking to the part that is relevant for us, this concept actually makes 
-it possible to attach all the function names to a particular name family 
-which is represented by the dot notation e.g., 
-``mypackage.myfunction.myattribute = 45`` etc. 
-
-One obvious reason for this is that separate name families avoid name 
-clashes which is a nightmare in matlab if you have two folders on the 
-path and both have the variants of the same function. You can never be 
-sure which one matlab is going to read if you decide to call this 
-function from somewhere else. 
-
-Long story short when you import harold you can simply write on top of 
-your notebook ::
+Once harold is installed you can import it via one of the following ways ::
 
     import harold
-
-then it is possible to access the functions with the ``harold.`` prefix 
-such as, say, for frequency response calculations::
-
-    harold.frequency_response(G)
-
-Alternatively, you can use an abbreviation for the package name ::
-
     import harold as har
-
-and then you can access the functions with ``har.`` prefix. Lastly, 
-there is another way which is, as is for almost everything involving 
-professional programmers, another battlefield. You can basically decide 
-to skip the namespace and import all functions with their original name 
-to the parent namespace::
-
     from harold import *
 
-This will scan the harold library and import every object whose name 
-doesn't start with ``_`` or ``__``. For interactive notebooks, this 
-is pretty convenient if you are not importing libraries that have 
-similar function names (in turn, you can never be sure). 
+While the 3rd option is frowned upon by programmers, for working engineers it
+might be the most convenient option since the functions would not require a top
+level namespace. In other words, the first two options would require the
+functions to be used with a prefix such as ::
 
-Conclusion, if you don't have any worries about name clashes use the 
-last syntax. The typical first cell of the notebook is the importing 
-declarations. Here is the boilerplate code to start with::
+    harold.frequency_response(G)
+    
+or ::
+    
+    har.frequency_response(G)
+
+.. note :: Almost all proper programming languages involve the concept of 
+    **namespaces** (guess which one doesn't). This concept actually makes it
+    possible to attach all the function names to a particular name family which
+    is represented by the dot notation e.g., :: 
+
+        mypackage.myfunction.myattribute = 45
+
+    One obvious reason for this is that separate name families avoid name clashes
+    which is a nightmare in matlab if you have two folders on the path and both have
+    the variants of a function with the same name. You can never be sure which 
+    one matlab will read if you decide to call this function from somewhere else. 
+
+    Hence you need to assess the risk whether there will be name clashes if you use
+    the 3rd option before you import all the names to the main namespace. This will
+    scan the harold library and import every object whose name doesn't start with 
+    ``_`` or ``__``. For interactive notebooks, this is pretty convenient if you
+    are not importing libraries that have similar function names (in turn, you can
+    never be sure).
+
+Here is the boilerplate code to start with::
 
     import numpy as np
     import scipy as sp
     from harold import *
 
-You can of course extend this to your liking with your own packages. 
-Finally, let's do some control stuff
+You can of course extend this to your liking with other packages. Now, let's
+invesatigate how we can build dynamic models and do some control stuff.
+
+System Representations
+======================
+
+For creating dynamic/static models, ``harold`` currently offers two options: 
+A ``State()`` and a ``Transfer()`` object for representing systems with 
+state models and transfer matrices. 
+
+Creating models
+----------------
+ 
+``State()`` models
+^^^^^^^^^^^^^^^^^^
+
+The initialization of these objects are pretty straightforward. Note that you 
+can skip ``D`` term and it will be assumed to be zero::
+    
+    G = State([[1,2],[3,4]],[[1],[0]],[1,2])
+    G = State([[1,2],[3,4]],[[1],[0]],[1,2], dt = 0.1)
+
+In the second example, we create a discrete-time model but to avoid the clash with
+a ``D`` term we add the ``dt`` keyword explicitly. If there was also a nonzero 
+feedthrough element then we can also skip that too::
+
+    G = State([[1,2],[3,4]],[[1],[0]],[1,2],1,0.1)
+
+As obvious to everyone who used this syntax even in matlab's convenient bracket
+semicolon notation, creating four individual matrices everytime just to pass
+to the function becomes increasingly annoying. Instead a matrix slicer is 
+available in ``harold`` ::
+
+    M = np.array([[1,2,1],[3,4,0],[1,2,0]])
+    G = State(*matrix_slice(M,corner shape=(2,2), corner='nw'))
+
+As shown above, the model creation is a straightforward enumeration of 
+the involved ``A,B,C,D`` matrices in the arguments. For discrete time
+models, you simply add a fifth argument, if you have not omitted any
+or explicitly mentioning ``dt=<sampling period>`` as an argument. 
+    
+To create a static models, just provide an array ::
+
+    G = State(1)
+    G = State(np.ones((5,3)), dt=0.5)
+    
+Here again, ``dt=<sampling period>`` should be provided explicitly as it would
+be confused about the second argument being the ``B`` element. ::
+
+    G = State(1,0.001)    # Will lead to error
+    G = State(1,dt=0.001) # Will work
+
+If the model is discretized we can also check ::
+
+    G.SamplingPeriod  # returns the sampling period
+    G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
+    G.DiscretizedWith # returns the discretization method if applicable
+
+	
+These make sure that the discretization remembers how it got there in 
+the first place if harold is used. Or if the model is already given 
+as a discrete time model, the method can be set such that ``undiscretize``
+can use the correct method. 
+
+``Transfer()`` models
+^^^^^^^^^^^^^^^^^^^^^
+
+    H = Transfer([1,2,3],[7,5,3])
+
+As mentioned previously, numpy array syntax is strange and a bit 
+verbose. Hence, it makes it difficult to type every time ``np.array``
+or some other alias for creation of an array tobe used in the transfer 
+representation definitions. Hence, harold actually goes a long way to 
+make sense what is entered for the ``Transfer()`` initialization. 
+
+First, it can understand even if the user enters a scalar or a Python 
+list, instead of numpy arrays. It will be checked and converted if the 
+input is sensible. ::
+
+    G = Transfer(1,[1,2,3])
+    G = Transfer(1,[[1,2,3]])
+
+The second example might confuse the user since it will spit out a 
+transfer representation of a :math:`1\times 3` static gain. 
+
+What happens is that when the parses find a list of lists, it assumes
+that the user is trying to create a MIMO object. Thus, it changes its 
+context to make sense with the missing information. It first checks 
+that numerator has a single element and thus assumes that this is a 
+common numerator. Then it parses the denominator and finds only scalars
+thus creates the static gain of fractions one, one half, and one third. 
+
+Discrete time models are handled similarly. 
+
+After the initialization of the models, we can see the model properties ::
+
+    G.NumberOfOutputs # returns the number of rows of numerator
+    G.NumberOfOutputs # returns the number of cols of numerator
+    G.shape           # returns a tuple of (# of outs,# of ins)
+    
+    G.polynomials     # returns the polynomials ala tfdata
+    G.poles           # returns the poles 
+    G.zeros           # returns the zeros
+    G.num,G.den       # returns the individual polynomials
+    
+If the model is discretized we can also check ::
+
+    G.SamplingPeriod  # returns the sampling period
+    G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
+    G.DiscretizedWith # returns the discretization method if applicable
+    
+
+
+.. autoclass:: harold.Transfer
+    :members:
+	
+
+	
+	
+Model Arithmetic
+-------------------
+
+Both ``Transfer`` and ``State`` instances support basic model arithmetic. 
+You can add/multiply/subtract models that are compatible (division is 
+a completely different story hence omitted). Again, `harold` tries its
+best to explain what went wrong. Let's take the same discrete time 
+SISO system and set another random MIMO model ``H`` with 3 states::
+
+    G = State(-1,1,1,dt=0.01)
+	H = State(*matrix_slice(np.random.rand(5,6),(3,3)))
+	G*H
+
+	TypeError: The sampling periods don't match so I cannot multiply these 
+	systems. If you still want to multiply them asif they are compatible, 
+	carry the data to a compatible system model and then multiply.
+	
+Even after making ``G`` a continous time system ::
+	
+	G.SamplingPeriod = 0.
+	G*H
+	
+	IndexError: Multiplication of systems requires their shape to match but 
+	the system shapes I got are (1, 1) vs. (2, 3)
+
+Notice the system sizes are repeated in the error message hence we 
+don't need to constantly check which part is the culprit for both
+systems. 
+
+For `Transfer` models, another useful property is recognition of 
+common poles when doing simple addition/subtraction. For example, ::
+
+	>>> G = Transfer([1,1],[1,2])
+	>>> H = Transfer([1],[1,3,2])
+	
+	>>> F = G+H
+	>>> F.polynomials #check num,den
+	(array([[ 1.,  2.,  2.]]), array([[ 1.,  3.,  2.]]))
+	
+As you can see the cancellations are performed at the computations such that 
+the model order does not increase artificially for numerically well-conditioned
+expressions. Minimality is not guaranteed.
+
+.. note:: This is not the case for ``State`` instances that is state matrices
+    are directly augmented without any cancellation checks.
+
+
+Context Discovery
+------------------
+
+For both ``State()`` and ``Transfer()`` argument parsing, ``harold`` can 
+tell what happened during the context discovery. For that, there is a
+``validate_arguments()`` class method for each class. This will return
+the regularized version of the input arguments and also include a flag
+in case the resulting system is a static gain::
+
+    Transfer.validate_arguments(1,[[1,2,3]],verbose=1)
+
+will print out the following for the example we discussed above ::
+
+    ========================================
+    Handling numerator
+    ========================================
+    I found only a float
+    ========================================
+    Handling denominator
+    ========================================
+    I found a list
+    I found a list that has only lists
+    Every row has consistent number of elements
+    ==================================================
+    Handling raw entries are done.
+    Now checking the SISO/MIMO context and regularization.
+    ==================================================
+    One of the MIMO flags are true
+    Denominator is MIMO, Numerator is something else
+    Denominator is MIMO, Numerator is SISO
+    In the MIMO context and proper entries, I've found
+    scalar denominator entries hence flagging as a static gain.
+    Out[2]: 
+    ([[array([[1.]]), array([[1.]]), array([[1.]])]],
+     [[array([[1.]]), array([[2.]]), array([[3.]])]],
+     (1, 3),
+     True)
+
+As seen from the resulting arrays, the numerator is now three numpy float 
+arrays containing the common entry. This is because the denominator is given
+as a list of lists which is taken as MIMO intention. Both the numerator and
+denominator are converted to list of lists. 
+
+This method can also be used to verify whether a certain input is a valid
+argument for creating model objects hence the name. 
+
+Same class method is also available for the ``State()`` class. 

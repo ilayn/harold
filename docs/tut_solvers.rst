@@ -22,30 +22,15 @@ The Lyapunov equations are defined as follows,
 
 .. math::
 
-    \\begin{align}
-    X A + A^T X + Y &= 0 \\tag{1} \\\\
-    A^T X A - X + Y &= 0 \\tag{1'} \\\\
-    E^T X A + A^T X E + Y &= 0 \\tag{2} \\\\
-    A^T X A - E^T X E + Y &= 0   \\tag{2'}
-    \\end{align}
-
-
-Riccati Equation 
--------------------
-
-Similarly, the Riccati equations are defined as 
-
-.. math::
-
-    \\begin{align}
-    X A + A^T X + Q - XBR^{-1} B^T X &= 0 \\tag{1} \\\\
-    A^TXA-X+Q-A^TXB(R + B^T X B)^{-1}B^TXA &= 0 \\tag{1'} \\\\
-    A^TXE + E^TXA − (E^T X B+S^T)R^{−1}(B^TXE+S)+Q &= 0 \\tag{2} \\\\
-    A^TXA − E^T X E − (A^TXB+S^T)(BTXB+R)^{−1}(B^TXA+S)+Q &= 0 \\tag{2'} 
-    \\end{align}
+    \begin{align}
+    X A + A^T X + Y &= 0 \tag{1} \\\\
+    A^T X A - X + Y &= 0 \tag{1'} \\\\
+    E^T X A + A^T X E + Y &= 0 \tag{2} \\\\
+    A^T X A - E^T X E + Y &= 0   \tag{2'}
+    \end{align}
 
 
 .. py:currentmodule:: harold    
 .. autofunction:: lyapunov_eq_solver
-.. autofunction:: riccati_eq_solver
+
 
