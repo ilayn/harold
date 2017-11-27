@@ -24,8 +24,8 @@ THE SOFTWARE.
 
 import numpy as np
 import warnings
-from numpy import zeros_like
-from scipy.linalg import eigvals, block_diag, qz, norm, kron
+from numpy import zeros_like, kron
+from scipy.linalg import eigvals, block_diag, qz, norm
 from tabulate import tabulate
 from itertools import zip_longest, chain
 
@@ -1873,9 +1873,7 @@ class State:
     def _set_representation(self):
         self._repr_type = 'State'
 
-    #   ==================================
     # %% State class arithmetic methods
-    #   ==================================
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None
@@ -1887,98 +1885,167 @@ class State:
             return State(self._a, self._b, -self._c, -self._d, self._dt)
 
     def __add__(self, other):
-        # Addition to a State object is possible via four types
-        # 1. Another shape matching State()
-        # 2. Another shape matching Transfer()
-        # 3. Integer or float that is multiplied with a proper "ones" matrix
-        # 4. A shape matching numpy array
+        """
+        Addition method
+        """
 
-        # Notice that in case 3 it is a ones matrix not an identity!!
-        # (Given a 1x3 system + 5) adds [[5,5,5]] to D matrix.
-
-        if isinstance(other, (Transfer, State)):
-            # Trivial Rejections:
-            # ===================
-            # Reject 'ct + dt' or 'dt + dt' with different sampling periods
-            #
-            # A future addition would be converting everything to the slowest
-            # sampling system but that requires pretty comprehensive change.
-
+        if isinstance(other, State):
             if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
-                                'so I cannot\nadd these systems. '
-                                'If you still want to add them as if '
-                                'they are\ncompatible, carry the data '
-                                'to a compatible system model and then '
-                                'add.'
-                                )
+                                'so I cannot add these models.')
 
-        # Reject if the size don't match
-            if not self._shape == other.shape:
-                raise IndexError('Addition of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                self._shape,
-                                                other.shape)
-                                 )
+            gainflag = sum([self._isgain, other._isgain])
+            sisoflag = sum([self._isSISO, other._isSISO])
 
-        # ===================
-
-            if isinstance(other, State):
-
-                # First get the static gain case out of the way.
+            # If both are static gains
+            if gainflag == 2:
+                try:
+                    return State(self.d + other.d, dt=self._dt)
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. Model shapes are {0} and'
+                                     ' {1}'.format(self._shape, other.shape))
+            elif gainflag == 1:
+                # Convert the static to array
                 if self._isgain:
-                    if other._isgain:
-                        return State(self.d + other.d,
-                                     dt=self._dt)
-                    else:
-                        return State(other.a,
-                                     other.b,
-                                     other.c,
-                                     self.d + other.d,
-                                     dt=self._dt
-                                     )
+                    return self.to_array() + other
                 else:
-                    if other._isgain:  # And self is not? Swap, come again
-                        return other + self
+                    return self + other.to_array()
+            else:
+                pass
 
-                # Now, we are sure that there are no empty arrays in the
-                # system matrices hence concatenation should be OK.
+            # If both are SISO or both MIMO, parallel connection
+            if sisoflag == 2 or sisoflag == 0:
+                if sisoflag == 0 and self.shape != other.shape:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addtion. Model shapes are {0} and'
+                                     ' {1}'.format(self._shape, other.shape))
 
                 adda = block_diag(self._a, other.a)
                 addb = np.vstack((self._b, other.b))
                 addc = np.hstack((self._c, other.c))
                 addd = self._d + other.d
                 return State(adda, addb, addc, addd)
+            # One of them is SISO and needs to be broadcasted
+            else:
+                if self._isSISO:
+                    p, m = other.shape
+                    return State(self.a, kron(np.ones(m), self.b),
+                                 np.kron(np.ones(p)[:, None], self.c),
+                                 np.ones([p, m])*self.d, dt=self._dt) + other
+                else:
+                    p, m = self.shape
+                    return self + State(other.a, kron(np.ones(m), other.b),
+                                        np.kron(np.ones(p)[:, None], other.c),
+                                        np.ones([p, m])*other.d,
+                                        dt=self._dt)
 
+        elif isinstance(other, Transfer):
+            if not self._dt == other._dt:
+                raise TypeError('The sampling periods don\'t match '
+                                'so I cannot multiply these systems.')
+
+            gainflag = sum([self._isgain, other._isgain])
+
+            # If both are static gains
+            if gainflag == 2:
+                try:
+                    return State(self.to_array()+other.to_array(), dt=self._dt)
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. Model shapes are {0} and'
+                                     ' {1}'.format(self._shape, other.shape))
+
+            # If one of them is a static gain
+            elif gainflag == 1:
+                if self._isgain:
+                    return self.to_array() + other
+                else:
+                    return self + other.to_array()
+            # No static gains, carry on
+            else:
+                pass
+
+            sisoflag = sum([self._isSISO, other._isSISO])
+
+            if sisoflag == 2 or sisoflag == 0:
+                if sisoflag == 0 and self.shape != other.shape:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. State shape is {0}'
+                                     ' but the Transfer shape is {1}.'
+                                     ''.format(self._shape, other.shape))
+
+                return self + transfer_to_state(other)
+            # One of them is SISO and will be broadcasted in the next arrival
             else:
                 return self + transfer_to_state(other)
 
-        # Last chance for matrices, convert to static gain matrices and add
-        elif isinstance(other, (int, float)):
-            return State(np.ones_like(self.d)*other,
-                         dt=self._dt) + self
+        # Regularize arrays and scalars and consistency checks
+        elif isinstance(other, (int, float, np.ndarray)):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other) and np.any(other.imag):
+                raise ValueError('Complex valued representations are not '
+                                 'supported.')
 
-        elif isinstance(other, np.ndarray):
-            # It still might be a scalar inside an array
-            if other.size == 1:
-                return self + float(other)
+            if isinstance(other, np.ndarray):
+                if other.ndim == 1:
+                    if other.size == 1:
+                        s = float(other)
+                    else:
+                        s = np.atleast_2d(other.real)
+                else:
+                    s = other.real
 
-            if self._shape == other.shape:
-                return State(self._a,
-                             self._b,
-                             self._c,
-                             self._d + other,
-                             dt=self._dt)
             else:
-                raise IndexError('Addition of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                    self._shape, other.shape))
+                s = float(other)
+
+            # isgain matmul 1- scalar
+            #               2- ndarray
+            # isSISO        3- scalar
+            #               4- ndarray
+            # isMIMO        5- scalar
+            #               6- ndarray
+            if self._isgain:
+                try:
+                    # 1, 2
+                    mat = self.to_array() + s
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition (including broadcasting). '
+                                     'State shape is {0}'
+                                     ' but the array shape is {1}.'
+                                     ''.format(self._shape, other.shape))
+
+                return State(mat, dt=self._dt)
+
+            elif self._isSISO:
+                # 3
+                if isinstance(s, float):
+                    return State(self._a, self._b, self._c, self._d + s,
+                                 dt=self._dt)
+                # 4
+                else:
+                    # Broadcast and send to #6
+                    p, m = s.shape
+                    return State(self.a, kron(np.ones(m), self.b),
+                                 kron(np.ones(p)[:, None], self.c),
+                                 np.ones([p, m])*self.d, dt=self._dt) + s
+            else:
+                # 5, 6
+                try:
+                    return State(self._a, self._b, self._c, self._d + s,
+                                 dt=self._dt)
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition (including broadcasting). '
+                                     'State shape is {0}'
+                                     ' but the array shape is {1}.'
+                                     ''.format(self._shape, other.shape))
         else:
-            raise TypeError('I don\'t know how to add a '
-                            '{0} to a state representation '
-                            '(yet).'.format(type(other).__name__))
+            raise TypeError('I don\'t know how to add a {0} to a '
+                            'State representation (yet).'
+                            ''.format(type(other).__qualname__))
 
     def __radd__(self, other): return self + other
 
@@ -1988,126 +2055,22 @@ class State:
 
     def __mul__(self, other):
         """
-        Elementwise multiplication
+        Multiplication method
         """
-        if isinstance(other, (int, float)):
-            return self @ other
-
-        elif isinstance(other, np.ndarray):
-            # Complex dtype does not immediately mean complex numbers,
-            # check and forgive
-            if np.iscomplexobj(other) and np.any(other.imag):
-                raise ValueError('Complex valued representations are not '
-                                 'supported.')
-
-            # It still might be a scalar inside an array
-            if other.size == 1:
-                return self @ float(other)
-
-            if other.ndim == 1:
-                arr = np.atleast_2d(other.real)
-            else:
-                arr = other.real
-
-            if self._shape == arr.shape or self._isSISO:
-                return self * State(other, dt=self._dt)
-            else:
-                raise ValueError('Shapes are not compatible for elementwise '
-                                 'multiplication. Model shape is {0} but the'
-                                 ' array shape is {1}'.format(self._shape,
-                                                              other.shape))
-
-        elif isinstance(other, Transfer):
-            # State representations win over the typecasting
-            if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems. ')
-            return self * transfer_to_state(other)
-
-        elif isinstance(other, State):
-            # First get the static gain case out of the way.
-            if self._isgain:
-                if other._isgain:
-                    return State(self._d * other.d, dt=self._dt)
-                else:
-                    # let other handle it
-                    return other * self
-            else:
-                if other._isgain:
-                    arr = other.d
-                    if arr.size == 1:
-                        return self @ float(arr)
-                    # If SISO this is handled in matmul
-                    if self._isSISO:
-                        return self @ other
-
-                    n, p, m = self._n, self._p, self._m
-                    atemp = kron(np.eye(p*m), self._a)
-                    btemp = np.zeros((n*p*m, m))
-                    for x in range(m):
-                        btemp[n*p*x:n*p*(x+1), [x]] = kron(arr[:, [x]],
-                                                           self._b[:, [x]])
-                    ctemp = kron(np.ones((1, m)), block_diag(*self._c))
-
-                    return State(atemp, btemp, ctemp, self._d * other.d,
-                                 dt=self._dt)
-
-            # Remaining SISO case send to matmul
-            if self._isSISO:
-                return self @ other
-
-            # If survived up to here MIMO elementwise multiplication
-            if not self._shape == other.shape:
-                if other._isSISO:
-                    return self @ other
-                else:
-                    raise IndexError('Cannot multiply State with {0} '
-                                     ' shape with {1} with {2} shape.'
-                                     ''.format(self._shape,
-                                               type(other).__qualname__,
-                                               other.shape))
-
-            n, p, m = self._n, self._p, self._m
-            atemp = block_diag(kron(np.eye(p*m), self._a),
-                               kron(np.eye(m), other.a))
-
-            btemp = np.zeros((n*p*m, m))
-            for x in range(m):
-                btemp[n*p*x:n*p*(x+1), [x]] = kron(other.d[:, [x]],
-                                                   self._b[:, [x]])
-            btemp = np.vstack((btemp, block_diag(*other.b.T).T))
-
-            ctemp = kron(np.ones((1, m)), block_diag(*self._c))
-            ctemp2 = np.empty((p, m*n))
-            for x in range(p):
-                ctemp2[[x], :] = kron(self._d[[x], :], other.c[[x], :])
-            ctemp = np.hstack((ctemp, ctemp2))
-            return State(atemp, btemp, ctemp, self._d * other.d, dt=self._dt)
-        else:
-            raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a State representation '
-                            '(yet).'.format(type(other).__qualname__))
+        # Elementwise multiplication is removed. Redirect all to matmul
+        return self @ other
 
     def __rmul__(self, other):
-        # Notice that if other is a State or Transfer, it will be handled
-        # by other's __mul__() method. Hence we only take care of the
-        # right multiplication of the scalars and arrays. Otherwise
-        # rejection is executed
-        if isinstance(other, (int, float, np.ndarray)):
-            return self * other
-        else:
-            raise TypeError('I don\'t know how to elementwise multiply a '
-                            '{0} with a state representation '
-                            '(yet).'.format(type(other).__qualname__))
+        """
+        Left Multiplication method
+        """
+        return other @ self
 
     def __matmul__(self, other):
-        # @-multiplication has the following rationale, first two items
-        # are for user-convenience in case @ is used for *
+        """
+        Multiplication method
+        """
 
-        # 1. self is SISO --> whatever other is treat as *-mult -->  __mul__
-        # 2. self is MIMO and other is SISO, same as item 1.
-        # 3. self is MIMO and other is np.ndarray --> Matrix mult
-        # 4. self is MIMO and other is MIMO --> Matrix mult
         if isinstance(other, State):
             if not self._dt == other._dt:
                 raise TypeError('The sampling periods don\'t match '
@@ -2128,9 +2091,15 @@ class State:
             # If one of them is a static gain
             elif gainflag == 1:
                 if self._isgain:
-                    return self.to_array() @ other
+                    if self._isSISO:
+                        return float(self.to_array()) * other
+                    else:
+                        return self.to_array() @ other
                 else:
-                    return self @ other.to_array()
+                    if other._isSISO:
+                        return self * float(other.to_array())
+                    else:
+                        return self @ other.to_array()
 
             # No static gains, carry on
             else:
@@ -2181,8 +2150,8 @@ class State:
                     return State(self.to_array()@other.to_array(), dt=self._dt)
                 except ValueError:
                     raise ValueError('Shapes are not compatible for '
-                                     'multiplication. Model shape is {0}'
-                                     ' but the array shape is {1}.'
+                                     'multiplication. State shape is {0}'
+                                     ' but the Transfer shape is {1}.'
                                      ''.format(self._shape, other.shape))
 
             # If one of them is a static gain
@@ -2201,8 +2170,9 @@ class State:
             if sisoflag == 2 or sisoflag == 0:
                 if sisoflag == 0 and self._m != other._p:
                     raise ValueError('Shapes are not compatible for '
-                                     'multiplication. Model shapes are {0} and'
-                                     ' {1}'.format(self._shape, other.shape))
+                                     'multiplication. State shape is {0}'
+                                     ' but the Transfer shape is {1}.'
+                                     ''.format(self._shape, other.shape))
 
                 return self @ transfer_to_state(other)
             # One of them is SISO and needs to be broadcasted
@@ -2240,8 +2210,8 @@ class State:
                 # Early shape check
                 if self._shape[1] != other.shape[0] and not self._isSISO:
                     raise ValueError('Shapes are not compatible for '
-                                     'multiplication. Model shape is {0} but'
-                                     ' the array shape is {1}.'
+                                     'multiplication. State shape is {0}'
+                                     ' but the array shape is {1}.'
                                      ''.format(self._shape, other.shape))
 
             else:
@@ -2300,7 +2270,7 @@ class State:
                                  dt=self._dt)
         else:
             raise TypeError('I don\'t know how to multiply a {0} with a '
-                            'state representation (yet).'
+                            'State representation (yet).'
                             ''.format(type(other).__qualname__))
 
     def __rmatmul__(self, other):
@@ -3192,10 +3162,6 @@ def transmission_zeros(A, B, C, D):
     """
     Computes the transmission zeros of a (A,B,C,D) system matrix quartet.
 
-    .. note:: This is a straightforward implementation of the algorithm of
-              Misra, van Dooren, Varga 1994 but skipping the descriptor matrix
-              which in turn becomes Emami-Naeini, van Dooren 1979.
-
     Parameters
     ----------
     A,B,C,D : ndarray
@@ -3206,6 +3172,12 @@ def transmission_zeros(A, B, C, D):
     z : ndarray
         The array of computed transmission zeros. The array is returned
         empty if no transmission zeros are found.
+
+    Notes
+    -----
+    This is a straightforward implementation of the algorithm of Misra, van
+    Dooren, Varga 1994 but skipping the descriptor matrix which in turn
+    becomes Emami-Naeini, van Dooren 1979.
 
     """
     n, (p, m) = A.shape[0], D.shape
@@ -3227,7 +3199,7 @@ def transmission_zeros(A, B, C, D):
 
         n, (p, m) = Ar.shape[0], Dr.shape
 
-        if np.count_nonzero(np.c_[Cr, Dr]) == 0 or p != m:
+        if not np.any(np.c_[Cr, Dr]) == 0 or p != m:
             Arc, Crc, Brc, Drc = _tzeros_reduce(Ar.T, Cr.T, Br.T, Dr.T)
             Arc, Crc, Brc, Drc = Arc.T, Crc.T, Brc.T, Drc.T
         else:

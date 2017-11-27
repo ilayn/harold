@@ -330,36 +330,27 @@ def test_State_algebra_truediv_rtruediv():
 
 def test_State_algebra_mul_rmul_scalar_array():
     G = State(np.diag([-1, -2]), [[1, 2], [3, 4]], np.eye(2))
-    GI = np.array([[-1., 0., -0., 0., -0., 0., -0., 0., 1., 0.],
-                   [0., -2., 0., -0., 0., -0., 0., -0., 3., 0.],
-                   [-0., 0., -1., 0., -0., 0., -0., 0., 0., 0.],
-                   [0., -0., 0., -2., 0., -0., 0., -0., 0., 0.],
-                   [-0., 0., -0., 0., -1., 0., -0., 0., 0., 0.],
-                   [0., -0., 0., -0., 0., -2., 0., -0., 0., 0.],
-                   [-0., 0., -0., 0., -0., 0., -1., 0., 0., 2.],
-                   [0., -0., 0., -0., 0., -0., 0., -2., 0., 4.],
-                   [1., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
-                   [0., 0., 0., 1., 0., 0., 0., 1., 0., 0.]])
-
     F = G*np.eye(2)
-    assert_equal(concatenate_state_matrices(F), GI)
+    Fm = G@np.eye(2)
+    assert_equal(concatenate_state_matrices(F), concatenate_state_matrices(Fm))
     F = np.eye(2)*G
-    assert_equal(concatenate_state_matrices(F), GI)
+    Fm = np.eye(2)@G
+    assert_equal(concatenate_state_matrices(F), concatenate_state_matrices(Fm))
     H = 1/2*G
-    assert_equal(H.b, 0.5*G.b)
+    assert_equal(H.c, 0.5*G.c)
 
 
 def test_State_matmul_rmatmul_ndarray():
-    H = State([[-5, -2], [1, 0]], [[2], [0]], [-1, 1], 1)
+    H = State([[-5, -2], [1, 0]], [[2], [0]], [3, 1], 1)
     J1 = np.array([[-5., -2., 0., 0., 0., 0., 2., 4., 6., 8.],
                    [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
                    [0., 0., -5., -2., 0., 0., 10., 12., 14., 16.],
                    [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
                    [0., 0., 0., 0., -5., -2., 18., 20., 22., 24.],
                    [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
-                   [-1., 1., 0., 0., 0., 0., 1., 2., 3., 4.],
-                   [0., 0., -1., 1., 0., 0., 5., 6., 7., 8.],
-                   [0., 0., 0., 0., -1., 1., 9., 10., 11., 12.]])
+                   [3., 1., 0., 0., 0., 0., 1., 2., 3., 4.],
+                   [0., 0., 3., 1., 0., 0., 5., 6., 7., 8.],
+                   [0., 0., 0., 0., 3., 1., 9., 10., 11., 12.]])
 
     J2 = np.array([[-5., -2., 0., 0., 0., 0., 2., 0., 0.],
                    [1., 0., 0., 0., 0., 0., 0., 0., 0.],
@@ -367,10 +358,10 @@ def test_State_matmul_rmatmul_ndarray():
                    [0., 0., 1., 0., 0., 0., 0., 0., 0.],
                    [0., 0., 0., 0., -5., -2., 0., 0., 2.],
                    [0., 0., 0., 0., 1., 0., 0., 0., 0.],
-                   [-1., 1., -2., 2., -3., 3., 1., 2., 3.],
-                   [-4., 4., -5., 5., -6., 6., 4., 5., 6.],
-                   [-7., 7., -8., 8., -9., 9., 7., 8., 9.],
-                   [-10., 10., -11., 11., -12., 12., 10., 11., 12.]])
+                   [3., 1., 6., 2., 9., 3., 1., 2., 3.],
+                   [12., 4., 15., 5., 18., 6., 4., 5., 6.],
+                   [21., 7., 24., 8., 27., 9., 7., 8., 9.],
+                   [30., 10., 33., 11., 36., 12., 10., 11., 12.]])
 
     mat = np.arange(1, 13).reshape(3, 4)
     Fm = concatenate_state_matrices(mat @ H)
@@ -386,25 +377,13 @@ def test_State_matmul_rmatmul_ndarray():
 
 
 def test_State_algebra_mul_rmul_mimo_siso():
-    static_siso_state = State(5)
-    static_mimo_state = State(2.0*np.eye(3))
-    dynamic_siso_state = State(haroldcompanion([1, 3, 3, 1]),
-                               e_i(3, -1),
-                               e_i(3, 1).T,
-                               0)
+    sta_siso = State(5)
+    sta_mimo = State(2.0*np.eye(3))
+    dyn_siso = State(haroldcompanion([1, 3, 3, 1]), e_i(3, -1), e_i(3, 1).T)
+    dyn_mimo = State(haroldcompanion([1, 3, 3, 1]), e_i(3, [1, 2]), np.eye(3))
+    dyn_mimo_sq = State(haroldcompanion([1, 3, 3, 1]), np.eye(3), np.eye(3))
 
-    dynamic_mimo_state = State(haroldcompanion([1, 3, 3, 1]),
-                               e_i(3, [1, 2]),
-                               np.eye(3),
-                               np.zeros((3, 2)))
-
-    dynamic_square_state = State(haroldcompanion([1, 3, 3, 1]),
-                                 np.eye(3),
-                                 np.eye(3),
-                                 np.zeros((3, 3))
-                                 )
-
-    G = dynamic_siso_state * dynamic_mimo_state
+    G = dyn_siso * dyn_mimo
     J = np.array([[0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
                   [0., 0., 1., 0., 1., 0., 0., 0., 0., 0., 0.],
                   [-1., -3., -3., 0., 0., 0., 0., 1., 0., 0., 0.],
@@ -418,16 +397,14 @@ def test_State_algebra_mul_rmul_mimo_siso():
                   [0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
                   [0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.]])
     assert_array_almost_equal(concatenate_state_matrices(G), J)
-    G = dynamic_mimo_state * dynamic_siso_state
+    G = dyn_mimo * dyn_siso
     assert_array_almost_equal(concatenate_state_matrices(G), J)
 
-    G = dynamic_mimo_state * static_siso_state
-    assert_array_almost_equal(G.b, 5*dynamic_mimo_state.b)
-    assert_array_almost_equal(G.d, 5*dynamic_mimo_state.d)
-    assert_raises(IndexError, dynamic_siso_state.__add__, static_mimo_state)
-    assert_raises(IndexError, static_mimo_state.__add__, dynamic_mimo_state)
-    assert_raises(IndexError, static_mimo_state.__add__, static_siso_state)
-    F = static_mimo_state @ dynamic_mimo_state
+    G = dyn_mimo * sta_siso
+    assert_array_almost_equal(G.b, 5*dyn_mimo.b)
+    assert_array_almost_equal(G.d, 5*dyn_mimo.d)
+    assert_raises(ValueError, sta_mimo.__add__, dyn_mimo)
+    F = sta_mimo @ dyn_mimo
     J = np.array([[0., 1., 0., 0., 0.],
                   [0., 0., 1., 1., 0.],
                   [-1., -3., -3., 0., 1.],
@@ -435,8 +412,36 @@ def test_State_algebra_mul_rmul_mimo_siso():
                   [0., 2., 0., 0., 0.],
                   [0., 0., 2., 0., 0.]])
     assert_array_almost_equal(concatenate_state_matrices(F), J)
-    assert_almost_equal((dynamic_square_state + static_mimo_state).d,
-                        2*np.eye(3))
+    assert_almost_equal((dyn_mimo_sq + sta_mimo).d, 2*np.eye(3))
+
+
+def test_State_algebra_add_radd():
+    sta_siso = State(5)
+    sta_mimo = State(2.0*np.eye(3))
+    dyn_siso = State(haroldcompanion([1, 3, 3, 1]), e_i(3, -1), e_i(3, 1).T)
+    dyn_mimo = State(haroldcompanion([1, 3, 3, 1]), e_i(3, [1, 2]), np.eye(3))
+    dyn_mimo_sq = State(haroldcompanion([1, 3, 3, 1]), np.eye(3), np.eye(3))
+
+    G = dyn_mimo + sta_siso
+    assert_array_almost_equal(G.d, sta_siso.to_array()*np.ones(dyn_mimo.shape))
+    assert_raises(ValueError, dyn_mimo.__add__, sta_mimo)
+    G = dyn_mimo_sq + sta_mimo
+    assert_array_almost_equal(G.d, 2.*np.eye(3))
+    G = dyn_mimo + dyn_siso
+    J = np.array([[0., 1., 0., 0., 0., 0., 0., 0.],
+                  [0., 0., 1., 0., 0., 0., 1., 0.],
+                  [-1., -3., -3., 0., 0., 0., 0., 1.],
+                  [0., 0., 0., 0., 1., 0., 0., 0.],
+                  [0., 0., 0., 0., 0., 1., 0., 0.],
+                  [0., 0., 0., -1., -3., -3., 1., 1.],
+                  [1., 0., 0., 0., 1., 0., 0., 0.],
+                  [0., 1., 0., 0., 1., 0., 0., 0.],
+                  [0., 0., 1., 0., 1., 0., 0., 0.]])
+    assert_array_almost_equal(concatenate_state_matrices(G), J)
+    assert_raises(ValueError, dyn_mimo.__add__, dyn_mimo_sq)
+    assert_raises(ValueError, dyn_mimo.__sub__, dyn_mimo_sq)
+    assert_raises(ValueError, dyn_mimo.__radd__, dyn_mimo_sq)
+    assert_raises(ValueError, dyn_mimo.__rsub__, dyn_mimo_sq)
 
 
 def test_State_slicing():
