@@ -229,7 +229,7 @@ def cancellation_distance(F, G):
     Parameters
     ----------
     A : (n, n) array_like
-        Square array
+        Square input array
     B : (n, m) array_like
         Input array
 
@@ -253,7 +253,7 @@ def cancellation_distance(F, G):
 
     Notes
     -----
-    Implements the algorithm given in D.Boley SIMAX vol.11(4) 1990.
+    Implements the algorithm of D.Boley given in DOI:10.1137/0611046
 
     """
     if not np.equal(*F.shape):
@@ -265,7 +265,7 @@ def cancellation_distance(F, G):
     n, m = A.shape
     B = e_i(n, np.s_[:m])
     D = e_i(n, np.s_[m:])
-    C = qr(2*np.random.rand(n, n-m) - 1, mode='economic')[0]
+    C, _ = qr(2*np.random.rand(n, n-m) - 1, mode='economic')
     evals, V = eig(np.c_[A, C])
     K = cond(V)
     X = V[:m, :]
@@ -351,7 +351,7 @@ def _minimal_realization_state(A, B, C, tol=1e-6):
         n = A.shape[0]
         # Make sure that we still have states left
         if n == 0:
-            A, B, C = [(np.empty((1, 0)))]*3
+            A, B, C = [np.array([])]*3
             break
 
         kc = cancellation_distance(A, B)[0]

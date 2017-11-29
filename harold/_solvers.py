@@ -26,6 +26,8 @@ from numpy.linalg._umath_linalg import solve
 
 from scipy.linalg import qz, schur
 
+__all__ = ['lyapunov_eq_solver']
+
 
 def lyapunov_eq_solver(A, Y, E=None, form='c'):
     '''

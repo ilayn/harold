@@ -23,8 +23,8 @@ THE SOFTWARE.
 """
 import numpy as np
 
-__all__ = ['haroldsvd', 'haroldker', 'pair_complex_numbers',
-           'e_i', 'matrix_slice']
+__all__ = ['haroldsvd', 'haroldker', 'pair_complex_numbers', 'e_i',
+           'matrix_slice']
 
 
 def haroldsvd(A, also_rank=False, rank_tol=None):

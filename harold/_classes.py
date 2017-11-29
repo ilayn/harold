@@ -342,9 +342,9 @@ class Transfer:
     def _set_representation(self):
         self._repr_type = 'Transfer'
 
-    #   ==================================
+
     # %% Transfer class arithmetic methods
-    #   ==================================
+
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None
@@ -2973,13 +2973,6 @@ def transfer_to_state(G, output='system'):
 
                 # Make the denominator entries monic
                 if den[x][y][0, 0] != 1.:
-                    if np.abs(den[x][y][0, 0]) < 1e-5:
-                        print('transfer_to_state Warning:\n'
-                              ' The leading coefficient of the ({0},{1}) '
-                              'denominator entry is too small (<1e-5). '
-                              'Expect some nonsense in the state space '
-                              'matrices.'.format(x, y), end='\n')
-
                     num[x][y] = np.array([1/den[x][y][0, 0]])*num[x][y]
                     den[x][y] = np.array([1/den[x][y][0, 0]])*den[x][y]
 

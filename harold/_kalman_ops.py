@@ -26,6 +26,10 @@ from scipy.linalg import block_diag
 from ._classes import State, _state_or_abcd
 from ._aux_linalg import haroldsvd
 
+__all__ = ['kalman_controllability', 'kalman_observability',
+           'kalman_decomposition', 'is_kalman_controllable',
+           'is_kalman_observable']
+
 
 def kalman_controllability(G, compress=False):
     """

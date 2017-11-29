@@ -49,17 +49,31 @@ def test_haroldgcd():
 
 
 def test_haroldlcm():
-        # Test the least common multiple
-        a, b = haroldlcm(array([1, 3, 0, -4]),
-                         array([1, -4, -3, 18]),
-                         array([1, -4, 3]),
-                         array([1, -2, -8])
-                         )
-        assert_almost_equal(a,
-                            array([1., -7., 3., 59., -68., -132., 144.]))
-        # Test the multipliers
-        for ind, x in enumerate([array([1., -10., 33., -36.]),
-                                 array([1., -3., -6., 8.]),
-                                 array([1., -3., -12., 20.,  48.]),
-                                 array([1., -5., 1., 21., -18.])]):
-            assert_almost_equal(b[ind], x)
+    assert_raises(ValueError, haroldlcm, [1, 3, 2], [[1, 4, 3], [2, 3, 5]])
+    assert_raises(ValueError, haroldlcm, [1, 3, 2], [])
+
+    a, b = haroldlcm([1, 3, 2], [1, 4, 3+5j])
+    assert_almost_equal(a, array([1., 6., 11., 6.]))
+    assert_almost_equal(b[0], array([1., 3.]))
+    assert_almost_equal(b[1], array([1., 2.]))
+
+    # Test the least common multiple
+    a, b = haroldlcm([1, 3, 0, -4], [1, -4, -3, 18], [1, -4, 3], [1, -2, -8])
+    assert_almost_equal(a, array([1., -7., 3., 59., -68., -132., 144.]))
+    # Test the multipliers
+    for ind, x in enumerate([array([1., -10., 33., -36.]),
+                             array([1., -3., -6., 8.]),
+                             array([1., -3., -12., 20.,  48.]),
+                             array([1., -5., 1., 21., -18.])]):
+        assert_almost_equal(b[ind], x)
+
+    a, b = haroldlcm(1, 1, [1, 3, 0, -4], 1)
+    assert_almost_equal(a, array([1, 3, 0, -4]))
+    assert_almost_equal(b[2], array([1.]))
+    for x in [0, 1, 3]:
+        assert_almost_equal(b[x], array([1, 3, 0, -4]))
+
+    a, b = haroldlcm(1, 2, 3, 4)
+    for x in range(4):
+        assert_almost_equal(b[x], array([1.]))
+    assert_almost_equal(a, array([1.]))
