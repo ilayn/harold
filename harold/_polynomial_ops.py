@@ -22,11 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import numpy as np
 import collections
+import numpy as np
+from numpy.linalg import matrix_rank
 from scipy.signal import deconvolve
-from scipy.linalg import block_diag, lu
+from scipy.linalg import block_diag, lu, matrix_balance, solve, lstsq
 from ._aux_linalg import haroldsvd, e_i
+
+try:
+    from scipy.linalg import LinAlgWarning as rcond_warn
+except ImportError:
+    rcond_warn = RuntimeWarning
 
 __all__ = ['haroldlcm', 'haroldgcd', 'haroldcompanion', 'haroldpoly',
            'haroldpolyadd', 'haroldpolymul', 'haroldpolydiv']
@@ -79,7 +85,7 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     -------
     >>> a , b = haroldlcm([1,3,0,-4], [1,-4,-3,18], [1,-4,3], [1,-2,-8])
     >>> a
-    (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.])
+    array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]
     >>> b
     [array([  1., -10.,  33., -36.]),
      array([  1.,  -3.,  -6.,   8.]),
@@ -89,8 +95,10 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
 
     """
-
-    args = [np.atleast_1d(np.array(a).squeeze().real) for a in args]
+    # Regularize the arguments
+    args = [np.array(a).squeeze().real for a in args]
+    # Upcast if any scalar arrays such as np.array(1)
+    args = [np.atleast_1d(a) for a in args]
     if not all([x.ndim == 1 for x in args]):
         raise ValueError('Input arrays must be 1D.')
     if not all([x.size > 0 for x in args]):
@@ -106,110 +114,72 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     # Remove if there are constant polynomials but return their multiplier!
     poppedargs = [x for x in args if x.size > 1]
     # Get the index number of the ones that are popped
-    poppedindex = tuple([ind for ind, x in enumerate(args) if x.size == 1])
-    a = block_diag(*(map(haroldcompanion, poppedargs)))  # Companion A
-    b = np.concatenate([e_i(x.size-1, -1) for x in poppedargs])  # Companion B
-    c = block_diag(*[e_i(x.size-1, 0).T for x in poppedargs])
-    n = a.shape[0]
+    p_ind, l_ind = [], []
+    [p_ind.append(ind) if x.size == 1 else l_ind.append(ind)
+        for ind, x in enumerate(args)]
 
-    # As typical, it turns out that the minimality and c'ble subspace for
-    # this is done already (Karcanias, Mitrouli, 2004) with a clever extra
-    # step for the multipliers thanks to the structure of adjoint
+    # If there are more than one nonconstant polynomial to consider
+    if len(poppedargs) > 1:
+        a = block_diag(*(map(haroldcompanion, poppedargs)))
+        b = np.concatenate([e_i(x.size-1, -1) for x in poppedargs])
+        n = a.shape[0]
 
-    # Computing full c'bility matrix is redundant we just need to see where
-    # the rank drop is (if any!). Also due matrix power, things grow quickly.
+        # Balance A
+        As, (sca, _) = matrix_balance(a, permute=False, separate=True)
+        Bs = b*np.reciprocal(sca)[:, None]
 
-    # TODO: Below two lines feel like matlab programming, revisit again
-    C = b
-    i = 1
-    # Computing full c'bility matrix is redundant we just need to see where
-    # the rank drop is (if any!).
-    # Also due matrix power, things grow too quickly.
-    while np.linalg.matrix_rank(C) == C.shape[1] and i <= n:
-        C = np.hstack((C, np.linalg.matrix_power(a, i).dot(b)))
-        i += 1
-    s, v = haroldsvd(C)[1:]
-    temp = s.dot(v)
-    # If not coprime we should "expect" zero rows at the bottom
+        # Computing full c'bility matrix is redundant we just need to see where
+        # the rank drop is (if any!). Due to matrix power, things grow quickly!
+        C = Bs
+        for _ in range(n-1):
+            C = np.hstack([C, As @ C[:, [-1]]])
+            if matrix_rank(C) != C.shape[1]:
+                break
+        else:
+            # No break
+            C = np.hstack([C, As @ C[:, [-1]]])
 
-    if i-1 == n:  # Relatively coprime
-        temp2 = np.linalg.inv(temp[:, :-1])  # Every col until the last
+        cols = C.shape[1]
+        _, s, v = haroldsvd(C)
+        temp = s @ v
+        lcmpoly = solve(temp[:cols-1, :-1], -temp[:cols-1, -1])
+        # Add monic coefficient and flip
+        lcmpoly = np.append(lcmpoly, 1)[::-1]
     else:
-        temp2 = block_diag(np.linalg.inv(temp[:i-1, :i-1]), np.eye(n+1-i))
-
-    lcmpoly = temp2.dot(-temp)[:i-1, -1]
-    # Add monic coefficient and flip
-    lcmpoly = np.append(lcmpoly, 1)[::-1]
+        lcmpoly = np.trim_zeros(poppedargs[0], 'f')
+        lcmpoly = lcmpoly/lcmpoly[0]
 
     if compute_multipliers:
-        a_lcm = haroldcompanion(lcmpoly)
-        b_lcm = np.linalg.pinv(C[:c.shape[1], :-1]).dot(b)
-        c_lcm = c.dot(C[:c.shape[1], :-1])
+        n_lcm = lcmpoly.size - 1
+        if len(poppedargs) > 1:
+            c = block_diag(*[e_i(x.size-1, 0).T for x in poppedargs]) * sca
+            b_lcm, _, _, _ = lstsq(C[:c.shape[1], :-1], Bs)
+            c_lcm = c @ C[:c.shape[1], :-1]
 
-        # adj(sI-A) formulas with A being a companion matrix
-        # We need an array container so back to list of lists
-        n_lcm = a_lcm.shape[0]
-        # Create a list of lists of lists with zeros
-        adjA = [[[0]*n_lcm for m in range(n_lcm)] for n in range(n_lcm)]
+            # adj(sI-A) formulas with A being a companion matrix. Use a 3D
+            # array where x,y,z = adj(sI-A)[x,y] and z is the coefficient array
+            adjA = np.zeros([n_lcm, n_lcm, n_lcm])
+            # fill in the adjoint
+            for x in range(n_lcm):
+                # Diagonal terms
+                adjA[x, x, :n_lcm-x] = lcmpoly[:n_lcm-x]
+                for y in range(n_lcm):
+                    if y < x:  # Upper Triangular terms
+                        adjA[x, y, x-y:] = adjA[x, x, :n_lcm-(x-y)]
+                    elif y > x:  # Lower Triangular terms
+                        adjA[x, y, n_lcm-y:n_lcm+1-y+x] = \
+                                                    -lcmpoly[-x-1:n_lcm+1]
+            # C*adj(sI-A)*B
+            mults = c_lcm @ np.sum(adjA * b_lcm, axis=1)
+        else:
+            mults = np.zeros((1, n_lcm))
+            mults[0, -1] = 1.
 
-        # looping fun
-        for x in range(n_lcm):
-            # Diagonal terms
-            adjA[x][x][:n_lcm-x] = list(lcmpoly[:n_lcm-x])
-            for y in range(n_lcm):
-                if y < x:  # Upper Triangular terms
-                    adjA[y][x][x-y:] = adjA[x][x][:n_lcm-(x-y)]
-                elif y > x:  # Lower Triangular terms
-                    adjA[y][x][n_lcm-y:n_lcm+1-y+x] = list(
-                                                        -lcmpoly[-x-1:n_lcm+1])
-
-        """
-        Ok, now get C_lcm * adj(sI-A_lcm) * B_lcm
-
-        Since we are dealing with lists we have to fake a matrix multiplication
-        with an evil hack. The reason is that, entries of adj(sI-A_lcm) are
-        polynomials and numpy doesn't have a container for such stuff hence we
-        store them in Python "list" objects and manually perform elementwise
-        multiplication.
-
-        Middle three lines take the respective element of b vector and
-        multiplies the column of list of lists. Hence we actually obtain
-
-                    adj(sI-A_lcm) * blockdiag(B_lcm)
-
-        The resulting row entries are added to each other to get
-        adj(sI-A)*B_lcm. Finally, since we now have a single column we can
-        treat polynomial entries as matrix entries hence multiplied with c
-        matrix properly.
-
-        """
-        mults = c_lcm.dot(
-            np.vstack(
-                tuple(
-                    [haroldpolyadd(*w, trim_zeros=False) for w in
-                        tuple(
-                            [
-                              [
-                                [b_lcm[y, 0]*z for z in adjA[y][x]]
-                                for y in range(n_lcm)] for x in range(n_lcm)
-                            ]
-                          )
-                     ]
-                 )
-                 )
-               )
-
-        # If any reinsert lcm polynomial for constant polynomials
-        if not poppedindex == ():
-            dummyindex = 0
-            dummymatrix = np.zeros((len(args), lcmpoly.size))
-            for x in range(len(args)):
-                if x in poppedindex:
-                    dummymatrix[x, :] = lcmpoly
-                    dummyindex += 1
-                else:
-                    dummymatrix[x, 1:] = mults[x-dummyindex, :]
-            mults = dummymatrix
+        if len(p_ind) > 0:
+            temp = np.zeros((len(args), lcmpoly.size), dtype=float)
+            temp[p_ind] = lcmpoly
+            temp[l_ind, 1:] = mults
+            mults = temp
 
         lcmpoly[abs(lcmpoly) < cleanup_threshold] = 0.
         mults[abs(mults) < cleanup_threshold] = 0.
@@ -236,29 +206,22 @@ def haroldgcd(*args):
 
     Returns
     --------
-
     gcdpoly : 1d array
 
     Example
     -------
-
     >>> a = haroldgcd(*map(haroldpoly,([-1,-1,-2,-1j,1j],
                                        [-2,-3,-4,-5],
                                        [-2]*10)))
     >>> a
     array([ 1.,  2.])
 
-
     .. warning:: It uses the LU factorization of the Sylvester matrix.
                  Use responsibly. It does not check any certificate of
                  success by any means (maybe it will in the future).
                  I have played around with ERES method but probably due
                  to my implementation, couldn't get satisfactory results.
-                 Hence I've switched to matrix-based methods. I am still
-                 interested in better methods though, so please contact
-                 me if you have a working implementation that improves
-                 over this.
-
+                 I am still interested in better methods.
     """
     raw_arr_args = [np.atleast_1d(np.squeeze(x)) for x in args]
     arr_args = [np.trim_zeros(x, 'f') for x in raw_arr_args if x.size > 0]
