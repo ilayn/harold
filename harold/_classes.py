@@ -3175,9 +3175,9 @@ def _tzeros_reduce(A, B, C, D):
 def _state_or_abcd(arg, n=4):
     """
     Tests the argument for being a State() object or any number of
-    arguments for testing. The typical use case is to accept the arguments
-    regardless of whether the input is a class instance or standalone
-    matrices.
+    model matrix arguments for testing. The typical use case is to accept
+    the arguments regardless of whether the input is a class instance or
+    standalone matrices.
 
     The optional n argument is for testing state matrices less than four.
     For example, the argument should be tested for either being a State()
@@ -3189,8 +3189,9 @@ def _state_or_abcd(arg, n=4):
 
     Parameters
     ----------
-    arg : State() or tuple of 2D Numpy arrays
-        The argument to be parsed and checked for validity.
+    arg : State(), tuple
+        The argument to be parsed and checked for validity. Expects either
+        a State model or a tuple holding the model matrices
     n : integer {-1,1,2,3,4}
         If we let A,B,C,D numbered as 1,2,3,4, defines the test scope such
         that only up to n-th matrix is tested. To test only an A,C use n = -1
@@ -3250,7 +3251,7 @@ def _state_or_abcd(arg, n=4):
                              'Not enough elements in the argument to test.'
                              'Maybe you forgot to modify the n value?')
     else:
-        raise TypeError('The argument is neither a tuple of matrices nor '
+        raise TypeError('The argument is neither a tuple of arrays nor '
                         'a State() object. The argument is of the type "{}"'
                         ''.format(type(arg).__qualname__))
 

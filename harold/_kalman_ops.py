@@ -22,16 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
-from scipy.linalg import block_diag
+from scipy.linalg import block_diag, solve
 from ._classes import State, _state_or_abcd
 from ._aux_linalg import haroldsvd
+from ._arg_utils import _check_for_state
 
-__all__ = ['kalman_controllability', 'kalman_observability',
+__all__ = ['controllability_matrix', 'observability_matrix',
            'kalman_decomposition', 'is_kalman_controllable',
            'is_kalman_observable']
 
 
-def kalman_controllability(G, compress=False):
+def controllability_matrix(G, compress=False):
     """
     Computes the Kalman controllability related quantities. The algorithm
     is the literal computation of the controllability matrix with increasing
@@ -44,7 +45,6 @@ def kalman_controllability(G, compress=False):
     ----------
     G : State() or tuple of {(n,n),(n,m)} array_like matrices
         System or matrices to be tested
-
     compress : Boolean
         If set to True, then the returned controllability matrix is row
         compressed, and in case of uncontrollable modes, has that many
@@ -52,7 +52,6 @@ def kalman_controllability(G, compress=False):
 
     Returns
     -------
-
     Cc : {(n,nxm)} 2D numpy array
         Kalman Controllability Matrix
     T : (n,n) 2D numpy arrays
@@ -84,7 +83,7 @@ def kalman_controllability(G, compress=False):
     return Cc, T, r
 
 
-def kalman_observability(G, compress=False):
+def observability_matrix(G, compress=False):
     """
     Computes the Kalman observability related objects. The algorithm
     is the literal computation of the observability matrix with increasing
@@ -224,8 +223,7 @@ def kalman_decomposition(G, compute_T=False, output='system',
             Gk.d = G.d
 
     """
-    if not isinstance(G, State):
-        raise TypeError('The argument must be a State() object')
+    _check_for_state(G)
 
     # If a static gain, then skip and return the argument
     if G._isgain:
@@ -240,14 +238,14 @@ def kalman_decomposition(G, compute_T=False, output='system',
 
     # First check if controllable
     if not is_kalman_controllable(G):
-        Tc, r = kalman_controllability(G)[1:]
+        _, Tc, r = controllability_matrix(G)
     else:
         Tc = np.eye(G.a.shape[0])
         r = G.a.shape[0]
 
-    ac = np.linalg.solve(Tc, G.a).dot(Tc)
-    bc = np.linalg.solve(Tc, G.b)
-    cc = G.c.dot(Tc)
+    ac = solve(Tc, G.a) @ Tc
+    bc = solve(Tc, G.b)
+    cc = G.c @ Tc
     ac[abs(ac) < cleanup_threshold] = 0.
     bc[abs(bc) < cleanup_threshold] = 0.
     cc[abs(cc) < cleanup_threshold] = 0.
@@ -257,27 +255,27 @@ def kalman_decomposition(G, compute_T=False, output='system',
                          'Probably B matrix is numerically all zeros.')
     elif r != G.a.shape[0]:
         aco, auco = ac[:r, :r], ac[r:, r:]
-        bco = bc[:r, :]
+        # bco = bc[:r, :]
         cco, cuco = cc[:, :r], cc[:, r:]
         do_separate_obsv = True
     else:
-        aco, bco, cco = ac, bc, cc
+        aco, _, cco = ac, bc, cc
         auco, cuco = None, None
         do_separate_obsv = False
 
     if do_separate_obsv:
-        To_co = kalman_observability((aco, cco))[1]
-        To_uco = kalman_observability((auco, cuco))[1]
+        _, To_co, _ = observability_matrix((aco, cco))
+        _, To_uco, _ = observability_matrix((auco, cuco))
         To = block_diag(To_co, To_uco)
     else:
         if not is_kalman_observable((ac, cc)):
-            To, r = kalman_observability((ac, cc))[1:]
+            _, To, r = observability_matrix((ac, cc))
         else:
             To = np.eye(ac.shape[0])
 
-    A = np.linalg.solve(To, ac).dot(To)
-    B = np.linalg.solve(To, bc)
-    C = cc.dot(To)
+    A = solve(To, ac) @ To
+    B = solve(To, bc)
+    C = cc @ To
 
     # Clean up the mess, if any, for the should-be-zero entries
     A[abs(A) < cleanup_threshold] = 0.
@@ -287,7 +285,7 @@ def kalman_decomposition(G, compute_T=False, output='system',
 
     if output == 'matrices':
         if compute_T:
-            return (A, B, C, D), Tc.dot(To)
+            return (A, B, C, D), Tc @ To
 
         return (A, B, C, D)
 
@@ -304,7 +302,6 @@ def is_kalman_controllable(G):
 
     Parameters
     ----------
-
     G : State() or tuple of {(nxn),(nxm)} array_like matrices
         The system or the (A,B) matrix tuple
 
@@ -312,7 +309,6 @@ def is_kalman_controllable(G):
     -------
     test_bool : Boolean
         Returns True if the input is Kalman controllable
-
     """
     sys_flag, mats = _state_or_abcd(G, 2)
     if sys_flag:
@@ -321,7 +317,7 @@ def is_kalman_controllable(G):
     else:
         A, B = mats
 
-    r = kalman_controllability((A, B))[-1]
+    _, _, r = controllability_matrix((A, B))
 
     if A.shape[0] > r:
         return False
@@ -342,10 +338,8 @@ def is_kalman_observable(G):
 
     Returns
     -------
-
     test_bool : Boolean
         Returns True if the input is Kalman observable
-
     """
     sys_flag, mats = _state_or_abcd(G, -1)
 
@@ -355,7 +349,7 @@ def is_kalman_observable(G):
     else:
         A, C = mats
 
-    r = kalman_observability((A, C))[-1]
+    _, _, r = observability_matrix((A, C))
 
     if A.shape[0] > r:
         return False
