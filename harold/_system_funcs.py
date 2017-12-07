@@ -24,35 +24,30 @@ THE SOFTWARE.
 from copy import deepcopy
 import numpy as np
 from numpy.linalg import cond, eig, norm
-from scipy.linalg import svdvals, qr, block_diag
+from numpy import flipud, fliplr
+from scipy.linalg import svdvals, qr, block_diag, hessenberg
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
-from ._classes import State, Transfer
+from ._classes import State, Transfer, transfer_to_state, _state_or_abcd
 from ._arg_utils import _check_for_state_or_transfer
 
 
-__all__ = ['staircase', 'cancellation_distance', 'minimal_realization']
+__all__ = ['staircase', 'cancellation_distance', 'minimal_realization',
+           'hessenberg_realization']
 
 
 # TODO : Too much matlab-ish coding, clean up !!
-def staircase(A, B, C,
-              compute_T=False, form='c', invert=False, block_indices=False):
+def staircase(A, B, C, compute_T=False, form='c', invert=False,
+              block_indices=False):
     """
-    The staircase form is used very often to assess system properties.
+    The staircase form is used typically used to assess system controllability
+    observability properties.
+
     Given a state system matrix triplet ``A``, ``B``, ``C``, this function
-    computes the so-called controller/observer-Hessenberg form such that the
-    resulting system matrices have the block-form (x denoting the possibly
-    nonzero blocks) ::
+    computes the so-called controller/observer block Hessenberg form or
+    staircase form such that the resulting system matrices have the
+    quasi-block diagonal form.
 
-                                [x x x x x|x]
-                                [x x x x x|0]
-                                [0 x x x x|0]
-                                [0 0 x x x|0]
-                                [0 0 0 x x|0]
-                                [---------|-]
-                                [x x x x x|x]
-                                [x x x x x|x]
-
-    For controllability and observability, the existence of zero-rank
+    For controllability and observability, the existence of zero
     subdiagonal blocks can be checked, as opposed to forming the Kalman
     matrix and checking the rank. Staircase method can numerically be
     more stable since for certain matrices, A^n computations can
@@ -76,7 +71,7 @@ def staircase(A, B, C,
     compute_T : bool, optional
         Whether the transformation matrix T should be computed or not
     form : str, optional
-        Determines whether the controller- or observer-Hessenberg form
+        Determines whether the controller- or observer-staircase form
         will be computed via ``'c'`` or ``'o'`` values.
     invert : bool, optional
         Whether to select which side the B or C matrix will be compressed.
@@ -217,6 +212,102 @@ def staircase(A, B, C,
                 return A, B, C, cble_block_indices
             else:
                 return A, B, C
+
+
+def hessenberg_realization(G, compute_T=False, form='c', invert=False,
+                           output='system'):
+    """
+    A state transformation is applied in order to get the following form where
+    A is a Hessenberg matrix and B (or C if 'form' is set to 'o' ) is row/col
+    compressed ::
+
+                                [x x x x x|x x]
+                                [x x x x x|0 x]
+                                [0 x x x x|0 0]
+                                [0 0 x x x|0 0]
+                                [0 0 0 x x|0 0]
+                                [---------|---]
+                                [x x x x x|x x]
+                                [x x x x x|x x]
+
+    Parameters
+    ----------
+    G : State, Transfer, 3-tuple
+        A system representation or the A, B, C matrix triplet of a  State
+        realization. Static Gain models are returned unchanged.
+    compute_T : bool, optional
+        If set to True, the array that would bring the system into the desired
+        form will also be returned. Default is False.
+    form : str, optional
+        The switch for selecting between observability and controllability
+        Hessenberg forms. Valid entries are ``c`` and ``o``.
+    invert : bool, optional
+        Select which side the B or C matrix will be compressed. For example,
+        the default case returns the B matrix with (if any) zero rows at the
+        bottom. invert option flips this choice either in B or C matrices
+        depending on the "form" switch.
+    output : str, optional
+        In case only the resulting matrices and not a system representation is
+        needed, this keyword can be used with the value ``'matrices'``. The
+        default is ``'system'``. If 3-tuple is given and 'output' is still
+        'system' then the feedthrough matrix is taken to be 0.
+
+    Returns
+    -------
+    Gh : State, tuple
+        A realization or the matrices are returned depending on the 'output'
+        keyword.
+    T : ndarray
+        If 'compute_T' is set to True, the array for the state transformation
+        is returned.
+
+    """
+    if isinstance(G, tuple):
+        a, b, c = G
+        a, b, c, *_ = State.validate_arguments(a, b, c, np.zeros((c.shape[0],
+                                                                  b.shape[1])))
+        in_is_sys = False
+    else:
+        _check_for_state_or_transfer(G)
+        in_is_sys = True
+        if isinstance(G, Transfer):
+            a, b, c, _ = transfer_to_state(G, output='matrices')
+        else:
+            a, b, c = G.a, G.b, G.c
+
+    if form == 'o':
+        a, b, c = a.T, c.T, b.T
+
+    qq, bh = qr(b)
+    ab, cb = qq.T @ a @ qq, c @ qq
+    ah, qh = hessenberg(ab, calc_q=True)
+    ch = cb @ qh
+
+    if compute_T:
+        T = qq @ qh
+
+    if invert:
+        ah, bh, ch = fliplr(flipud(ah)), flipud(bh), fliplr(ch)
+        if compute_T:
+                T = flipud(T)
+
+    if form == 'o':
+        ah, bh, ch = ah.T, ch.T, bh.T
+
+    if output == 'system':
+        if in_is_sys:
+            Gh = State(ah, bh, ch, dt=G.SamplingPeriod)
+        else:
+            Gh = State(ah, bh, ch)
+        if compute_T:
+            return Gh, T
+        else:
+            return Gh
+    else:
+        if compute_T:
+            return ah, bh, ch, T
+        else:
+            return ah, bh, ch
 
 
 def cancellation_distance(F, G):
@@ -442,11 +533,11 @@ def _minimal_realization_state(A, B, C, tol=1e-6):
                     remove_from = 'c'
 
             if remove_from == 'c':
-                l = int(sum(blocks_c))
-                A, B, C = Ac[:l, :l], Bc[:l, :], Cc[:, :l]
+                bs = int(sum(blocks_c))
+                A, B, C = Ac[:bs, :bs], Bc[:bs, :], Cc[:, :bs]
             else:
-                l = n - int(sum(blocks_o))
-                A, B, C = Ao[l:, l:], Bo[l:, :], Co[:, l:]
+                bs = n - int(sum(blocks_o))
+                A, B, C = Ao[bs:, bs:], Bo[bs:, :], Co[:, bs:]
 
     return A, B, C
 

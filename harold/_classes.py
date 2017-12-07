@@ -3203,16 +3203,9 @@ def _state_or_abcd(arg, n=4):
     validated_matrices: ndarray
         The validated n-many 2D arrays.
     """
-    try:
-        repr_str = arg._repr_type
-        if repr_str == 'State':
-            return True, None
-        else:
-            raise TypeError('The argument needs to be a State model '
-                            'but it is a {} model'.format(repr_str))
-    except AttributeError:  # It is not a model so must be tuple of matrices
-        pass
-    if isinstance(arg, tuple):
+    if isinstance(arg, State):
+        return True, None
+    elif isinstance(arg, tuple):
         system_or_not = False
         if len(arg) == n or (n == -1 and len(arg) == 2):
             z, zz = arg[0].shape
@@ -3247,8 +3240,7 @@ def _state_or_abcd(arg, n=4):
                                       np.zeros((p, 1))
                                       )[x] for x in [0, 2])
         else:
-            raise ValueError('_state_or_abcd error:\n'
-                             'Not enough elements in the argument to test.'
+            raise ValueError('Not enough elements in the argument to test. '
                              'Maybe you forgot to modify the n value?')
     else:
         raise TypeError('The argument is neither a tuple of arrays nor '
@@ -3266,14 +3258,11 @@ def concatenate_state_matrices(G):
 
     Parameters
     ----------
-
     G : State
 
     Returns
     -------
-
     M : ndarray
-
     """
     if not isinstance(G, State):
         raise TypeError('concatenate_state_matrices() works on state '
@@ -3281,4 +3270,5 @@ def concatenate_state_matrices(G):
                         'instead.'.format(type(G).__name__))
     if G._isgain:
         return G.d
-    return np.vstack((np.hstack((G.a, G.b)), np.hstack((G.c, G.d))))
+
+    return np.block([[G.a, G.b], [G.c, G.d]])

@@ -97,8 +97,8 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     """
     # Regularize the arguments
     args = [np.array(a).squeeze().real for a in args]
-    # Upcast if any scalar arrays such as np.array(1)
-    args = [np.atleast_1d(a) for a in args]
+    # Add dimension if any scalar arrays such as np.array(1)
+    args = [a if a.ndim > 0 else np.atleast_1d(a) for a in args]
     if not all([x.ndim == 1 for x in args]):
         raise ValueError('Input arrays must be 1D.')
     if not all([x.size > 0 for x in args]):

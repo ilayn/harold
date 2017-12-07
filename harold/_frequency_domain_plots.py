@@ -57,8 +57,13 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
     _check_for_state_or_transfer(G)
     f_unit = 'Hz' if use_hz else 'rad/s'
     db_scale = 20 if use_db else 1
+    isDiscrete = True if G.SamplingSet == 'Z' else False
+    if isDiscrete:
+        dt = G.SamplingPeriod
+        nyq = 1/(2*dt) if use_hz else np.pi/dt
+
     if w is not None:
-        fre, ww = frequency_response(G, w=f_unit, output_unit=f_unit)
+        fre, ww = frequency_response(G, w, w_unit=f_unit, output_unit=f_unit)
     else:
         fre, ww = frequency_response(G, output_unit=f_unit)
 
@@ -71,6 +76,9 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
         fig, axs = plt.subplots(2, 1, sharex=True)
         axs[0].semilogx(ww, mag)
         axs[1].semilogx(ww, pha)
+        if isDiscrete:
+            axs[0].axvline(nyq, linestyle='dashed', linewidth=2)
+            axs[1].axvline(nyq, linestyle='dashed', linewidth=2)
         axs[1].set_xlabel(r'Frequency ({})'.format(f_unit))
         axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
         axs[1].set_ylabel(r'Phase (deg)')
@@ -89,6 +97,9 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
         for row in range(p):
             axs[2*row, col].semilogx(ww, mag[row, col, :])
             axs[2*row+1, col].semilogx(ww, pha[row, col, :])
+            if isDiscrete:
+                axs[2*row, col].axvline(nyq, linestyle='dashed', linewidth=2)
+                axs[2*row+1, col].axvline(nyq, linestyle='dashed', linewidth=2)
             axs[2*row, col].grid(True, which='both')
             axs[2*row+1, col].grid(True, which='both')
             # MIMO Labels and gridding

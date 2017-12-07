@@ -22,9 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from harold import (staircase, minimal_realization,
+from harold import (staircase, minimal_realization, hessenberg_realization,
                     State, Transfer, matrix_slice, cancellation_distance)
-from numpy import array, poly, zeros, eye, empty
+
+import numpy as np
+from numpy import array, poly, zeros, eye, empty, triu_indices_from
 
 from numpy.testing import assert_almost_equal, assert_, assert_raises
 
@@ -66,3 +68,15 @@ def test_minimal_realization_Transfer():
     assert_almost_equal(H_f.num, array([[1]]))
     H_nf = minimal_realization(G, tol=1e-7)
     assert_almost_equal(H_nf.num, array([[1., -7., 21., -37., 30.]]))
+
+
+def test_simple_hessenberg_trafo():
+    # Made up discrete time TF
+    G = Transfer([1., -8., 28., -58., 67., -30.],
+                 poly([1, 2, 3., 2, 3., 4, 1 + 1j, 1 - 1j]), dt=0.1)
+    H, _ = hessenberg_realization(G, compute_T=1, form='c', invert=1)
+    assert_(not np.any(H.a[triu_indices_from(H.a, k=2)]))
+    assert_(not np.any(H.b[:-1, 0]))
+    H = hessenberg_realization(G, form='o', invert=1)
+    assert_(not np.any(H.c[0, :-1]))
+    assert_(not np.any(H.a.T[triu_indices_from(H.a, k=2)]))
