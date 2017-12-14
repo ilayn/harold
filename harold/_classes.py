@@ -342,9 +342,7 @@ class Transfer:
     def _set_representation(self):
         self._repr_type = 'Transfer'
 
-
     # %% Transfer class arithmetic methods
-
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None

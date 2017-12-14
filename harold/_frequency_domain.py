@@ -197,7 +197,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
     isDiscrete = G.SamplingSet == 'Z'
     if isDiscrete:
         dt = G.SamplingPeriod
-        nyq_freq = 1/(2*dt)*2*np.pi
+        nyq_freq = np.pi / dt
 
     # Check the properties of the user-grid and regularize
     if w is not None:
@@ -226,8 +226,8 @@ def _get_freq_grid(G, w, samples, iu, ou):
         if G._isgain:
             if samples is None:
                 samples = 2
-            ud = nyq_freq if isDiscrete else 2.
-            ld = np.floor(np.log10(nyq_freq)) if isDiscrete else -2.
+            ud = np.log10(nyq_freq) if isDiscrete else 2.
+            ld = ud-2 if isDiscrete else -2.
             return logspace(ld, ud, samples)
         else:
             # We acquire the individual SISO system zeros to get a better
@@ -252,9 +252,19 @@ def _get_freq_grid(G, w, samples, iu, ou):
             # Take a single element from complex pair and remove integrators
             int_pole = 1. if isDiscrete else 0.
             pz_list = pz_list[(np.imag(pz_list) >= 0.) & (pz_list != int_pole)]
+            if pz_list.size == 0:
+                # oops all integrators. Add dummy modes for range creation
+                if isDiscrete:
+                    pz_list = [0.01+0j, -0.8+0j]  # 0j needed for np.log
+                else:
+                    pz_list = [0.001, 100]
 
             if isDiscrete:
-                nat_freq = np.abs(np.log(pz_list / dt))
+                nat_freq = np.empty_like(pz_list, dtype=float)
+                # sqrt(sqrt(100*eps))
+                nz_pz = np.abs(pz_list) > 0.000345267
+                nat_freq[nz_pz] = np.abs(np.log(pz_list[nz_pz] / dt))
+                nat_freq[~nz_pz] = nyq_freq
             else:
                 nat_freq = np.abs(pz_list)
 
@@ -267,7 +277,10 @@ def _get_freq_grid(G, w, samples, iu, ou):
             ud, ld = ceil(log10(largest_pz))+1, floor(log10(smallest_pz))-1
             if isDiscrete:
                 ud = min(ud, np.log10(nyq_freq))
-            nd = ud - ld
+                # place at least 2 decades if ud and ld too close
+                if ud - ld < 1.:
+                    ld = floor(ud-2)
+            nd = ceil(ud - ld)
 
         # points per decade
         ppd = 15
@@ -311,6 +324,9 @@ def _get_freq_grid(G, w, samples, iu, ou):
         # Basis grid
         w = logspace(ld, ud, samples).tolist()
         w = np.sort(w + w_extra)
+        # remove the extras if any beyond nyq_freq
+        if isDiscrete and w[-1] > nyq_freq:
+            w = w[w <= nyq_freq]
         # Remove accidental exact undamped mode hits from the tails of others
         w_out = w[np.in1d(w, nat_freq[damp_fact < sqeps], invert=True)]
         if ou == 'Hz':
