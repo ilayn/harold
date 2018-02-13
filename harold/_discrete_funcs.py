@@ -268,39 +268,40 @@ def _simple_lft_connect(q, A, B, C, D):
     check for discrete/continuous conversion purposes.
 
     Here we form the following star product
-                                  _
-                   ---------       |
-                   |  1    |       |
-                ---| --- I |<--    |
-                |  |  z    |  |    |
-                |  ---------  |    \
-                |             |     > this is the lft of (1/s)*I
-                |   -------   |    /
-                --->|     |----    |
-                    |  q  |        |
-                --->|     |----    |
-                |   -------   |   _|
-                |             |
-                |   -------   |
-                ----|     |<---
-                    |  T  |
-                <---|     |<---
-                    -------
+
+                       ┌───────┐      ─┐
+                       │  1    │       │
+                    ┌──┤ ─── I │<─┐    │
+                    │  │  z    │  │    │
+                    │  └───────┘  │    │    1
+                    │             │    ├─  ─── I
+                    │   ┌─────┐   │    │    s
+                    └──>│     ├───┘    │
+                        │  q  │        │
+                    ┌──>│     ├───┐    │
+                    │   └─────┘   │   ─┘
+                    │             │
+                    │   ┌─────┐   │
+                    └───┤     │<──┘
+                        │  T  │
+                    <───┤     │<──
+                        └─────┘
 
     Here q is whatever the rational mapping that links s to z in
     the following sense:
 
         1         1                    1        1
-       --- = F_u(---,q) = q_22 + q_21 --- (I - --- q_11)⁻¹ q12
+       ─── = F_u(───,q) = q_22 + q_21 ─── (I - ─── q_11)⁻¹ q12
         s         z                    z        z
 
-    where F_u denotes the upper linear fractional representation.
+    where F_u denotes the upper linear fractional representation. As an
+    example, for the usual discretization cases, the map is
 
-    As an example, for the usual discretization cases, the map is
-
-              [    1    |    √T   ]
-          Q = [---------|---------]
-              [   √T    |   T*α   ]
+                      ┌         │         ┐
+                      │    1    │    √T   │
+                  Q = │─────────┼─────────│
+                      │   √T    │   T*α   │
+                      └         │         ┘
 
     with α defined as
 

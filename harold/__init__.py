@@ -26,6 +26,7 @@ from ._aux_linalg import *
 from ._polynomial_ops import *
 from ._classes import *
 from ._system_funcs import *
+from ._bd_algebra import *
 from ._solvers import *
 from ._discrete_funcs import *
 from ._frequency_domain import *

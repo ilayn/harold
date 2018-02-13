@@ -222,10 +222,9 @@ class Transfer:
             elif isinstance(value, (int, float)):
                 self._dt = float(value)
             else:
-                raise TypeError('SamplingPeriod must be a real positive '
-                                'scalar. But looks like a \"{0}\" is '
-                                'given.'.format(
-                                   type(value).__name__))
+                raise ValueError('SamplingPeriod must be a real positive '
+                                 'scalar. But looks like a \"{0}\" is given.'
+                                 ''.format(type(value).__name__))
         else:
             self._rz = 'R'
             self._dt = None
@@ -377,13 +376,8 @@ class Transfer:
             # sampling system but that requires pretty comprehensive change.
 
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot\nadd these systems. '
-                                'If you still want to add them as if '
-                                'they are\ncompatible, carry the data '
-                                'to a compatible system model and then '
-                                'add.'
-                                )
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot\nadd these systems. ')
 
         # Reject if the size don't match
             if not self._shape == other.shape:
@@ -474,9 +468,9 @@ class Transfer:
                                  'I got are {0} vs. {1}'.format(
                                                     self._shape, other.shape))
         else:
-            raise TypeError('I don\'t know how to add a '
-                            '{0} to a state representation '
-                            '(yet).'.format(type(other).__name__))
+            raise ValueError('I don\'t know how to add a '
+                             '{0} to a state representation '
+                             '(yet).'.format(type(other).__name__))
 
     def __radd__(self, other): return self + other
 
@@ -567,14 +561,14 @@ class Transfer:
         elif isinstance(other, State):
             # State representations win over the typecasting
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems. ')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems. ')
             return other*transfer_to_state(self)
 
         elif isinstance(other, Transfer):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
             # Get SISO and static gain out of the way
             # For gain, convert to ndarray and let previous case handle it
@@ -654,9 +648,9 @@ class Transfer:
                             newden[r][c] = haroldpolymul(sd[r][c], od[r][c])
                 return Transfer(newnum, newden, dt=self.SamplingPeriod)
         else:
-            raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a Transfer representation '
-                            '(yet).'.format(type(other).__name__))
+            raise ValueError('I don\'t know how to multiply a '
+                             '{0} with a Transfer representation '
+                             '(yet).'.format(type(other).__name__))
 
     def __rmul__(self, other):
         # *-multiplication means elementwise multiplication in Python
@@ -670,12 +664,12 @@ class Transfer:
         if isinstance(other, (int, float)):
             return self * (1/other)
         else:
-            raise TypeError('Currently, division operation for Transfer '
-                            'representations are limited to real scalars.')
+            raise ValueError('Currently, division operation for Transfer '
+                             'representations are limited to real scalars.')
 
     def __rtruediv__(self, other):
-        raise TypeError('Currently, right division operation for Transfer '
-                        'representations are not supported.')
+        raise ValueError('Currently, right division operation for Transfer '
+                         'representations are not supported.')
 
     def __matmul__(self, other):
         # @-multiplication has the following rationale, first two items
@@ -730,8 +724,8 @@ class Transfer:
         # 4.
         if isinstance(other, (State, Transfer)):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
             if isinstance(other, State):
                 return transfer_to_state(self) @ State
@@ -770,9 +764,9 @@ class Transfer:
             return Transfer(newnum, newden, dt=self._dt)
 
         else:
-            raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a Transfer representation '
-                            '(yet).'.format(type(other).__name__))
+            raise ValueError('I don\'t know how to multiply a '
+                             '{0} with a Transfer representation '
+                             '(yet).'.format(type(other).__name__))
 
     def __rmatmul__(self, other):
         # If other is a State or Transfer, it will be handled
@@ -798,9 +792,9 @@ class Transfer:
         elif isinstance(other, (int, float)):
             return self * other
         else:
-            raise TypeError('I don\'t know how to multiply a '
-                            '{0} with a Transfer representation '
-                            '(yet).'.format(type(other).__name__))
+            raise ValueError('I don\'t know how to multiply a '
+                             '{0} with a Transfer representation '
+                             '(yet).'.format(type(other).__name__))
 
     def __getitem__(self, num_or_slice):
 
@@ -909,8 +903,8 @@ class Transfer:
 
                 return num_arr.reshape(self._p, self._m)
         else:
-            raise TypeError('Only static gain models can be converted to '
-                            'ndarrays.')
+            raise ValueError('Only static gain models can be converted to '
+                             'ndarrays.')
 
     @staticmethod
     def validate_arguments(num, den, verbose=False):
@@ -1078,13 +1072,10 @@ class Transfer:
                         # Try to numpy-array the elements inside each row
                         try:
                             returned_numden_list[numden_index] = [
-                                 [
-                                  np.atleast_2d(np.array(x, dtype='float'))
-                                  for x in y
-                                 ]
-                                 for y in numden
-                            ]
-                        except:
+                                 [np.array(x, dtype='float', ndmin=2)
+                                     for x in y]
+                                 for y in numden]
+                        except TypeError:
                             raise ValueError(  # something was not float
                                              'Something is not a \"float\" '
                                              'inside the MIMO {0} list of '
@@ -1156,13 +1147,12 @@ class Transfer:
             # Neither list of lists, nor lists nor int,floats
             # Reject and complain
             else:
-                raise TypeError(
-                                '{0} must either be a list of lists (MIMO)\n'
-                                'or a an unnested list (SISO). Numpy arrays, '
-                                'or, scalars inside unnested lists such as\n '
-                                '[3] are also accepted as SISO. '
-                                'See the \"Transfer\" docstring.'
-                                ''.format(entrytext[numden_index]))
+                raise ValueError('{0} must either be a list of lists (MIMO)\n'
+                                 'or a an unnested list (SISO). Numpy arrays, '
+                                 'or, scalars inside unnested lists such as\n '
+                                 '[3] are also accepted as SISO. '
+                                 'See the \"Transfer\" docstring.'
+                                 ''.format(entrytext[numden_index]))
 
         # =============================
         # End of the num, den for loop
@@ -1321,7 +1311,7 @@ class Transfer:
                     nc_entry = -1
                     try:
                         nc_entry = noncausal_entries.index(False)
-                    except:
+                    except ValueError:
                         Gain_flags = [True, True]
 
                     if nc_entry > -1:
@@ -1713,9 +1703,9 @@ class State:
             elif isinstance(value, (int, float)):
                 self._dt = float(value)
             else:
-                raise TypeError('SamplingPeriod must be a real scalar.'
-                                'But looks like a \"{0}\" is given.'.format(
-                                 type(value).__name__))
+                raise ValueError('SamplingPeriod must be a real scalar.'
+                                 'But looks like a \"{0}\" is given.'
+                                 ''.format(type(value).__name__))
         else:
             self._rz = 'R'
             self._dt = None
@@ -1739,16 +1729,16 @@ class State:
         if self._DiscretizedWith == 'lft':
             self._DiscretizationMatrix = np.array(value, dtype='float')
         else:
-            raise TypeError('If the discretization method is not '
-                            '\"lft\" then you don\'t need to set '
-                            'this property.')
+            raise ValueError('If the discretization method is not '
+                             '\"lft\" then you don\'t need to set '
+                             'this property.')
 
     @PrewarpFrequency.setter
     def PrewarpFrequency(self, value):
         if self._DiscretizedWith not in ('tustin', 'bilinear', 'trapezoidal'):
-            raise TypeError('If the discretization method is not '
-                            'Tustin then you don\'t need to set '
-                            'this property.')
+            raise ValueError('If the discretization method is not '
+                             'Tustin then you don\'t need to set '
+                             'this property.')
         else:
             if value > 1/(2*self._dt):
                 raise ValueError('Prewarping Frequency is beyond '
@@ -1800,8 +1790,8 @@ class State:
 
         if isinstance(other, State):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot add these models.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot add these models.')
 
             gainflag = sum([self._isgain, other._isgain])
             sisoflag = sum([self._isSISO, other._isSISO])
@@ -1851,8 +1841,8 @@ class State:
 
         elif isinstance(other, Transfer):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
             gainflag = sum([self._isgain, other._isgain])
 
@@ -1952,9 +1942,9 @@ class State:
                                      ' but the array shape is {1}.'
                                      ''.format(self._shape, other.shape))
         else:
-            raise TypeError('I don\'t know how to add a {0} to a '
-                            'State representation (yet).'
-                            ''.format(type(other).__qualname__))
+            raise ValueError('I don\'t know how to add a {0} to a '
+                             'State representation (yet).'
+                             ''.format(type(other).__qualname__))
 
     def __radd__(self, other): return self + other
 
@@ -1982,8 +1972,8 @@ class State:
 
         if isinstance(other, State):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
             gainflag = sum([self._isgain, other._isgain])
 
@@ -2048,8 +2038,8 @@ class State:
 
         elif isinstance(other, Transfer):
             if not self._dt == other._dt:
-                raise TypeError('The sampling periods don\'t match '
-                                'so I cannot multiply these systems.')
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
             gainflag = sum([self._isgain, other._isgain])
 
@@ -2178,9 +2168,9 @@ class State:
                     return State(self._a, self._b @ s, self._c, self._d @ s,
                                  dt=self._dt)
         else:
-            raise TypeError('I don\'t know how to multiply a {0} with a '
-                            'State representation (yet).'
-                            ''.format(type(other).__qualname__))
+            raise ValueError('I don\'t know how to multiply a {0} with a '
+                             'State representation (yet).'
+                             ''.format(type(other).__qualname__))
 
     def __rmatmul__(self, other):
         # isgain rmatmul 1- scalar
@@ -2267,9 +2257,9 @@ class State:
                     return State(self._a, self._b, s @ self._c, s @ self._d,
                                  dt=self._dt)
         else:
-            raise TypeError('I don\'t know how to multiply a {0} with a '
-                            'state representation (yet).'
-                            ''.format(type(other).__qualname__))
+            raise ValueError('I don\'t know how to multiply a {0} with a '
+                             'state representation (yet).'
+                             ''.format(type(other).__qualname__))
 
     def __truediv__(self, other):
         # For convenience of scaling the system via G/5 and so on.
@@ -2277,12 +2267,12 @@ class State:
         if isinstance(other, (int, float)):
             return self @ (1/other)
         else:
-            raise TypeError('Currently, division operation for State '
-                            'representations are limited to real scalars.')
+            raise ValueError('Currently, division operation for State '
+                             'representations are limited to real scalars.')
 
     def __rtruediv__(self, other):
-        raise TypeError('Currently, right division operation for State '
-                        'representations are not supported.')
+        raise ValueError('Currently, right division operation for State '
+                         'representations are not supported.')
 
     def __getitem__(self, num_or_slice):
 
@@ -2373,8 +2363,8 @@ class State:
         if self._isgain:
                 return self._d
         else:
-            raise TypeError('Only static gain models can be converted to '
-                            'ndarrays.')
+            raise ValueError('Only static gain models can be converted to '
+                             'ndarrays.')
 
     @staticmethod
     def validate_arguments(a, b, c, d, verbose=False):
@@ -2422,12 +2412,12 @@ class State:
 
             # Check for obvious choices
             if not isinstance(abcd, possible_types):
-                raise TypeError('{0} matrix should be, regardless of the shape'
-                                ', an int, float, list or,\n'
-                                'much better, a properly typed 2D Numpy '
-                                'array. Instead I found a {1} object.'
-                                ''.format(entrytext[abcd_index],
-                                          type(abcd).__qualname__))
+                raise ValueError('{0} matrix should be, regardless of the'
+                                 ' shape, an int, float, list or,\n'
+                                 'much better, a properly typed 2D Numpy '
+                                 'array. Instead I found a {1} object.'
+                                 ''.format(entrytext[abcd_index],
+                                           type(abcd).__qualname__))
 
             else:
                 # Row/column consistency is checked by numpy
@@ -2618,9 +2608,9 @@ def _investigate_other(self_, other_, method_):
     if isinstance(other_, (State, Transfer)):
 
         if not self_.SamplingPeriod == other_.SamplingPeriod:
-            raise TypeError('The sampling periods of the models don\'t match '
-                            'for {0}.'.format(msg_dict[method_])
-                            )
+            raise ValueError('The sampling periods of the models don\'t match '
+                             'for {0}.'.format(msg_dict[method_]))
+
         # Reject if the size don't match
         if method_ in ('add', 'mul'):
             shape_1 = self_.shape
@@ -3241,9 +3231,9 @@ def _state_or_abcd(arg, n=4):
             raise ValueError('Not enough elements in the argument to test. '
                              'Maybe you forgot to modify the n value?')
     else:
-        raise TypeError('The argument is neither a tuple of arrays nor '
-                        'a State() object. The argument is of the type "{}"'
-                        ''.format(type(arg).__qualname__))
+        raise ValueError('The argument is neither a tuple of arrays nor '
+                         'a State() object. The argument is of the type "{}"'
+                         ''.format(type(arg).__qualname__))
 
     return system_or_not, returned_args
 
@@ -3263,9 +3253,9 @@ def concatenate_state_matrices(G):
     M : ndarray
     """
     if not isinstance(G, State):
-        raise TypeError('concatenate_state_matrices() works on state '
-                        'representations, but I found \"{0}\" object '
-                        'instead.'.format(type(G).__name__))
+        raise ValueError('concatenate_state_matrices() works on state '
+                         'representations, but I found \"{0}\" object '
+                         'instead.'.format(type(G).__name__))
     if G._isgain:
         return G.d
 

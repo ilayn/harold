@@ -93,7 +93,7 @@ def test_Transfer_Instantiations():
 def test_Transfer_to_array():
     G = Transfer(1, [1, 1])
     H = Transfer(2, 10)
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G.to_array()
 
     assert_equal(H.to_array(), np.array([[.2]]))
@@ -105,7 +105,7 @@ def test_Transfer_to_array():
 def test_Transfer_algebra_mul_rmul_dt():
     G = Transfer(1, [1, 2], dt=0.1)
     F = Transfer(1, [1, 3])
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         F*G
 
 
@@ -115,9 +115,9 @@ def test_Transfer_algebra_truediv_rtruediv():
     assert_equal(F.num, np.array([[2.]]))
     assert_equal(F.den, np.array([[1., 2.]]))
 
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G/G
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G/3j
 
 
@@ -299,7 +299,7 @@ def test_State_Instantiations():
 def test_State_to_array():
     G = State(1, 1, 1)
     H = State(5)
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G.to_array()
 
     assert_equal(H.to_array(), np.array([[5]]))
@@ -310,9 +310,9 @@ def test_State_to_array():
 def test_State_algebra_mul_rmul_dt():
     G = State(1, 2, 3, 4, dt=0.1)
     F = State(4, 3, 2, 1)
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         F*G
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G*F
 
 
@@ -322,9 +322,9 @@ def test_State_algebra_truediv_rtruediv():
     assert_equal(F.b, np.array([[4.]]))
     assert_equal(F.d, np.array([[8.]]))
 
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G/G
-    with assert_raises(TypeError):
+    with assert_raises(ValueError):
         G/3j
 
 
