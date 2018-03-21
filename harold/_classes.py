@@ -69,7 +69,7 @@ class Transfer:
     the system continous time again and relevant properties are reset
     to continuous-time properties.
     """
-    def __init__(self, num, den=None, dt=False):
+    def __init__(self, num, den=None, dt=None):
 
         # Initialization Switch and Variable Defaults
 
@@ -86,6 +86,7 @@ class Transfer:
         if self._shape == (1, 1):
             self._isSISO = True
         self.SamplingPeriod = dt
+        self._isdiscrete = False if dt is None else True
 
         self._recalc()
 
@@ -215,19 +216,20 @@ class Transfer:
 
     @SamplingPeriod.setter
     def SamplingPeriod(self, value):
-        if value:
-            self._rz = 'Z'
-            if type(value) is bool:  # integer 1 != True
-                self._dt = 0.
-            elif isinstance(value, (int, float)):
-                self._dt = float(value)
-            else:
+        if value is not None:
+            value = float(value)
+            if value <= 0.:
                 raise ValueError('SamplingPeriod must be a real positive '
-                                 'scalar. But looks like a \"{0}\" is given.'
-                                 ''.format(type(value).__name__))
+                                 'scalar. But looks like a \"{0}\" is '
+                                 'given.'.format(type(value).__name__))
+
+            self._dt = value
+            self._rz = 'Z'
+            self._isdiscrete = True
         else:
             self._rz = 'R'
             self._dt = None
+            self._isdiscrete = False
 
     @num.setter
     def num(self, value):
@@ -304,7 +306,7 @@ class Transfer:
                                  'being the sampling\nperiod in '
                                  'seconds (dt={0} is provided, '
                                  'hence the max\nallowed is '
-                                 '{1} Hz.'.format(dt, 1/(2*dt)))
+                                 '{1} Hz.'.format(self._dt, 1/(2*self._dt)))
             else:
                 self._PrewarpFrequency = value
 
@@ -1441,7 +1443,7 @@ class State:
     the system continous time again and relevant properties are reset
     to continuous-time properties.
     """
-    def __init__(self, a, b=None, c=None, d=None, dt=False):
+    def __init__(self, a, b=None, c=None, d=None, dt=None):
 
         self._dt = False
         self._DiscretizedWith = None
@@ -1461,6 +1463,7 @@ class State:
             self._isSISO = True
 
         self.SamplingPeriod = dt
+        self._isdiscrete = False if dt is None else True
         self._recalc()
 
     @property
@@ -1696,19 +1699,20 @@ class State:
 
     @SamplingPeriod.setter
     def SamplingPeriod(self, value):
-        if value:
+        if value is not None:
+            value = float(value)
+            if value <= 0.:
+                raise ValueError('SamplingPeriod must be a real positive '
+                                 'scalar. But looks like a \"{0}\" is '
+                                 'given.'.format(type(value).__name__))
+
+            self._dt = value
             self._rz = 'Z'
-            if type(value) is bool:  # integer 1 != True
-                self._dt = 0.
-            elif isinstance(value, (int, float)):
-                self._dt = float(value)
-            else:
-                raise ValueError('SamplingPeriod must be a real scalar.'
-                                 'But looks like a \"{0}\" is given.'
-                                 ''.format(type(value).__name__))
+            self._isdiscrete = True
         else:
             self._rz = 'R'
             self._dt = None
+            self._isdiscrete = False
 
     @DiscretizedWith.setter
     def DiscretizedWith(self, value):
