@@ -26,7 +26,7 @@ from harold._classes import Transfer, transfer_to_state
 from harold._discrete_funcs import discretize
 from harold._arg_utils import _check_for_state, _check_for_state_or_transfer
 
-all = ['simulate_linear_system']
+__all__ = ['simulate_linear_system']
 
 
 def simulate_linear_system(sys, u, t=None, x0=None):
