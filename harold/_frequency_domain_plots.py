@@ -67,8 +67,15 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
     else:
         fre, ww = frequency_response(G, output_unit=f_unit)
 
+    fre[np.abs(fre) == 0.] = np.nan
     mag = db_scale * np.log10(np.abs(fre))
-    pha = np.unwrap(np.angle(fre))
+
+    # Mask NaN values if any
+    if np.isnan(fre).any():
+        pha = np.empty_like(fre, dtype=float)
+        pha[~np.isnan(fre)] = np.unwrap(np.angle(fre[~np.isnan(fre)]))
+    else:
+        pha = np.unwrap(np.angle(fre))
     if use_degree:
         pha = np.rad2deg(pha)
 
