@@ -1,7 +1,8 @@
-from harold import State, Transfer, simulate_linear_system
+from harold import (State, Transfer,
+                    simulate_linear_system, simulate_step_response)
 
 from numpy import array, eye, ones, zeros, arange
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises, assert_equal
 
 
 def test_simulate_linear_system_check_x0():
@@ -61,3 +62,13 @@ def test_simulate_linear_system_response():
     y, tout = simulate_linear_system(G, u, t)
     assert_allclose(tout, arange(10))
     assert_allclose(y - u @ mat.T, zeros([10, 5]))
+
+
+def test_simulate_step_response_response():
+    G = State(4)
+    yout, tout = simulate_step_response(G)
+    assert_allclose(yout, 4*ones(len(yout))[:, None])
+    G = State(4, dt=0.01)
+    y2, t2 = simulate_step_response(G)
+    assert_allclose(y2, 4*ones(len(y2))[:, None])
+    assert_equal(len(yout), len(y2))
