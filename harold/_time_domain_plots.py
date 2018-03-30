@@ -62,7 +62,7 @@ def step_response_plot(sys, t=None):
     else:
         nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else yout.shape[1:]
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True,
-                                squeeze=0)
+                                sharey=True, squeeze=0)
 
         # Get the appropriate plotter line plot or a step plot
         ptype = 'step' if sys._isdiscrete else 'plot'
@@ -113,7 +113,7 @@ def impulse_response_plot(sys, t=None):
     else:
         nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else yout.shape[1:]
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True,
-                                squeeze=0)
+                                sharey=True, squeeze=False)
 
         # Get the appropriate plotter line plot or a step plot
         ptype = 'step' if sys._isdiscrete else 'plot'
