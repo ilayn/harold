@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
+from numpy import reciprocal, einsum, maximum, minimum, zeros_like
+from scipy.linalg import eig, eigvals, matrix_balance, norm
 from harold._classes import Transfer, transfer_to_state
 from harold._discrete_funcs import discretize
 from harold._arg_utils import _check_for_state, _check_for_state_or_transfer
@@ -180,14 +182,7 @@ def simulate_step_response(sys, t=None):
     array) sampled at given time instances.
 
     If the time array is omitted then a time sequence is generated based on
-    the slowest pole of sys based on the straightforward settling time
-    estimate
-
-        ts = 4/(ζω)
-
-    and its discrete equivalent. The sampling period is also approximated by
-    the fastest stable pole. If the system has all nonnegative poles, -1. is
-    used for the computations as the threshold for the settling times.
+    the poles of the model.
 
     Parameters
     ----------
@@ -201,18 +196,19 @@ def simulate_step_response(sys, t=None):
         omitted and a time sequence will be generated automatically.
     """
     _check_for_state_or_transfer(sys)
+    # Always works with State Models
+    try:
+        _check_for_state(sys)
+    except ValueError:
+        sys = transfer_to_state(sys)
+
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys)
-
-        # Massage tf such that it is an integer multiple of ts
         mult = int(tf // ts)
-        if sys._isdiscrete:
-            t = np.linspace(0, sys._dt*(mult-1), num=mult)
-        else:
-            t = np.linspace(0, ts*(mult-1), num=mult)
+        t = np.linspace(0, tf, num=mult)
 
     m = sys.shape[1]
-    u = np.ones([len(t), m])
+    u = np.ones([len(t), m], dtype=float)
 
     return simulate_linear_system(sys, u=u, t=t, per_channel=1)
 
@@ -224,14 +220,7 @@ def simulate_impulse_response(sys, t=None):
     time instances.
 
     If the time array is omitted then a time sequence is generated based on
-    the slowest pole of sys based on the straightforward settling time
-    estimate
-
-        ts = 4/(ζω)
-
-    and its discrete equivalent. The sampling period is also approximated by
-    the fastest stable pole. If the system has all nonnegative poles, -1. is
-    used for the computations as the threshold for the settling times.
+    the poles of the model.
 
     Parameters
     ----------
@@ -245,55 +234,184 @@ def simulate_impulse_response(sys, t=None):
         omitted and a time sequence will be generated automatically.
     """
     _check_for_state_or_transfer(sys)
+    # Always works with State Models
+    try:
+        _check_for_state(sys)
+    except ValueError:
+        sys = transfer_to_state(sys)
+
     if t is None:
-        tf, ts = _compute_tfinal_and_dt(sys)
-        # Massage tf such that it is an integer multiple of ts
+        tf, ts = _compute_tfinal_and_dt(sys, is_step=False)
         mult = int(tf // ts)
-        t = np.linspace(0, ts*(mult-1), num=mult)
+        t = np.linspace(0, tf, num=mult)
 
     m = sys.shape[1]
-    u = np.zeros([len(t), m])
+    u = np.zeros([len(t), m], dtype=float)
     u[0] = 1.
 
     return simulate_linear_system(sys, u=u, t=t, per_channel=1)
 
 
-def _compute_tfinal_and_dt(sys):
+def _compute_tfinal_and_dt(sys, is_step=True):
     """
     Helper function to estimate a final time and a sampling period for
     time domain simulations.
+
+    For discrete-time models, obviously dt is inherent and only tfinal is
+    computed.
+
+    Parameters
+    ----------
+    sys : {State, Transfer}
+        The system to be investigated
+    is_step : bool
+        Scales the dc value by the magnitude of the nonzero mode since
+        integrating the impulse response gives ∫exp(-λt) = -exp(-λt)/λ.
+        Default is True.
+
+    Returns
+    -------
+    tfinal : float
+        The final time instance for which the simulation will be performed.
+    dt : float
+        The estimated sampling period for the simulation.
+
+    Notes
+    -----
+    Just by evaluating the fastest mode for dt and slowest for tfinal often
+    leads to unnecessary, bloated sampling (e.g., Transfer(1,[1,1001,1000]))
+    since dt will be very small and tfinal will be too large though the fast
+    mode hardly ever contributes. Similarly, change the numerator to [1, 2, 0]
+    and the simulation would be unnecessarily long and the plot is virtually
+    an L shape since the decay is so fast.
+
+    Instead, a modal decomposition in time domain hence a truncated ZIR and ZSR
+    can be used such that only the modes that have significant effect on the
+    time response are taken. But the sensitivity of the eigenvalues complicate
+    the matter since dλ = <w, dA*v> with <w,v> = 1. Hence we can only work
+    with simple poles with this formulation. See Golub, Van Loan Section 7.2.2
+    for simple eigenvalue sensitivity about the nonunity of <w,v>. The size of
+    the response is dependent on the size of the eigenshapes rather than the
+    eigenvalues themselves.
+
     """
+    sqrt_eps = np.sqrt(np.spacing(1.))
+    min_points = 100  # min number of points
+    min_points_z = 20  # min number of points
+    max_points = 10000  # max number of points
+    max_points_z = 75000  # max number of points for discrete models
+    default_tfinal = 5  # Default simulation horizon
+    total_cycles = 5  # number of cycles for oscillating modes
+    pts_per_cycle = 25  # Number of points divide a period of oscillation
+    decay_percent = 100  # Factor of reduction for real pole decays
+
     # if a static model is given, don't bother with checks
     if sys._isgain:
-        return (50*sys._dt, sys._dt) if sys._isdiscrete else (5, 0.1)
-    # Make a rough prediction about the time required based on the slowest mode
-    p = sys.poles
+        if sys._isdiscrete:
+            return sys._dt*min_points_z, sys._dt
+        else:
+            return default_tfinal, default_tfinal / min_points
+
     if sys._isdiscrete:
+        # System already has sampling fixed  hence we can't fall into the same
+        # trap mentioned above. Just get nonintegrating slow modes.
+        dt = sys._dt
+        p = eigvals(sys.a)
+        ps = np.log(p)/sys._dt
+        ps[np.abs(ps) <= sqrt_eps] = 0.
+        wn = np.abs(ps)
 
-        pmag = np.abs(p)
-        stab_p = pmag[pmag < 1.]
+        if np.any(ps.real < 0):
+            stable_decay = np.max(ps.real < 0.)
+            tfinal = np.log(decay_percent) / np.abs(stable_decay)
+        else:
+            tfinal = dt * min_points_z
 
-        # If no stable pole quick exit
-        if stab_p.size == 0.:
-            return sys._dt*100, sys._dt
-        # s-domain equivalents
-        ps = np.log(stab_p)/sys._dt
+        if np.any(wn == 0.):
+            tfinal = tfinal*5
+        elif np.any(ps.real > 0):
+            tfinal = tfinal*2
 
-    else:
-        ps = p[p.real < 0]
-        # If no stable pole quick exit
-        if ps.size == 0.:
-            return 20, 1/np.max([np.abs(p).max(), .1])
+        iw = (ps.imag != 0.) & (np.abs(ps.real) < sqrt_eps)
+        if np.any(iw):
+            iw_tf = total_cycles * 2 * np.pi / wn[iw]
+            tfinal = np.max(tfinal, iw_tf.max())
 
-    wns = np.abs(ps)
-    zetas = -np.cos(np.angle(ps))
+        if tfinal // dt > max_points_z:
+            tfinal = dt*max_points_z
 
-    # Threshold omega 0.001
-    slow_wn = np.max([np.min(wns), 0.001])
-    # Threshold zeta at 0.1 to avoid too large tfinal
-    slow_zeta = np.max([np.min([zetas[np.argmin(wns)], 0.1]), 0.1])
+        if tfinal // dt < min_points:
+            tfinal = dt*min_points
 
-    return 4/(slow_wn*slow_zeta), sys._dt if sys._isdiscrete else 1/wns.max()
+        return tfinal, dt
+
+    # Improve conditioning via balancing and zeroing tiny entries
+    # See <w,v> for [[1,2,0], [9,1,0.01], [1,2,10*np.pi]] before/after balance
+    b, (sca, perm) = matrix_balance(sys.a, separate=True)
+    p, l, r = eig(b, left=True, right=True)
+    # Reciprocal of inner product <w,v> for each λ, (bound the ~infs by 1e12)
+    # G = Transfer([1], [1,0,1]) gives zero sensitivity (bound by 1e-12)
+    eig_sens = minimum(1e12,
+                       reciprocal(maximum(1e-12,
+                                          einsum('ij,ij->j', l, r).real)))
+    # Tolerances
+    p[np.abs(p) < np.spacing(eig_sens * norm(b, 1))] = 0.
+    # Incorporate balancing to outer factors
+    l[perm, :] *= reciprocal(sca)[:, None]
+    r[perm, :] *= sca[:, None]
+    w, v = sys.c @ r, l.T.conj() @ sys.b
+
+    origin = False
+    # Computing the "size" of the response of each simple mode
+    wn = np.abs(p)
+    if np.any(wn == 0.):
+        origin = True
+
+    dc = zeros_like(p, dtype=float)
+    # well-conditioned nonzero poles, np.abs just in case
+    ok = np.abs(eig_sens) <= 1/sqrt_eps
+    # the averaged t→∞ response of each simple λ on each i/o channel
+    # See, A = [[-1, k], [0, -2]], response sizes are k-dependent (that is
+    # R/L eigenvector dependent)
+    dc[ok] = norm(v[ok, :], axis=1)*norm(w[:, ok], axis=0)*eig_sens[ok]
+    dc[wn != 0.] /= wn[wn != 0] if is_step else 1.
+    dc[wn == 0.] = 0.
+    # double the oscillating mode magnitude for the conjugate
+    dc[p.imag != 0.] *= 2
+
+    # Now get rid of noncontributing integrators and simple modes if any
+    relevance = (dc > 0.1*dc.max()) | ~ok
+    psub = p[relevance]
+    wnsub = wn[relevance]
+
+    tfinal, dt = [], []
+    ints = wnsub == 0.
+    iw = (psub.imag != 0.) & (np.abs(psub.real) <= sqrt_eps)
+
+    # Pure imaginary?
+    if np.any(iw):
+        tfinal += (total_cycles * 2 * np.pi / wnsub[iw]).tolist()
+        dt += (2 * np.pi / pts_per_cycle / wnsub[iw]).tolist()
+    # The rest
+    texp_mode = np.log(decay_percent) / np.abs(psub[~iw & ~ints].real)
+    tfinal += texp_mode.tolist()
+    dt += minimum(texp_mode / 50, (2 * np.pi / pts_per_cycle / wnsub[~iw])
+                  ).tolist()
+
+    # All integrators?
+    if len(tfinal) == 0:
+        return default_tfinal*5, default_tfinal*5/min_points
+
+    tfinal = np.max(tfinal)*(5 if origin else 1)
+    dt = np.min(dt)
+
+    if tfinal // dt > max_points:
+        tfinal = dt*max_points
+
+    if tfinal // dt < min_points:
+        dt = tfinal / min_points
+
+    return tfinal, dt
 
 
 def _check_u_and_t_for_simulation(m, dt, u, t, isdiscrete):

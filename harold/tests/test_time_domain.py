@@ -71,4 +71,3 @@ def test_simulate_step_response_response():
     G = State(4, dt=0.01)
     y2, t2 = simulate_step_response(G)
     assert_allclose(y2, 4*ones(len(y2))[:, None])
-    assert_equal(len(yout), len(y2))

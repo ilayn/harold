@@ -88,17 +88,13 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
             axs[1].axvline(nyq, linestyle='dashed', linewidth=2)
         axs[1].set_xlabel(r'Frequency ({})'.format(f_unit))
         axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
-        axs[1].set_ylabel(r'Phase (deg)')
+        axs[1].set_ylabel(r'Phase ({})'.format('deg' if use_degree else 'rad'))
         for x in range(2):
             axs[x].grid(True, which='both')
         return fig
 
     p, m = G.shape
-    fig, axs = plt.subplots(2*p, m, sharex=True)
-    # For SIMO systems axs returns a 1D array hence double indices
-    # lead to errors.
-    if axs.ndim == 1:
-        axs = axs[:, None]
+    fig, axs = plt.subplots(2*p, m, sharex=True, squeeze=False)
 
     for col in range(m):
         for row in range(p):
@@ -116,6 +112,9 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
                 axs[2*row+1, col].set_ylabel(r'Phase (deg)')
             if row == p - 1:
                 axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(f_unit))
+
+    fig.align_ylabels()
+
     return fig
 
 
@@ -156,11 +155,7 @@ def nyquist_plot(G, w=None):
         return fig
 
     p, m = G.shape
-    fig, axs = plt.subplots(p, m)
-    # For SIMO systems axs returns a 1D array hence double indices
-    # lead to errors.
-    if axs.ndim == 1:
-            axs = axs[:, None] if m == 1 else axs[None, :]
+    fig, axs = plt.subplots(p, m, squeeze=False)
 
     for col in range(m):
         for row in range(p):
