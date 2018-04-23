@@ -205,7 +205,7 @@ def simulate_step_response(sys, t=None):
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys)
         mult = int(tf // ts)
-        t = np.linspace(0, tf, num=mult)
+        t = np.linspace(0, tf, num=mult+1, endpoint=True)
 
     m = sys.shape[1]
     u = np.ones([len(t), m], dtype=float)
@@ -243,7 +243,7 @@ def simulate_impulse_response(sys, t=None):
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys, is_step=False)
         mult = int(tf // ts)
-        t = np.linspace(0, tf, num=mult)
+        t = np.linspace(0, tf, num=mult+1, endpoint=True)
 
     m = sys.shape[1]
     u = np.zeros([len(t), m], dtype=float)
@@ -351,9 +351,8 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     p, l, r = eig(b, left=True, right=True)
     # Reciprocal of inner product <w,v> for each λ, (bound the ~infs by 1e12)
     # G = Transfer([1], [1,0,1]) gives zero sensitivity (bound by 1e-12)
-    eig_sens = minimum(1e12,
-                       reciprocal(maximum(1e-12,
-                                          einsum('ij,ij->j', l, r).real)))
+    eig_sens = reciprocal(maximum(1e-12, einsum('ij,ij->j', l, r).real))
+    eig_sens = minimum(1e12, eig_sens)
     # Tolerances
     p[np.abs(p) < np.spacing(eig_sens * norm(b, 1))] = 0.
     # Incorporate balancing to outer factors
