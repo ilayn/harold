@@ -204,8 +204,7 @@ def simulate_step_response(sys, t=None):
 
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys)
-        mult = int(tf // ts)
-        t = np.linspace(0, tf, num=mult+1, endpoint=True)
+        t = np.arange(0, tf+ts, ts, dtype=float)
 
     m = sys.shape[1]
     u = np.ones([len(t), m], dtype=float)
@@ -242,8 +241,7 @@ def simulate_impulse_response(sys, t=None):
 
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys, is_step=False)
-        mult = int(tf // ts)
-        t = np.linspace(0, tf, num=mult+1, endpoint=True)
+        t = np.arange(0, tf+ts, ts, dtype=float)
 
     m = sys.shape[1]
     u = np.zeros([len(t), m], dtype=float)
@@ -327,21 +325,21 @@ def _compute_tfinal_and_dt(sys, is_step=True):
         else:
             tfinal = dt * min_points_z
 
+        iw = (ps.imag != 0.) & (np.abs(ps.real) < sqrt_eps)
+        if np.any(iw):
+            iw_tf = total_cycles * 2 * np.pi / wn[iw]
+            tfinal = np.max([tfinal, iw_tf.max()])
+
         if np.any(wn == 0.):
             tfinal = tfinal*5
         elif np.any(ps.real > 0):
             tfinal = tfinal*2
 
-        iw = (ps.imag != 0.) & (np.abs(ps.real) < sqrt_eps)
-        if np.any(iw):
-            iw_tf = total_cycles * 2 * np.pi / wn[iw]
-            tfinal = np.max(tfinal, iw_tf.max())
-
         if tfinal // dt > max_points_z:
             tfinal = dt*max_points_z
 
-        if tfinal // dt < min_points:
-            tfinal = dt*min_points
+        if tfinal // dt < min_points_z:
+            tfinal = dt*min_points_z
 
         return tfinal, dt
 
