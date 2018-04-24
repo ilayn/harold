@@ -253,7 +253,8 @@ def simulate_impulse_response(sys, t=None):
 def _compute_tfinal_and_dt(sys, is_step=True):
     """
     Helper function to estimate a final time and a sampling period for
-    time domain simulations.
+    time domain simulations. It is essentially geared towards impulse response
+    but is also used for step responses.
 
     For discrete-time models, obviously dt is inherent and only tfinal is
     computed.
@@ -335,11 +336,8 @@ def _compute_tfinal_and_dt(sys, is_step=True):
         elif np.any(ps.real > 0):
             tfinal = tfinal*2
 
-        if tfinal // dt > max_points_z:
-            tfinal = dt*max_points_z
-
-        if tfinal // dt < min_points_z:
-            tfinal = dt*min_points_z
+        dt = tfinal / max_points_z if tfinal // dt > max_points_z else dt
+        tfinal = dt*min_points_z if tfinal // dt < min_points_z else tfinal
 
         return tfinal, dt
 
@@ -402,11 +400,8 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     tfinal = np.max(tfinal)*(5 if origin else 1)
     dt = np.min(dt)
 
-    if tfinal // dt > max_points:
-        tfinal = dt*max_points
-
-    if tfinal // dt < min_points:
-        dt = tfinal / min_points
+    dt = tfinal / max_points if tfinal // dt > max_points else dt
+    tfinal = dt * min_points if tfinal // dt < min_points else tfinal
 
     return tfinal, dt
 
