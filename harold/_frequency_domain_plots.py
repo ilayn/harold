@@ -87,10 +87,13 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
             axs[0].axvline(nyq, linestyle='dashed', linewidth=2)
             axs[1].axvline(nyq, linestyle='dashed', linewidth=2)
         axs[1].set_xlabel(r'Frequency ({})'.format(f_unit))
-        axs[0].set_ylabel(r'Magnitude{}'.format(' (dB)' if use_db else ''))
+        axs[0].set_ylabel(r'Magnitude {}'.format('(dB)' if use_db else
+                          r'($\mathregular{10^x}$)'))
         axs[1].set_ylabel(r'Phase ({})'.format('deg' if use_degree else 'rad'))
         for x in range(2):
             axs[x].grid(True, which='both')
+
+        fig.align_ylabels()
         return fig
 
     p, m = G.shape
@@ -107,8 +110,9 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
             axs[2*row+1, col].grid(True, which='both')
             # MIMO Labels and gridding
             if col == 0:
-                axs[2*row, col].set_ylabel(r'Magnitude'.format(
-                                                ' (dB)' if use_db else ''))
+                axs[2*row, col].set_ylabel(r'Magnitude {}'.format('(dB)'
+                                           if use_db else
+                                           r'($\mathregular{10^x}$)'))
                 axs[2*row+1, col].set_ylabel(r'Phase (deg)')
             if row == p - 1:
                 axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(f_unit))
