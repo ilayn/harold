@@ -144,8 +144,9 @@ def nyquist_plot(G, w=None):
         fre, ww = frequency_response(G, w)
     else:
         fre, ww = frequency_response(G)
-        rr = np.real(fre)
-        ii = np.imag(fre)
+
+    rr = np.real(fre)
+    ii = np.imag(fre)
 
     if G._isSISO:
         plt.plot(rr, ii, '-')
