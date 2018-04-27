@@ -145,27 +145,23 @@ def nyquist_plot(G, w=None):
     else:
         fre, ww = frequency_response(G)
 
-    rr = np.real(fre)
-    ii = np.imag(fre)
-
-    if G._isSISO:
-        plt.plot(rr, ii, '-')
-        plt.plot(rr, -ii, '-.')
-        # (-1,0) point
-        plt.plot([-1], [0], 'b+')
-        plt.xlabel(r'Real Part')
-        plt.ylabel(r'Imaginary Part')
-        plt.grid(which='both', axis='both')
-        fig = plt.gcf()
-        return fig
+    rr = fre.real
+    ii = fre.imag
 
     p, m = G.shape
     fig, axs = plt.subplots(p, m, squeeze=False)
 
     for col in range(m):
         for row in range(p):
-            axs[row, col].plot(rr[row, col, :], ii[row, col, :], '-')
-            axs[row, col].plot(rr[row, col, :], -ii[row, col, :], '-.')
+            if G._isSISO:
+                rdata = rr
+                idata = ii
+            else:
+                rdata = rr[row, col, :]
+                idata = ii[row, col, :]
+
+            axs[row, col].plot(rdata, idata, '-')
+            axs[row, col].plot(rdata, -idata, '-.')
             axs[row, col].plot([-1], [0], 'b+')
             axs[row, col].grid(True, which='both')
             # MIMO Labels and gridding
