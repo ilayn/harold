@@ -26,15 +26,67 @@ from numpy.linalg import LinAlgError
 from scipy.linalg import expm, logm, inv
 from warnings import warn, simplefilter, catch_warnings
 from ._classes import Transfer, State, transfer_to_state, state_to_transfer
-from ._global_constants import _KnownDiscretizationMethods
+from ._global_constants import _KnownDiscretizationMethods as KDM
 from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['discretize', 'undiscretize']
 
 
 def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
+    """
+    Perform a continuous to discrete time model conversion via various methods.
+    The default discretization method is 'tustin'.
+
+    Parameters
+    ----------
+    G : {State, Transfer}
+        The to-be-discretized system representation
+    dt : float
+        The positive scalar for the sampling period in seconds
+    method : str
+        The method to be used for discretization. The valid method inputs
+        can be listed via harold._global_constants._KnownDiscretizationMethods
+        variable.
+    prewarp_at : float
+        If the discretization method is 'tustin' or one of its aliases, this
+        positive scalar modifies the response such that the frequency warp
+        happens elsewhere to match the dynamics at this frequency.
+    q : 2D ndarray
+        If given, represents the custom discretization matrix such that the
+        following star-product is computed
+
+                       ┌───────┐      ─┐
+                       │  1    │       │
+                    ┌──┤ ─── I │<─┐    │
+                    │  │  z    │  │    │
+                    │  └───────┘  │    │    1
+                    │             │    ├─  ─── I
+                    │   ┌─────┐   │    │    s
+                    └──>│     ├───┘    │
+                        │  Q  │        │
+                    ┌──>│     ├───┐    │
+                    │   └─────┘   │   ─┘
+                    │             │
+                    │   ┌─────┐   │
+                    └───┤     │<──┘
+                        │  G  │
+                    <───┤     │<──
+                        └─────┘
+
+    where Q is the kronecker product, I_n ⊗ q and n being the number of states.
+
+    Notes
+    -----
+    Apart from the zero-order hold, first-order hold methods, the remaining
+    methods are special cases of a particular Q and computed as as such.
+
+    """
 
     _check_for_state_or_transfer(G)
+
+    if method not in KDM:
+        raise ValueError('I don\'t know the discretization method "{0}". But '
+                         'I know:\n {1}'.format(method, ',\n'.join(KDM)))
 
     if G.SamplingSet == 'Z':
         raise ValueError('The argument is already modeled as a '
@@ -48,7 +100,7 @@ def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
     if G._isgain:
         # Method doesn't matter
         Gd = Transfer(G.to_array(), dt=dt) if isinstance(G, Transfer) else \
-                                                    State(G.to_array, dt=dt)
+                                                    State(G.to_array(), dt=dt)
         Gd.SamplingPeriod = dt
     else:
         discretized_args = _discretize(T, dt, method, prewarp_at, q)
@@ -124,13 +176,6 @@ def _discretize(T, dt, method, prewarp_at, q):
             raise ValueError('"lft" method requires a 2x2 interconnection '
                              'matrix "q" between s and z indeterminates.')
         Ad, Bd, Cd, Dd = _simple_lft_connect(q, T.a, T.b, T.c, T.d)
-
-    else:
-        raise ValueError('I don\'t know the discretization method "{0}". But '
-                         'I know:\n {1}'
-                         ''.format(method,
-                                   ',\n'.join(_KnownDiscretizationMethods))
-                         )
 
     return Ad, Bd, Cd, Dd, dt
 
@@ -229,22 +274,26 @@ def _undiscretize(T, dt, method, prewarp_at, q):
     elif method in ('backward euler', 'backward difference',
                     'backward rectangular', '<<'):
         # nonproper via lft, compute explicitly.
+        # TODO : See _simple_lft_connect convert to solve and fix SciPy warning
+        # version
         with catch_warnings():
             simplefilter('error')
             try:
+                T.a
                 iAd = inv(T.a)
+                print(iAd)
             except RuntimeWarning:
                 warn('The state matrix has eigenvalues too close to imaginary'
                      ' axis. This conversion method might give inaccurate '
                      'results', RuntimeWarning, stacklevel=2)
             except LinAlgError:
-                raise LinAlgError('The state matrix has eigenvalues at zero'
-                                  'and this conversion method can\'t be used.')
+                raise ValueError('The state matrix has eigenvalues at zero'
+                                 'and this conversion method can\'t be used.')
         Ac = np.eye(n) - iAd
         Ac /= dt
-        Bc = 1/np.sqrt(dt)*iAd @ T.b
-        Cc = 1/np.sqrt(dt) * T.c @ iAd
-        Dc = T.d - dt*Cc @ iAd @ Bc
+        Bc = 1/np.sqrt(dt) * (iAd @ T.b)
+        Cc = 1/np.sqrt(dt) * (T.c @ iAd)
+        Dc = T.d - T.c @ iAd @ T.b
 
     elif method == 'lft':
         if q is None:

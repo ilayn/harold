@@ -23,7 +23,8 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from harold import State, Transfer, discretize
+from numpy import eye, ones, zeros
+from harold import State, Transfer, discretize, undiscretize
 from numpy.testing import (assert_array_almost_equal,
                            assert_equal,
                            assert_raises)
@@ -31,13 +32,23 @@ from numpy.testing import (assert_array_almost_equal,
 # Some tests are taken from scipy repository for comparison
 
 
+def test_discretize_args():
+    assert_raises(ValueError, discretize, State(5, dt=1), dt=1)
+    assert_raises(ValueError, discretize, State(5), dt=1, method='randomtext')
+
+
+def test_static_gain_discretization():
+    Gd = discretize(State(np.eye(5)), dt=1)
+    assert_equal(Gd._dt, 1)
+
+
 def test_simple_zoh():
-    ac = np.eye(2)
-    bc = 0.5 * np.ones((2, 1))
+    ac = eye(2)
+    bc = 0.5 * ones((2, 1))
     cc = np.array([[0.75, 1.0], [1.0, 1.0], [1.0, 0.25]])
     dc = np.array([[0.0], [0.0], [-0.33]])
     G = State(ac, bc, cc, dc)
-    ad_truth = 1.648721270700128 * np.eye(2)
+    ad_truth = 1.648721270700128 * eye(2)
     bd_truth = 0.324360635350064 * np.ones((2, 1))
     # c and d in discrete should be equal to their continuous counterparts
     dt_ = 0.5
@@ -51,14 +62,14 @@ def test_simple_zoh():
 
 
 def test_simple_tustin():
-    ac = np.eye(2)
-    bc = 0.5 * np.ones((2, 1))
+    ac = eye(2)
+    bc = 0.5 * ones((2, 1))
     cc = np.array([[0.75, 1.0], [1.0, 1.0], [1.0, 0.25]])
     dc = np.array([[0.0], [0.0], [-0.33]])
     dt_ = 0.5
     G = State(ac, bc, cc, dc)
-    ad_truth = (5.0 / 3.0) * np.eye(2)
-    bd_truth = (1.0 / 3.0) * np.ones((2, 1)) / np.sin(np.pi/4)
+    ad_truth = (5.0 / 3.0) * eye(2)
+    bd_truth = (1.0 / 3.0) * ones((2, 1)) / np.sin(np.pi/4)
     cd_truth = np.array([[1.0, 4.0 / 3.0],
                          [4.0 / 3.0, 4.0 / 3.0],
                          [4.0 / 3.0, 1.0 / 3.0]]) * np.sin(np.pi/4)
@@ -76,8 +87,8 @@ def test_simple_tustin():
 
     # Same continuous system again, but change sampling rate
 
-    ad_truth = 1.4 * np.eye(2)
-    bd_truth = 0.2 * np.ones((2, 1)) / np.sqrt(1/3)
+    ad_truth = 1.4 * eye(2)
+    bd_truth = 0.2 * ones((2, 1)) / np.sqrt(1/3)
     cd_truth = np.array([[0.9, 1.2], [1.2, 1.2], [1.2, 0.3]]) * np.sqrt(1/3)
     dd_truth = np.array([[0.175], [0.2], [-0.205]])
 
@@ -105,12 +116,34 @@ def test_simple_tustin_prewarp():
                                                  -0.0772558231247,
                                                  0.0921526622952]]))
     # while we are at it test the upper Nyquist limit on prewarping
-    assert_raises(ValueError, discretize, H, 0.5, 1)
+    assert_raises(ValueError, discretize, H, dt=0.5, prewarp_at=2)
 
 
 def test_simple_lft():
     H = Transfer([1, 0.5, 9], [1, 5, 9])
+    assert_raises(ValueError, discretize, H, dt=0.25, method='lft', q=4)
+    assert_raises(ValueError, discretize, H, dt=0.25, method='lft', q=eye(3))
     Hd = discretize(H, dt=0.25, method="lft", q=np.array([[1, .5], [.5, 0]]))
     Hdf = discretize(H, dt=0.25, method=">>")
     assert_array_almost_equal(Hd.num, Hdf.num)
     assert_array_almost_equal(Hd.den, Hdf.den)
+
+
+def test_undiscretize():
+    ac = eye(2)
+    bc = 0.5 * ones((2, 1))
+    cc = np.array([[0.75, 1.0], [1.0, 1.0], [1.0, 0.25]])
+    dc = np.array([[0.0], [0.0], [-0.33]])
+    G = State(ac, bc, cc, dc)
+    for method in ('zoh', 'tustin', '>>', '<<'):
+        print(method)
+        Gd = discretize(G, dt=0.5, method=method)
+        Gu = undiscretize(Gd)
+        assert_array_almost_equal(Gu.a, ac)
+        assert_array_almost_equal(Gu.b, bc)
+        assert_array_almost_equal(Gu.c, cc)
+        assert_array_almost_equal(Gu.d, dc)
+
+    Gd = State(zeros([2, 2]), ones([2, 1]), ones([1, 2]), dt=1)
+    Gd.DiscretizedWith = '<<'
+    assert_raises(ValueError, undiscretize, Gd)

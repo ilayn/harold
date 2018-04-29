@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 import numpy as np
 import warnings
-from numpy import zeros_like, kron
+from numpy import zeros_like, kron, ndarray
 from scipy.linalg import eigvals, block_diag, qz, norm
 from tabulate import tabulate
 from itertools import zip_longest, chain
@@ -1569,15 +1569,7 @@ class State:
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization method associated with it.')
-        elif self._DiscretizedWith is None:
-            return ('It is a discrete-time model with no '
-                    'discretization method associated with it during '
-                    'its creation.')
-        else:
-            return self._DiscretizedWith
+        return self._DiscretizedWith
 
     @property
     def DiscretizationMatrix(self):
@@ -1625,19 +1617,7 @@ class State:
             <http://dx.doi.org/10.1080/00207170802247728>`_
 
         """
-        if self.SamplingSet == 'R':
-            return ('It is a continous-time model hence does not have '
-                    'a discretization matrix associated with it.')
-        elif not self.DiscretizedWith == 'lft':
-            return ('This model is discretized with a method that '
-                    'has no discretization matrix associated with '
-                    'it.')
-        elif self._DiscretizedWith is None:
-            return ('It is a discrete-time model with no '
-                    'discretization method associated with it during '
-                    'its creation.')
-        else:
-            return self._DiscretizationMatrix
+        return self._DiscretizationMatrix
 
     @property
     def PrewarpFrequency(self):
@@ -2395,10 +2375,12 @@ class State:
         # Compared to the Transfer() inputs, State() can have relatively
         # saner inputs which is one of the following types, hence the var
         possible_types = (int,
+                          np.int32,
+                          np.int64,
                           float,
                           list,
-                          type(np.array([0.0])),
-                          type(np.array([[1]])[0, 0]))
+                          ndarray,
+                          )
 
         # Start regularizing the input regardless of the intention
         for abcd_index, abcd in enumerate((a, b, c, d)):
