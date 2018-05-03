@@ -8,8 +8,8 @@ dependencies:
 - readline=6.2=2
 - setuptools>=20.3
 - wheel>=0.29.0
-- guzzle-sphinx-theme>=0.7.11
 - pip:
   - momoko>=2.2.3
   - psycopg2>=2.6.1
   - tornado>=4.1
+  - guzzle-sphinx-theme>=0.7.11
