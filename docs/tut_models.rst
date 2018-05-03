@@ -14,22 +14,22 @@ State models
 The initialization of these objects are pretty straightforward. Note that you 
 can skip ``D`` term and it will be assumed to be zero::
     
-    G = State([[1,2],[3,4]],[[1],[0]],[1,2])
-    G = State([[1,2],[3,4]],[[1],[0]],[1,2], dt = 0.1)
+    >>> G = State([[1,2],[3,4]],[[1],[0]],[1,2])
+    >>> G = State([[1,2],[3,4]],[[1],[0]],[1,2], dt = 0.1)
 
 In the second example, we create a discrete-time model but to avoid the clash with
 a ``D`` term we add the ``dt`` keyword explicitly. If there was also a nonzero 
 feedthrough element then we can also skip that too::
 
-    G = State([[1,2],[3,4]],[[1],[0]],[1,2],1,0.1)
+    >>> G = State([[1,2],[3,4]],[[1],[0]],[1,2],1,0.1)
 
 As obvious to everyone who used this syntax even in matlab's convenient bracket
 semicolon notation, creating four individual matrices everytime just to pass
 to the function becomes increasingly annoying. Instead a matrix slicer is 
 available in ``harold`` ::
 
-    M = np.array([[1,2,1],[3,4,0],[1,2,0]])
-    G = State(*matrix_slice(M,corner shape=(2,2), corner='nw'))
+    >>> M = np.array([[1,2,1],[3,4,0],[1,2,0]])
+    >>> G = State(*matrix_slice(M,corner shape=(2,2), corner='nw'))
 
 As shown above, the model creation is a straightforward enumeration of 
 the involved ``A,B,C,D`` matrices in the arguments. For discrete time
@@ -38,22 +38,21 @@ or explicitly mentioning ``dt=<sampling period>`` as an argument.
     
 To create a static models, just provide an array ::
 
-    G = State(1)
-    G = State(np.ones((5,3)), dt=0.5)
+    >>> G = State(1)
+    >>> G = State(np.ones((5,3)), dt=0.5)
     
 Here again, ``dt=<sampling period>`` should be provided explicitly as it would
 be confused about the second argument being the ``B`` element. ::
 
-    G = State(1,0.001)    # Will lead to error
-    G = State(1,dt=0.001) # Will work
+    >>> G = State(1,0.001)    # Will lead to error
+    >>> G = State(1,dt=0.001) # Will work
 
 If the model is discretized we can also check ::
 
-    G.SamplingPeriod  # returns the sampling period
-    G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
-    G.DiscretizedWith # returns the discretization method if applicable
+    >>> G.SamplingPeriod  # returns the sampling period
+    >>> G.SamplingSet     # returns 'Z' for discrete-time, 'R' otherwise
+    >>> G.DiscretizedWith # returns the discretization method if applicable
 
-	
 These make sure that the discretization remembers how it got there in 
 the first place if harold is used. Or if the model is already given 
 as a discrete time model, the method can be set such that ``undiscretize``
@@ -67,7 +66,7 @@ Transfer models
 
 Similarly, Transfer models can be created via ::
 
-    H = Transfer([1,2,3],[7,5,3])
+    >>> H = Transfer([1,2,3],[7,5,3])
 
 As mentioned previously, numpy array syntax is strange and a bit 
 verbose. Hence, it makes it difficult to type every time ``np.array``
@@ -79,11 +78,11 @@ First, it can understand even if the user enters a scalar or a Python
 list, instead of numpy arrays. It will be checked and converted if the 
 input is sensible. ::
 
-    G = Transfer(1,[1,2,3])
-    G = Transfer(1,[[1,2,3]])
+    >>> G = Transfer(1,[1,2,3])
+    >>> G = Transfer(1,[[1,2,3]])
 
 The second example might confuse the user since it will spit out a 
-transfer representation of a :math:`1\times 3` static gain. 
+transfer representation of a 1x3 static gain. 
 
 What happens is that when the parses find a list of lists, it assumes
 that the user is trying to create a MIMO object. Thus, it changes its 
@@ -148,7 +147,7 @@ tell what happened during the context discovery. For that, there is a
 the regularized version of the input arguments and also include a flag
 in case the resulting system is a static gain::
 
-    Transfer.validate_arguments(1,[[1,2,3]],verbose=1)
+    >>> Transfer.validate_arguments(1,[[1,2,3]],verbose=1)
 
 will print out the following for the example we discussed above ::
 

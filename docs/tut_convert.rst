@@ -16,27 +16,24 @@ Let's take the conversion example from
 
 We first define the state model::
 
-    G = State([[0,    1  ,   0   ,0],
-               [0,-0.1818,2.6727 ,0],
-               [0,    0  ,   0   ,1],
-               [0, -4.545,31.1818,0]],
-              [[0],[1.8182],[0],[4.5455]], # B matrix
-              e_i(4,[0,2]).T # the first and third column of 4x4 identity matrix
-            )
+    >>> G = State([[0,    1  ,   0   ,0],
+    ...            [0,-0.1818,2.6727 ,0],
+    ...            [0,    0  ,   0   ,1],
+    ...            [0, -4.545,31.1818,0]],
+    ...           [[0],[1.8182],[0],[4.5455]], # B matrix
+    ...           e_i(4,[0,2]).T # the first and third column of 4x4 identity matrix
+    ...         )
 
 Then we use the conversion function ::
 
-    F = state_to_transfer(G) 
+    >>> F = state_to_transfer(G) 
 
 If we check the result, we get ::
 
-    F.num
-
+    >>> F.num
     [[array([[1.8182, 0., -44.54599091]])],
      [array([[4.5455, -7.4373471, 0.]])]]
-    
-    F.den
-    
+    >>> F.den
     [[array([[1., 0.1818, -31.1818, 6.47857026, -0.]])],
      [array([[1., 0.1818, -31.1818, 6.47857026, -0.]])]]    
 
@@ -44,7 +41,7 @@ Sometimes, there is no need to actually create a full blown ``Transfer``
 instance but just the polynomials are needed. For that, an extra keyword
 option is sufficient and intermediate variables are avoided::
 
-    n , d = state_to_transfer(G, output='polynomials')
+    >>> n , d = state_to_transfer(G, output='polynomials')
     
 Then, ``n , d`` variables hold the numerator and polynomial entries
 instead of a model. 
@@ -57,23 +54,22 @@ instead of a model.
 
     
 
-From ``Transfer()`` to ``State()``
+From Transfer to State
 ----------------------------------
 
 Similar to the state to transfer model conversion, ``transfertostate()``
 converts the ``Transfer()`` models to ``State`` models::
 
-    H = transfer_to_state(F)
+    >>> H = transfer_to_state(F)
 
 The same convenience is also defined for individual matrix output instead
 of a full state model::
 
-    aa,bb,cc,dd = transfer_to_state(F, output='matrices')
+    >>> aa,bb,cc,dd = transfer_to_state(F, output='matrices')
 
 If we actually check the resulting state model matrices, ::
 
-    concatenate_state_matrices(H)# Combines the state matrices into a larger matrix
-
+    >>> concatenate_state_matrices(H)# Combines the state matrices into a larger matrix
     array([[0.    , 1.        ,   0.        , 0.    , 0.],
            [0.    , 0.        ,   1.        , 0.    , 0.],
            [0.    , 0.        ,   0.        , 1.    , 0.],

@@ -24,7 +24,7 @@ Installation
 Installing harold is a straightforward package installation: you can install 
 the most recent harold version using `pip`_::
 
-    pip install harold
+    >>> pip install harold
 
 .. _pip: http://pypi.python.org/pypi/pip
 

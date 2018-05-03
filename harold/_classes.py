@@ -48,22 +48,22 @@ class Transfer:
     For SISO system creation, 1D lists or 1D numpy arrays are expected,
     e.g.,::
 
-        >>>> G = Transfer(1,[1,2,1])
+        >>> G = Transfer(1,[1,2,1])
 
     For MIMO systems, the array like objects are expected to be inside the
     appropriate shaped list of lists ::
 
-        >>>> G = Transfer([[ [1,3,2], [1,3] ],
-                           [   [1]  , [1,0] ]],# end of num
-                           [[ [1,2,1] ,  [1,3,3]  ],
-                            [ [1,0,0] , [1,2,3,4] ]])
+        >>> G = Transfer([[ [1,3,2], [1,3] ],
+        ...               [   [1]  , [1,0] ]],# end of num
+        ...              [[ [1,2,1] ,  [1,3,3]  ],
+        ...               [ [1,0,0] , [1,2,3,4] ]])
 
     If the denominator is common then the denominator can be given as a single
     array like object.
 
-        >>>> G = Transfer([[ [1,3,2], [1,3] ],
-                           [   [1]  , [1,0] ]],# end of num
-                           [1, 2, 3, 4, 5]) # common den
+        >>> G = Transfer([[ [1,3,2], [1,3] ],
+        ...               [   [1]  , [1,0] ]],# end of num
+        ...              [1, 2, 3, 4, 5]) # common den
 
     Setting  SamplingPeriod property to 'False' value to the will make
     the system continous time again and relevant properties are reset
@@ -1433,7 +1433,7 @@ class State:
     A State object can be instantiated in a straightforward manner by
     entering array like objects.::
 
-        >>>> G = State([[0,1],[-4,-5]],[[0],[1]],[[1,0]],1)
+        >>> G = State([[0, 1], [-4, -5]], [[0], [1]], [[1, 0]], 1)
 
     For zero feedthrough (strictly proper) models, "d" matrix can be skipped
     and will be replaced with the zeros array whose shape is inferred from
@@ -2695,19 +2695,17 @@ def state_to_transfer(*state_or_abcd, output='system'):
     Parameters
     ----------
     state_or_abcd : State() or a tuple of A,B,C,D matrices.
-    output : {'system','polynomials'}
+    output : str
         Selects whether a State() object or individual numerator, denominator
-        will be returned.
+        will be returned via the options ``'system'``,``'polynomials'``.
 
     Returns
     -------
-    G : Transfer()
+    G : Transfer
         If ``output`` keyword is set to 'system'
-
     num : {List of lists of 2D-numpy arrays for MIMO case,
               2D-Numpy arrays for SISO case}
         If the ``output`` keyword is set to ``polynomials``
-
     den : Same as num
 
     """

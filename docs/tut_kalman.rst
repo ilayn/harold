@@ -8,10 +8,10 @@ Kalman-tests
 Typical checks for controllability and observability are included in 
 the functions listed below.
 
-.. warning:: Note that these operations are numerically potentially
-    ill-conditioned due to the increasing powers in the tests. Hence
-    here included for completeness. However, for numerical purposes
-    ``harold`` does not use these (see next section). 
+.. warning:: These operations are numerically ill-conditioned due to the
+    increasing powers in the tests. Hence here included for completeness.
+    However, for numerical purposes ``harold`` does not use these (see next
+    section).
 
 .. py:currentmodule:: harold    
 .. autofunction:: controllability_matrix

@@ -155,7 +155,7 @@ def kalman_decomposition(G, compute_T=False, output='system',
     Parameters
     ----------
 
-    G : State()
+    G : State
         The state representation that is to be converted into the block
         triangular form such that unobservable/uncontrollable modes
         corresponds to zero blocks in B/C matrices
@@ -172,7 +172,7 @@ def kalman_decomposition(G, compute_T=False, output='system',
 
     Returns
     -------
-    Gk : State(), tuple
+    Gk : State, tuple
         Returns a state representation or its matrices as a tuple if
         `output = 'matrices'`
     T  : (nxn) ndarray
@@ -280,7 +280,7 @@ def is_kalman_controllable(G):
 
     Parameters
     ----------
-    G : State() or tuple of {(nxn),(nxm)} array_like matrices
+    G : State, tuple
         The system or the (A,B) matrix tuple
 
     Returns
@@ -311,7 +311,7 @@ def is_kalman_observable(G):
     Parameters
     ----------
 
-    G : State() or tuple of {(nxn),(pxn)} array_like matrices
+    G : State, tuple
         The system or the (A,C) matrix tuple
 
     Returns
