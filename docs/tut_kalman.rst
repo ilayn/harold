@@ -14,8 +14,8 @@ the functions listed below.
     ``harold`` does not use these (see next section). 
 
 .. py:currentmodule:: harold    
-.. autofunction:: kalman_controllability
-.. autofunction:: kalman_observability
+.. autofunction:: controllability_matrix
+.. autofunction:: observability_matrix
 .. autofunction:: kalman_decomposition
 .. autofunction:: is_kalman_controllable
 .. autofunction:: is_kalman_observable

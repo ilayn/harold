@@ -1,9 +1,6 @@
 Polynomial Operations
 ======================
 
-.. todo:: Finish this section with examples
-
-
 To be able to do usable transfer functions, some care
 should be given to polynomial operations. The least common
 multiples and greatest common divisors are of the utmost

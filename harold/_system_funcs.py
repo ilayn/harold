@@ -27,7 +27,7 @@ from numpy.linalg import cond, eig, norm
 from numpy import flipud, fliplr
 from scipy.linalg import svdvals, qr, block_diag, hessenberg
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
-from ._classes import State, Transfer, transfer_to_state, _state_or_abcd
+from ._classes import State, Transfer, transfer_to_state
 from ._arg_utils import _check_for_state_or_transfer
 
 
@@ -82,13 +82,13 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
 
     Returns
     -------
-    Ah : (n, n) array_like
+    Ah : (n, n) ndarray
         Resulting State array
-    Bh : (n, m) array_like
+    Bh : (n, m) ndarray
         Resulting Input array
-    Ch : (p, n) array_like
+    Ch : (p, n) ndarray
         Resulting Output array
-    T : (n,n) 2D numpy array
+    T : (n, n) ndarray
         If the boolean ``compute_T`` is true, returns the transformation
         matrix such that ::
 
@@ -97,7 +97,7 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
             [   CT  |      ]   [ Ch |    ]
 
         is in the desired staircase form.
-    k: Numpy array
+    k : ndarray
         If the boolean ``block_indices`` is true, returns the array
         of controllable/observable block sizes identified by the algorithm
         during elimination.
@@ -313,9 +313,9 @@ def hessenberg_realization(G, compute_T=False, form='c', invert=False,
 def cancellation_distance(F, G):
     """
     Given matrices :math:`F,G`, computes the upper and lower bounds of
-    the perturbation needed to render the pencil [F-pI | G]` rank deficient.
-    It is used for assessing the controllability/observability degenerate
-    distance and hence for minimality assessment.
+    the perturbation needed to render the pencil :math:`[F-pI | G]` rank
+    deficient. It is used for assessing the controllability/observability
+    degeneracy distance and hence for minimality assessment.
 
     Parameters
     ----------

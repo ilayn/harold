@@ -173,8 +173,8 @@ def pair_complex_numbers(a, tol=1e-9, realness_tol=1e-9,
     Returns
     -------
 
-    paired_array : array_like
-        The array that is paired
+    paired_array : ndarray
+        The resulting paired array
 
     """
     try:
@@ -400,30 +400,30 @@ def matrix_slice(M, corner_shape, corner='nw'):
 
     Examples
     --------
-        >>> A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        >>> matrix_slice(A,(1,1))
-        (array([[1]]),
-         array([[2, 3]]),
-         array([[4],
-                [7]]),
-         array([[5, 6],
-                [8, 9]])
-        )
-        >>> matrix_slice(A, (2,2), 'sw')
-        (array([[1, 2]]),
-         array([[3]]),
-         array([[4, 5],
-                [7, 8]]),
-         array([[6],
-                [9]])
-         )
-        >>> matrix_slice(A, (0, 0))  % empty A
-        (array([], shape=(0, 0), dtype=int32),
-         array([], shape=(0, 3), dtype=int32),
-         array([], shape=(3, 0), dtype=int32),
-         array([[1, 2, 3],
-                [4, 5, 6],
-                [7, 8, 9]]))
+    >>> A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> matrix_slice(A,(1,1))
+    (array([[1]]),
+     array([[2, 3]]),
+     array([[4],
+            [7]]),
+     array([[5, 6],
+            [8, 9]])
+    )
+    >>> matrix_slice(A, (2,2), 'sw')
+    (array([[1, 2]]),
+     array([[3]]),
+     array([[4, 5],
+            [7, 8]]),
+     array([[6],
+            [9]])
+     )
+    >>> matrix_slice(A, (0, 0))  % empty A
+    (array([], shape=(0, 0), dtype=int32),
+     array([], shape=(0, 3), dtype=int32),
+     array([], shape=(3, 0), dtype=int32),
+     array([[1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]]))
     """
     if corner not in ('ne', 'nw', 'se', 'sw'):
         raise ValueError('The corner string needs to be one of'

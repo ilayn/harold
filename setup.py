@@ -1,4 +1,3 @@
-
 from setuptools import setup
 from os import path
 import io
@@ -24,7 +23,7 @@ setup(
     author='Ilhan Polat',
     author_email='harold.of.python@gmail.com',
     url='https://github.com/ilayn/harold',
-    version='0.1.1rc1',
+    version='1.0.0',
     description='A control systems library for Python3',
     long_description=long_description,
     license='MIT',

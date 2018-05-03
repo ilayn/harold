@@ -1,11 +1,6 @@
 Conversion of Dynamic Models
 ============================
 
-.. warning:: The naming convention of these functions has not been 
-    settled yet. So some underscores might go in and the names can 
-    change until the release. 
-
-
 From State() to Transfer()
 --------------------------
 Suppose we are given a ``State()`` model and we would like 
@@ -31,26 +26,25 @@ We first define the state model::
 
 Then we use the conversion function ::
 
-    F = statetotransfer(G) 
+    F = state_to_transfer(G) 
 
 If we check the result, we get ::
 
     F.num
 
-    [[array([[  1.8182    ,   0.        , -44.54599091]])],
-     [array([[ 4.5455   , -7.4373471,  0.       ]])]]
+    [[array([[1.8182, 0., -44.54599091]])],
+     [array([[4.5455, -7.4373471, 0.]])]]
     
     F.den
     
-    [[array([[  1. ,   0.1818 , -31.1818 ,   6.47857026 ,  -0.  ]])],
-     [array([[  1. ,   0.1818 , -31.1818 ,   6.47857026 ,  -0.  ]])]]    
-
+    [[array([[1., 0.1818, -31.1818, 6.47857026, -0.]])],
+     [array([[1., 0.1818, -31.1818, 6.47857026, -0.]])]]    
 
 Sometimes, there is no need to actually create a full blown ``Transfer``
 instance but just the polynomials are needed. For that, an extra keyword
 option is sufficient and intermediate variables are avoided::
 
-    n , d = statetotransfer(G,output='polynomials')
+    n , d = state_to_transfer(G, output='polynomials')
     
 Then, ``n , d`` variables hold the numerator and polynomial entries
 instead of a model. 
@@ -69,23 +63,23 @@ From ``Transfer()`` to ``State()``
 Similar to the state to transfer model conversion, ``transfertostate()``
 converts the ``Transfer()`` models to ``State`` models::
 
-    H = transfertostate(F)
+    H = transfer_to_state(F)
 
 The same convenience is also defined for individual matrix output instead
 of a full state model::
 
-    aa,bb,cc,dd = transfertostate(F,output='matrices')
+    aa,bb,cc,dd = transfer_to_state(F, output='matrices')
 
 If we actually check the resulting state model matrices, ::
 
     concatenate_state_matrices(H)# Combines the state matrices into a larger matrix
 
-    array([[  0.        ,   1.        ,   0.        ,   0.        ,   0.        ],
-           [  0.        ,   0.        ,   1.        ,   0.        ,   0.        ],
-           [  0.        ,   0.        ,   0.        ,   1.        ,   0.        ],
-           [  0.        ,  -6.47857026,  31.1818    ,  -0.1818    ,   1.        ],
-           [  1.8182    ,   0.        , -44.54599091,   0.        ,   0.        ],
-           [  4.5455    ,  -7.4373471 ,   0.        ,   0.        ,   0.        ]])
+    array([[0.    , 1.        ,   0.        , 0.    , 0.],
+           [0.    , 0.        ,   1.        , 0.    , 0.],
+           [0.    , 0.        ,   0.        , 1.    , 0.],
+           [0.    ,-6.47857026,  31.1818    ,-0.1818, 1.],
+           [1.8182, 0.        , -44.54599091, 0.    , 0.],
+           [4.5455,-7.4373471 ,   0.        , 0.    , 0.]])
 
 we can get a hint about the methodology from the companion matrix structure. 
 For SISO models, the procedure is given elsewhere in most textbooks. For the 
@@ -97,11 +91,6 @@ depending on the shape, either columnwise or rowwise common denominators are
 computed. Obviously, this does not guarantee the resulting model minimality
 however at least prevents the dummy pole zero build-up as often encountered 
 in practice. 
-
-.. note:: I am experimenting with a directed graph approach to this problem,
-    but if someone has a better idea to factorize the common elements faster 
-    than this, I would be happy to include it. 
-
 
 .. note:: For both conversion functions, the discretization information is 
     preserved on the resulting model. 

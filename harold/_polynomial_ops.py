@@ -56,10 +56,10 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
 
     Parameters
     ----------
-    args : array_like
+    args : iterable
         Input arrays. 1-D arrays or array_like sequences of polynomial
         coefficients
-    compute_multipliers : boolean, optional
+    compute_multipliers : bool, optional
         After the computation of the LCM, this switch decides whether the
         multipliers of the given arguments should be computed or skipped.
         A multiplier in this context is ``[1,3]`` for the argument ``[1,2]``
@@ -81,8 +81,8 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     -----
     If complex-valued arrays are given, only real parts are taken into account.
 
-    Example
-    -------
+    Examples
+    --------
     >>> a , b = haroldlcm([1,3,0,-4], [1,-4,-3,18], [1,-4,3], [1,-2,-8])
     >>> a
     array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]
@@ -202,11 +202,13 @@ def haroldgcd(*args):
 
     Parameters
     ----------
-    args : tuple of 1d array_like
+    args : iterable
+        A collection of 1D array_likes.
 
     Returns
     --------
-    gcdpoly : 1d array
+    gcdpoly : ndarray
+        Computed GCD of args.
 
     Example
     -------
@@ -300,17 +302,16 @@ def haroldcompanion(somearray):
     of the monic polynomial of somearray. Hence ``[0.5,1,2]`` will be first
     converted to ``[1,2,4]``.
 
-    Example: ::
+    Examples
+    --------
 
-        >>>> haroldcompanion([2,4,6])
-            array([[ 0.,  1.],
-                   [-3., -2.]])
-
-        >>>> haroldcompanion([1,3])
-            array([[-3.]])
-
-        >>>> haroldcompanion([1])
-            array([], dtype=float64)
+    >>> haroldcompanion([2,4,6])
+    array([[ 0.,  1.],
+           [-3., -2.]])
+    >>> haroldcompanion([1,3])
+    array([[-3.]])
+    >>> haroldcompanion([1])
+    array([], dtype=float64)
 
     """
     if not isinstance(somearray, (list, type(np.array([0.])))):
@@ -399,7 +400,7 @@ def haroldpolymul(*args, trim_zeros=True):
 
     Returns
     -------
-    p : 1D array
+    p : ndarray
         The resulting polynomial coefficients.
 
     Example

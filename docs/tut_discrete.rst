@@ -2,22 +2,24 @@
 Discretization Methods
 =======================
 
+Usage
+-----
 
 In harold, a discrete time model can keep the discretization method 
 in mind such that when the occasion arises to convert back to a 
 continuous model the proper method is chosen. For example suppose
 we discretized a state model via Zero-order-hold::
 
-    # Take an array and form the corresponding companion matrix 
-    G = State(haroldcompanion([1,2,3,4]),eyecolumn(3,2),eyecolumn(3,0).T)
-    F = discretize(G,0.01,method='zoh') # default method is 'tustin'
+    >>> # Take an array and form the corresponding companion matrix 
+    >>> G = State(haroldcompanion([1,2,3,4]),eyecolumn(3,2),eyecolumn(3,0).T)
+    >>> F = discretize(G,0.01,method='zoh') # default method is 'tustin'
     
 Now if we actually check the properties of ``F`` we can see what it 
 actually keeps::
 
-    F.DiscretizedWith # returns 'zoh'
-    F.SamplingPeriod  # returns 0.01
-    F.SamplingSet     # returns 'Z'
+    >>> F.DiscretizedWith # returns 'zoh'
+    >>> F.SamplingPeriod  # returns 0.01
+    >>> F.SamplingSet     # returns 'Z'
     
 Currently, the known discretization methods are given as 
 
@@ -67,12 +69,14 @@ back. As an example::
 
 
 We can clearly see the artifacts of the mismatched conversion methods 
-even in this simple example. 
+even in this simple example.
 
+For Tustin method, prewarp frequency correction is also implemented which can
+also be used during the undiscretization.
 
-.. todo:: Explain these methods and of course ``undiscretize()``
-    stuff more!!
-    
+Functions
+---------
+
 .. py:currentmodule:: harold    
 .. autofunction:: discretize
 .. autofunction:: undiscretize 

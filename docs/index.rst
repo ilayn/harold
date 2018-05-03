@@ -12,13 +12,13 @@ Contents:
 
    intro
    preflight
+   tut_models
    tut_convert
    tut_discrete
    tut_kalman
    tut_model_props
    tut_polyfuncs
    tut_freq_domain
-   tut_solvers
 
    
 Additional Information
@@ -27,7 +27,6 @@ Additional Information
 .. toctree::
    :maxdepth: 2
 
-   faq
    changelog
    
 

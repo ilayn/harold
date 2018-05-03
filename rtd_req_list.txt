@@ -2,3 +2,4 @@ Babel>=2.3
 docutils>=0.12
 Sphinx>=1.4.5
 sphinx-rtd-theme>=0.1.9
+guzzle-sphinx-theme

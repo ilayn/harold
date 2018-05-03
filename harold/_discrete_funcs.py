@@ -39,7 +39,7 @@ def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
 
     Parameters
     ----------
-    G : {State, Transfer}
+    G : State, Transfer
         The to-be-discretized system representation
     dt : float
         The positive scalar for the sampling period in seconds
@@ -53,7 +53,7 @@ def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
         happens elsewhere to match the dynamics at this frequency.
     q : 2D ndarray
         If given, represents the custom discretization matrix such that the
-        following star-product is computed
+        following star-product is computed::
 
                        ┌───────┐      ─┐
                        │  1    │       │
@@ -73,7 +73,13 @@ def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
                     <───┤     │<──
                         └─────┘
 
-    where Q is the kronecker product, I_n ⊗ q and n being the number of states.
+        where Q is the kronecker product, I_n ⊗ q and n being the number of
+        states.
+
+    Returns
+    -------
+    Gd : State, Transfer
+        The resulting discrete model representation
 
     Notes
     -----
@@ -197,7 +203,7 @@ def undiscretize(G, method=None, prewarp_at=0., q=None):
         If method is "tustin" or its aliases then this is the prewarping
         frequency that discretization was corrected for.
     q : (2, 2) array_like
-        The LFT interconnection matrix.
+        The LFT interconnection matrix if the method is "lft".
 
     Returns
     -------

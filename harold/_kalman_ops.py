@@ -43,8 +43,8 @@ def controllability_matrix(G, compress=False):
 
     Parameters
     ----------
-    G : State() or tuple of {(n,n),(n,m)} array_like matrices
-        System or matrices to be tested
+    G : State(), tuple
+        System or a tuple of (n,n), (n,m) arraylike
     compress : Boolean
         If set to True, then the returned controllability matrix is row
         compressed, and in case of uncontrollable modes, has that many
@@ -52,13 +52,13 @@ def controllability_matrix(G, compress=False):
 
     Returns
     -------
-    Cc : {(n,nxm)} 2D numpy array
+    Cc : (n,nm) ndarray
         Kalman Controllability Matrix
-    T : (n,n) 2D numpy arrays
+    T : (n,n) ndarray, tuple
         The transformation matrix such that T^T * Cc is row compressed
         and the number of zero rows at the bottom corresponds to the number
         of uncontrollable modes.
-    r: integer
+    r: int
         Numerical rank of the controllability matrix
 
     """
@@ -93,22 +93,22 @@ def observability_matrix(G, compress=False):
 
     Parameters
     ----------
-    G : State() or {(n,n),(n,m)} array_like matrices
-        System or matrices to be tested
-    compress : Boolean
+    G : State(), tuple
+        System or a tuple of (n,n), (n,m) arraylike
+    compress : bool
         If set to True, then the returned observability matrix is row
         compressed, and in case of unobservability modes, has that many
         zero rows.
 
     Returns
     -------
-    Co : {(n,nxm)} 2D numpy array
+    Co : (nm,n) ndarray
         Kalman observability matrix
-    T : (n,n) 2D numpy arrays
-        The transformation matrix such that T^T * Cc is row compressed
+    T : (n,n) ndarray
+        The transformation matrix such that `T.T @ Cc` is row compressed
         and the number of zero rows on the right corresponds to the number
         of unobservable modes.
-    r: integer
+    r: int
         Numerical rank of the observability matrix
 
     """
@@ -136,7 +136,7 @@ def observability_matrix(G, compress=False):
 
 def kalman_decomposition(G, compute_T=False, output='system',
                          cleanup_threshold=1e-9):
-    """
+    r"""
     By performing a sequence of similarity transformations the State
     representation is transformed into a special structure such that
     if the system has uncontrollable/unobservable modes, the corresponding
@@ -152,40 +152,6 @@ def kalman_decomposition(G, compute_T=False, output='system',
     purposes to show the modal decomposition. Use cancellation_distance() and
     minimal_realization() functions instead with better numerical properties.
 
-    Example usage and verification : ::
-
-        G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
-        print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
-        print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
-        F = kalman_decomposition(G)
-        print(F.a,F.b,F.c)
-        H = minimal_realization(F.a,F.b,F.c)
-        print('The minimal system matrices are:',*H)
-
-
-    Expected output : ::
-
-        Is it Kalman Cont'ble ?  False
-        Is it Kalman Obsv'ble ?  False
-        [[ 2.          0.         -1.41421356]
-         [ 7.07106781 -3.         -7.        ]
-         [ 0.          0.          2.        ]]
-
-        [[-1.]
-         [ 0.]
-         [ 0.]]
-
-        [[-1.  0.  0.]]
-
-        The minimal system matrices are:
-         [[ 2.]] [[ 1.]] [[ 1.]]
-
-    .. warning:: Kalman decomposition is often described in an ambigous fashion
-                 in the literature. I would like to thank Joaquin Carrasco for
-                 his generous help on this matter for his lucid argument as to
-                 why this is probably happening. This is going to be
-                 reimplemented with better tests on pathological models.
-
     Parameters
     ----------
 
@@ -193,15 +159,12 @@ def kalman_decomposition(G, compute_T=False, output='system',
         The state representation that is to be converted into the block
         triangular form such that unobservable/uncontrollable modes
         corresponds to zero blocks in B/C matrices
-
     compute_T : boolean
         Selects whether the similarity transformation matrix will be
         returned.
-
     output : {'system','matrices'}
         Selects whether a State() object or individual state matrices
         will be returned.
-
     cleanup_threshold : float
         After the similarity transformation, the matrix entries smaller
         than this threshold in absolute value would be zeroed. Setting
@@ -209,18 +172,33 @@ def kalman_decomposition(G, compute_T=False, output='system',
 
     Returns
     -------
-    Gk : State() or if output = 'matrices' is selected (A,B,C,D) tuple
-        Returns a state representation or its matrices as a tuple
-
-    T  : (nxn) 2D-numpy array
+    Gk : State(), tuple
+        Returns a state representation or its matrices as a tuple if
+        `output = 'matrices'`
+    T  : (nxn) ndarray
         If compute_T is True, returns the similarity transform matrix
         that brings the state representation in the resulting decomposed
-        form such that
+        form.
 
-            Gk.a = inv(T)*G.a*T
-            Gk.b = inv(T)*G.b
-            Gk.c = G.c*T
-            Gk.d = G.d
+    Examples
+    --------
+    >>> G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
+    >>> print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
+    Is it Kalman Cont'ble ?  False
+    >>> print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
+    Is it Kalman Obsv'ble ?  False
+    >>> F = kalman_decomposition(G)
+    >>> print(F.a,F.b,F.c, sep='\n')
+    [[ 2.          0.         -1.41421356]
+     [ 7.07106781 -3.         -7.        ]
+     [ 0.          0.          2.        ]]
+    [[-1.]
+     [ 0.]
+     [ 0.]]
+    [[-1.  0.  0.]]
+    >>> H = minimal_realization(F.a,F.b,F.c)
+    >>> print('The minimal system matrices are:',*H.matrices)
+    The minimal system matrices are: [[2.]] [[1.]] [[1.]] [[0.]]
 
     """
     _check_for_state(G)
