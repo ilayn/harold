@@ -91,9 +91,9 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
                 fr_arr = array([1]*2)*G.d[0, 0]
         else:
             if isinstance(G, Transfer):
-                fr_arr = zeros((2,)+G.shape) + array(G.num)
+                fr_arr = zeros((2,)+G.shape) + G.to_array()
             else:
-                fr_arr = zeros((2,)+G.shape) + array(G.d)
+                fr_arr = zeros((2,)+G.shape) + G.d
 
             fr_arr = rollaxis(fr_arr, 0, 3)
     else:
@@ -254,10 +254,9 @@ def _get_freq_grid(G, w, samples, iu, ou):
             pz_list = pz_list[(np.imag(pz_list) >= 0.) & (pz_list != int_pole)]
             if pz_list.size == 0:
                 # oops all integrators. Add dummy modes for range creation
-                if isDiscrete:
-                    pz_list = [0.01+0j, -0.8+0j]  # 0j needed for np.log
-                else:
-                    pz_list = [0.001, 100]
+                pz_list = np.array([0.01+0j, -0.8+0j])  # 0j needed for log
+            else:
+                pz_list = np.array([0.001, 100])
 
             if isDiscrete:
                 nat_freq = np.empty_like(pz_list, dtype=float)
