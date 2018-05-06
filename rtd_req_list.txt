@@ -1,4 +1,0 @@
-Babel>=2.3
-docutils>=0.12
-Sphinx>=1.4.5
-guzzle-sphinx-theme>=0.7.11
