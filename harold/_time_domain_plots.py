@@ -52,17 +52,17 @@ def step_response_plot(sys, t=None):
     yout, tout = simulate_step_response(sys, t=t)
 
     if sys._isSISO:
-        fig, axs = plt.subplots(1, 1)
+        fig, axs = plt.subplots(1, 1, squeeze=False)
         if sys._isdiscrete:
-            axs.step(tout, yout)
+            axs[0, 0].step(tout, yout)
         else:
-            axs.plot(tout, yout)
+            axs[0, 0].plot(tout, yout)
 
-        axs.grid(b=True)
+        axs[0, 0].grid(b=True)
     else:
         nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else yout.shape[1:]
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True,
-                                sharey=True, squeeze=0)
+                                sharey=True, squeeze=False)
 
         # Get the appropriate plotter line plot or a step plot
         ptype = 'step' if sys._isdiscrete else 'plot'
@@ -103,13 +103,13 @@ def impulse_response_plot(sys, t=None):
     yout, tout = simulate_impulse_response(sys, t=t)
 
     if sys._isSISO:
-        fig, axs = plt.subplots(1, 1)
+        fig, axs = plt.subplots(1, 1, squeeze=False)
         if sys._isdiscrete:
-            axs.step(tout, yout)
+            axs[0, 0].step(tout, yout)
         else:
-            axs.plot(tout, yout)
+            axs[0, 0].plot(tout, yout)
 
-        axs.grid(b=True)
+        axs[0, 0].grid(b=True)
     else:
         nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else yout.shape[1:]
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True,

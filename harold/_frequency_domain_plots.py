@@ -80,18 +80,19 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
         pha = np.rad2deg(pha)
 
     if G._isSISO:
-        fig, axs = plt.subplots(2, 1, sharex=True)
-        axs[0].semilogx(ww, mag)
-        axs[1].semilogx(ww, pha)
+        fig, axs = plt.subplots(2, 1, sharex=True, squeeze=False)
+        axs[0, 0].semilogx(ww, mag)
+        axs[1, 0].semilogx(ww, pha)
         if isDiscrete:
-            axs[0].axvline(nyq, linestyle='dashed', linewidth=2)
-            axs[1].axvline(nyq, linestyle='dashed', linewidth=2)
-        axs[1].set_xlabel(r'Frequency ({})'.format(f_unit))
-        axs[0].set_ylabel(r'Magnitude {}'.format('(dB)' if use_db else
-                          r'($\mathregular{10^x}$)'))
-        axs[1].set_ylabel(r'Phase ({})'.format('deg' if use_degree else 'rad'))
+            axs[0, 0].axvline(nyq, linestyle='dashed', linewidth=2)
+            axs[1, 0].axvline(nyq, linestyle='dashed', linewidth=2)
+        axs[1, 0].set_xlabel(r'Frequency ({})'.format(f_unit))
+        axs[0, 0].set_ylabel(r'Magnitude {}'.format('(dB)' if use_db else
+                             r'($\mathregular{10^x}$)'))
+        axs[1, 0].set_ylabel(r'Phase ({})'
+                             ''.format('deg' if use_degree else 'rad'))
         for x in range(2):
-            axs[x].grid(True, which='both')
+            axs[x, 0].grid(True, which='both')
 
         fig.align_ylabels()
         return axs
