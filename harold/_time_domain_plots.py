@@ -77,7 +77,7 @@ def step_response_plot(sys, t=None):
     fig.text(.5, 0, 'Time', ha='center', va='center')
     fig.suptitle('Step response')
 
-    return fig
+    return axs
 
 
 def impulse_response_plot(sys, t=None):
@@ -128,4 +128,4 @@ def impulse_response_plot(sys, t=None):
     fig.text(.5, 0, 'Time', ha='center', va='center')
     fig.suptitle('Impulse response')
 
-    return fig
+    return axs

@@ -94,7 +94,7 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
             axs[x].grid(True, which='both')
 
         fig.align_ylabels()
-        return fig
+        return axs
 
     p, m = G.shape
     fig, axs = plt.subplots(2*p, m, sharex=True, squeeze=False)
@@ -119,7 +119,7 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
 
     fig.align_ylabels()
 
-    return fig
+    return axs
 
 
 def nyquist_plot(G, w=None):
@@ -169,4 +169,4 @@ def nyquist_plot(G, w=None):
                 axs[row, col].set_ylabel('Imaginary Part')
             if row == p - 1:
                 axs[row, col].set_xlabel('Real Part')
-    return fig
+    return axs
