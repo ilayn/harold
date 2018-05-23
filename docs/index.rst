@@ -19,6 +19,7 @@ Contents:
    tut_model_props
    tut_polyfuncs
    tut_freq_domain
+   tut_time_domain
 
    
 Additional Information

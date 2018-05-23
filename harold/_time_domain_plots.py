@@ -44,7 +44,7 @@ def step_response_plot(sys, t=None):
 
     Returns
     -------
-    fig : matplotlib.figure.Figure
+    fig : matplotlib.axes._subplots.AxesSubplot
         Returns the figure handle of the step response
 
     """
@@ -95,7 +95,7 @@ def impulse_response_plot(sys, t=None):
 
     Returns
     -------
-    fig : matplotlib.figure.Figure
+    fig : matplotlib.axes._subplots.AxesSubplot
         Returns the figure handle of the impulse response
 
     """

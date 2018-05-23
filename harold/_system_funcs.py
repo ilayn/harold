@@ -536,7 +536,7 @@ def _minimal_realization_state(A, B, C, tol=1e-6):
                 bs = int(sum(blocks_c))
                 A, B, C = Ac[:bs, :bs], Bc[:bs, :], Cc[:, :bs]
             else:
-                bs = n - int(sum(blocks_o))
+                bs = int(sum(blocks_o))
                 A, B, C = Ao[bs:, bs:], Bo[bs:, :], Co[:, bs:]
 
     return A, B, C

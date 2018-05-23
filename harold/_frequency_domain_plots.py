@@ -49,9 +49,10 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
         frequencies are in Hz.
     use_degree : bool, optional
         The phase angle is shown in degrees or in radians.
+
     Returns
     -------
-    plot : matplotlib.figure.Figure
+    plot : matplotlib.axes._subplots.AxesSubplot
 
     """
     _check_for_state_or_transfer(G)
@@ -114,7 +115,8 @@ def bode_plot(G, w=None, use_db=False, use_hz=True, use_degree=True):
                 axs[2*row, col].set_ylabel(r'Magnitude {}'.format('(dB)'
                                            if use_db else
                                            r'($\mathregular{10^x}$)'))
-                axs[2*row+1, col].set_ylabel(r'Phase (deg)')
+                axs[2*row+1, col].set_ylabel(r'Phase ({})'.format(
+                                             'deg' if use_degree else 'rad'))
             if row == p - 1:
                 axs[2*row+1, col].set_xlabel(r'Frequency ({})'.format(f_unit))
 
@@ -136,7 +138,7 @@ def nyquist_plot(G, w=None):
 
     Returns
     -------
-    plot : matplotlib.figure.Figure
+    plot : matplotlib.axes._subplots.AxesSubplot
 
     """
     _check_for_state_or_transfer(G)

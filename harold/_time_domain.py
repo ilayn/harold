@@ -194,6 +194,17 @@ def simulate_step_response(sys, t=None):
         discrete time models increments different than the sampling period also
         raises an error. On the other hand for discrete models this can be
         omitted and a time sequence will be generated automatically.
+
+    Returns
+    -------
+    yout : ndarray
+        The resulting response array. The array is 1D if sys is SISO and
+        has p columns if sys has p outputs. If there are also m inputs the
+        array is 3D array with the shape (<num of samples>, p, m)
+    tout : ndarray
+        The time sequence used in the simulation. If the parameter t is not
+        None then a copy of t is given.
+
     """
     _check_for_state_or_transfer(sys)
     # Always works with State Models
@@ -215,7 +226,7 @@ def simulate_step_response(sys, t=None):
 def simulate_impulse_response(sys, t=None):
     """
     Compute the linear model response to an Dirac delta pulse (or all-zeros
-    array except the first sample being 1. at each channel) sampled at given
+    array except the first sample being 1/dt at each channel) sampled at given
     time instances.
 
     If the time array is omitted then a time sequence is generated based on
@@ -231,6 +242,17 @@ def simulate_impulse_response(sys, t=None):
         discrete time models increments different than the sampling period also
         raises an error. On the other hand for discrete models this can be
         omitted and a time sequence will be generated automatically.
+
+    Returns
+    -------
+    yout : ndarray
+        The resulting response array. The array is 1D if sys is SISO and
+        has p columns if sys has p outputs. If there are also m inputs the
+        array is 3D array with the shape (<num of samples>, p, m)
+    tout : ndarray
+        The time sequence used in the simulation. If the parameter t is not
+        None then a copy of t is given.
+
     """
     _check_for_state_or_transfer(sys)
     # Always works with State Models
@@ -245,7 +267,7 @@ def simulate_impulse_response(sys, t=None):
 
     m = sys.shape[1]
     u = np.zeros([len(t), m], dtype=float)
-    u[0] = 1.
+    u[0] = 1./ts
 
     return simulate_linear_system(sys, u=u, t=t, per_channel=1)
 
