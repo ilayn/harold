@@ -29,11 +29,6 @@ from scipy.signal import deconvolve
 from scipy.linalg import block_diag, lu, matrix_balance, solve, lstsq
 from ._aux_linalg import haroldsvd, e_i
 
-try:
-    from scipy.linalg import LinAlgWarning as rcond_warn
-except ImportError:
-    rcond_warn = RuntimeWarning
-
 __all__ = ['haroldlcm', 'haroldgcd', 'haroldcompanion', 'haroldpoly',
            'haroldpolyadd', 'haroldpolymul', 'haroldpolydiv']
 

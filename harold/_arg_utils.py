@@ -29,6 +29,11 @@ from numpy import iscomplexobj, ndarray, asarray
 
 __all__ = []
 
+try:
+    from scipy.linalg import LinAlgWarning as _rcond_warn
+except ImportError:
+    _rcond_warn = RuntimeWarning
+
 
 def _check_for_state(G, custom_msg=None):
     """

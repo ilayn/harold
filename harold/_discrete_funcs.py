@@ -22,12 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
+from numpy import block, zeros, eye
 from numpy.linalg import LinAlgError
-from scipy.linalg import expm, logm, inv
+from scipy.linalg import (expm, logm, block_diag, matrix_balance, eigvals,
+                          norm, solve)
 from warnings import warn, simplefilter, catch_warnings
 from ._classes import Transfer, State, transfer_to_state, state_to_transfer
 from ._global_constants import _KnownDiscretizationMethods as KDM
 from ._arg_utils import _check_for_state_or_transfer
+from ._arg_utils import _rcond_warn
 
 __all__ = ['discretize', 'undiscretize']
 
@@ -135,20 +138,47 @@ def _discretize(T, dt, method, prewarp_at, q):
 
     if method == 'zoh':
         """
-        Zero-order hold should be discouraged in my opinion since
-        control problems don't have boundary conditions as in
-        stongly nonlinear FEM simulations of CFDs so on. Most
-        importantly it is not stability-invariant but anyways.
-        This conversion is done via the expm() identity
 
-            [A | B]   [ exp(A) | int(exp(A))*B ]   [ Ad | Bd ]
-        expm[- - -] = [------------------------] = [---------]
-            [0 | 0]   [   0    |       I       ]   [ C  | D  ]
+                 [A | B]   [ exp(A) | ∫exp(A)dt * B ]   [ Ad | Bd ]
+            expm [- - -] = [------------------------] = [---------]
+                 [0 | 0]   [   0    |       I       ]   [ C  | D  ]
+
         """
 
-        M = np.r_[np.c_[T.a, T.b], np.zeros((m, m+n))]
-        eM = expm(M*dt)
+        M = block([[T.a, T.b], [zeros((m, m+n))]])
+        # Don't permute, destroys the zero structure
+        Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
+        # inverted scale after exponentiation via broadcast+elwise mult.
+        eM = expm(Ms*dt) * (sca[:, None] * np.reciprocal(sca))
         Ad, Bd, Cd, Dd = eM[:n, :n], eM[:n, n:], T.c, T.d
+
+    elif method == 'foh':
+        """
+        This conversion is done via the expm() identity
+
+                  [ A*t   B*t   0 ]   [ Φ  Γ₁  Γ₂]
+             expm [  0     0    I ] = [ 0  I   I ]
+                  [  0     0    0 ]   [ 0  0   I ]
+
+        where Φ, Γ₁, Γ₂ satisfies
+
+            Φ(B*t) = (A*t)Γ₁ + B*t = (A*t)²Γ₂ + (A*t + I)B*t.
+
+        See Franklin, Powell "Digital Control of Dynamic Systems" 3rd ed.
+        section 6.3.2
+        """
+        M = block([[block_diag(block([T.a, T.b])*dt, eye(m))],
+                   [zeros((m, n+2*m))]])
+        # Don't permute, destroys the zeros/identity structure
+        Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
+        # inverted scale after exponentiation via broadcast+elwise mult.
+        eM = expm(Ms) * (sca[:, None] * np.reciprocal(sca))
+
+        Ad = eM[:n, :n]
+        Bd0, Bd1 = eM[:n, n:n+m], eM[:n, n+m:]
+        Bd = Bd0 + Ad @ Bd1 - Bd1
+        Cd = T.c
+        Dd = T.d + T.c @ Bd1
 
     elif method in ('bilinear', 'tustin', 'trapezoidal'):
         if prewarp_at == 0.:
@@ -251,10 +281,71 @@ def _undiscretize(T, dt, method, prewarp_at, q):
 
     m, n = T.NumberOfInputs, T.NumberOfStates
 
+    # Error message for log based zoh, foh
+    logmsg = ('The matrix logarithm returned a complex array, probably due'
+              ' to poles on the negative real axis, and a continous-time '
+              'model cannot be obtained via this method without '
+              'perturbations.')
+
     if method == 'zoh':
-        M = np.r_[np.c_[T.a, T.b], np.c_[np.zeros((m, n)), np.eye(m)]]
-        eM = logm(M)*(1/dt)
+
+        if np.any(np.abs(eigvals(T.a)) < np.sqrt(np.spacing(norm(T.a, 1)))):
+            raise ValueError('The system has poles near 0, "zoh" method'
+                             ' cannot be applied.')
+        M = block([[T.a, T.b], [zeros((m, n)), eye(m)]])
+        Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
+
+        eM = logm(M) * (sca[:, None] * np.reciprocal(sca)) * (1/dt)
+        if np.any(eM.imag):
+            raise ValueError(logmsg)
+
         Ac, Bc, Cc, Dc = eM[:n, :n], eM[:n, n:], T.c, T.d
+
+    elif method == 'foh':
+        """
+        We use the explicit formulas for Φ, Γ₁, Γ₂
+
+                      [ Φ  Γ₁  Γ₂]
+                 logm [ 0  I   I ]
+                      [ 0  0   I ]
+
+        Here a direct logarithm won't work since we don't have Γ terms. However
+        discrete time matrices are given by
+
+                Ad = exp(Ac*t) = Φ
+                Bd = Ac⁻²(Φ - I)²Bc/t                      (*)
+                Cd = Cc
+                Dc = Dc + Cc[Ac⁻²(Φ - I) - Ac⁻]Bc/t
+
+        since Ac⁻(Φ-I) = ∫exp(Ac)dt and Ac⁻ commutes with Φ, Bd*t = Φ²*Bc,
+        the solution follows.
+        """
+        if np.any(np.abs(eigvals(T.a)) < np.sqrt(np.spacing(norm(T.a, 1)))):
+            raise ValueError('The system has poles near 0, "foh" method'
+                             ' cannot be applied.')
+
+        M = block([[T.a, dt*T.b, zeros((n, m))],  # Notice dt factor from (*)
+                   [zeros((m, n)), eye(m), eye(m)],
+                   [zeros((m, n+m)), eye(m)]])
+        Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
+        # Look out for the initial dt factor of T.b
+        eM = logm(M)/dt * (sca[:, None] * np.reciprocal(sca))
+        if np.any(eM.imag):
+            raise ValueError(logmsg)
+
+        Ac = eM[:n, :n]
+        Bc0, Bc1 = eM[:n, n:n+m], -eM[:n, n+m:]
+
+        # Now we have Bc0 = Ac⁻(Φ - I)Bc, logm once again to get Bc
+        M = block([[T.a, Bc0],
+                   [zeros((m, n)), eye(m)]])
+        Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
+        eM = logm(M)/dt * (sca[:, None] * np.reciprocal(sca))
+        if np.any(eM.imag):
+            raise ValueError(logmsg)
+
+        # Now back-substitute
+        Bc, Cc, Dc = eM[:n, n:], T.c, T.d - T.c @ Bc1
 
     elif method in ('bilinear', 'tustin', 'trapezoidal'):
         if prewarp_at == 0.:
@@ -280,21 +371,19 @@ def _undiscretize(T, dt, method, prewarp_at, q):
     elif method in ('backward euler', 'backward difference',
                     'backward rectangular', '<<'):
         # nonproper via lft, compute explicitly.
-        # TODO : See _simple_lft_connect convert to solve and fix SciPy warning
-        # version
-        with catch_warnings():
-            simplefilter('error')
+        with catch_warnings(record=True) as war:
+            simplefilter("always")
             try:
-                T.a
-                iAd = inv(T.a)
-                print(iAd)
-            except RuntimeWarning:
-                warn('The state matrix has eigenvalues too close to imaginary'
-                     ' axis. This conversion method might give inaccurate '
-                     'results', RuntimeWarning, stacklevel=2)
+                iAd = solve(T.a, eye(n))
             except LinAlgError:
-                raise ValueError('The state matrix has eigenvalues at zero'
+                raise ValueError('The state matrix has eigenvalues at zero '
                                  'and this conversion method can\'t be used.')
+
+        if len(war) > 0:
+            warn('The state matrix has eigenvalues too close to imaginary'
+                 ' axis. This conversion method might give inaccurate '
+                 'results', _rcond_warn, stacklevel=2)
+
         Ac = np.eye(n) - iAd
         Ac /= dt
         Bc = 1/np.sqrt(dt) * (iAd @ T.b)
@@ -375,20 +464,20 @@ def _simple_lft_connect(q, A, B, C, D):
     if q22 == 0.:
         NAinv = ij
     else:
-        with catch_warnings():
-            simplefilter('error')
+        with catch_warnings(record=True) as war:
+            simplefilter('always')
             try:
-                NAinv = inv(ij - q22*A)
-            # TODO: SciPy 1.1 will give LinAlgWarning!! And convert to "solve"
-            except RuntimeWarning:
-                warn('The resulting state matrix during this operation '
-                     'has an eigenstructure very close to unity. Hence '
-                     'the final model might be inaccurate', RuntimeWarning,
-                     stacklevel=2)
+                NAinv = solve(ij - q22*A, eye(n))
             except LinAlgError:
                 raise LinAlgError('The resulting state matrix during this '
                                   'operation leads to a singular matrix '
                                   'inversion and hence cannot be computed.')
+
+        if len(war) > 0:
+            warn('The resulting state matrix during this operation '
+                 'has an eigenstructure very close to unity. Hence '
+                 'the final model might be inaccurate', _rcond_warn,
+                 stacklevel=2)
 
     # Compute the star product
     Ad = q11*ij + q12*A @ NAinv*q21

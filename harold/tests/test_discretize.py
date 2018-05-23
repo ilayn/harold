@@ -23,11 +23,13 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from numpy import eye, ones, zeros
+from numpy import eye, ones, zeros, poly
 from harold import State, Transfer, discretize, undiscretize
 from numpy.testing import (assert_array_almost_equal,
                            assert_equal,
                            assert_raises)
+from warnings import catch_warnings, simplefilter
+from harold._arg_utils import _rcond_warn
 
 # Some tests are taken from scipy repository for comparison
 
@@ -59,6 +61,23 @@ def test_simple_zoh():
     assert_array_almost_equal(bd_truth, bd)
     assert_array_almost_equal(cc, cd)
     assert_array_almost_equal(dc, dd)
+
+
+def test_simple_foh():
+    G = Transfer(1, [1, 0, 0])
+    dt_ = 0.1
+    H = discretize(G, dt=dt_, method='foh')
+    n, d = H.polynomials
+    assert_equal(H.SamplingPeriod, dt_)
+    assert_array_almost_equal(n, np.array([[5, 20, 5]])/3000)
+    assert_array_almost_equal(d, np.array([[1., -2., 1.]]))
+    G = Transfer(1, [1, 1])
+    dt_ = 0.1
+    H = discretize(G, dt=dt_, method='foh')
+    n, d = H.polynomials
+    assert_equal(H.SamplingPeriod, dt_)
+    assert_array_almost_equal(n, np.array([[0.04837418, 0.0467884]]))
+    assert_array_almost_equal(d, np.array([[1., -0.90483742]]))
 
 
 def test_simple_tustin():
@@ -135,7 +154,7 @@ def test_undiscretize():
     cc = np.array([[0.75, 1.0], [1.0, 1.0], [1.0, 0.25]])
     dc = np.array([[0.0], [0.0], [-0.33]])
     G = State(ac, bc, cc, dc)
-    for method in ('zoh', 'tustin', '>>', '<<'):
+    for method in ('zoh', 'foh', 'tustin', '>>', '<<'):
         print(method)
         Gd = discretize(G, dt=0.5, method=method)
         Gu = undiscretize(Gd)
@@ -147,3 +166,20 @@ def test_undiscretize():
     Gd = State(zeros([2, 2]), ones([2, 1]), ones([1, 2]), dt=1)
     Gd.DiscretizedWith = '<<'
     assert_raises(ValueError, undiscretize, Gd)
+
+
+def test_undiscretize_zohfoh_zeroeig():
+    G = Transfer(1, poly([np.pi, 1e-8, 1e-9]), dt=0.1)
+    for method in ('zoh', 'foh'):
+        assert_raises(ValueError, undiscretize, G, method=method)
+
+
+def test_undiscretize_backeuler_nearzero_eig():
+    G = Transfer(1, [1, 0, 0], 0.1)
+    assert_raises(ValueError, undiscretize, G, method='<<')
+    arr = np.arange(9).reshape(3, 3).astype(float)
+    arr[0, 0] = 1e-15
+    G = State(arr, np.random.rand(3), np.random.rand(3), dt=0.1)
+    with catch_warnings():
+        simplefilter("error")
+        assert_raises(_rcond_warn, undiscretize, G, '<<')

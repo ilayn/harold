@@ -24,6 +24,7 @@ THE SOFTWARE.
 _KnownDiscretizationMethods = ('bilinear',
                                'tustin',
                                'zoh',
+                               'foh',
                                'forward difference',
                                'forward euler',
                                'forward rectangular',
