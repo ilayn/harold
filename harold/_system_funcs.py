@@ -90,7 +90,7 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
         if invert:
             A0, B0, C0 = fliplr(flipud(A0)), flipud(B0), fliplr(C0)
             T = flipud(T)
-        return A0, B0, C0, T.T if form == 'c' else A0.T, B0.T, C0.T, T.T
+        return (A0, B0, C0, T.T) if form == 'c' else (A0.T, B0.T, C0.T, T.T)
 
     next_, size_ = -m, m
     tol_from_A = n*norm(A, 1)*np.spacing(1.)
