@@ -38,9 +38,9 @@ def test_staircase():
                [-0.5, 0.5, -5.5, -0.5, 3., 2., 3.],
                [1., 1., 0., 0., 0., 0., 0.]])
     A, B, C, D = matrix_slice(M, (1, 4), corner='sw')
-    a, b, c, k = staircase(A, B, C, form='o', invert=True, block_indices=True)
+    a, b, c, T = staircase(A, B, C, form='o', invert=True)
     assert_almost_equal(a[2:, :2], zeros((2, 2)))
-    assert_almost_equal(k, array([1, 1]))
+    assert_almost_equal(T.T @ A @ T, a)
 
 
 def test_cancellation_distance():
@@ -58,7 +58,28 @@ def test_minimal_realization_State():
                [1., 1., 0., 0., 0., 0., 0.]])
     G = State(*matrix_slice(M, (1, 4), corner='sw'))
     H = minimal_realization(G)
-    assert_(H.a.shape, (2, 2))
+    assert H.a.shape == (2, 2)
+    #
+    G = State(array([[0., 1., 0., 0., 0.],
+                     [-0.1, -0.5, 1., -1., 0.],
+                     [0., 0., 0., 1., 0.],
+                     [0., 0., 0., 0., 1.],
+                     [0., 3.5, 1., -2., 2.]]),
+              array([[0.], [1.], [0.], [0.], [1.]]),
+              array([[0., 3.5, 1., -1., 0.]]),
+              array([[1.]]))
+    H = minimal_realization(G)
+    assert H.a.shape == (4, 4)
+    #
+    G = State(array([[-2., 0., 0., 0.],
+                     [0., 0., 1., 0.],
+                     [0., 0., 0., 1.],
+                     [0., -12., 4., 3.]]),
+              array([[1., 0.], [0., 0.], [0., 0.], [0., 1.]]),
+              array([[1., -9., 0., 0.], [0., -20., 0., 5.]]),
+              array([[0., 0.], [0., 1.]]))
+    H = minimal_realization(G)
+    assert H.a.shape == (3, 3)
 
 
 def test_minimal_realization_Transfer():
