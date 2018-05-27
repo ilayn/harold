@@ -10,6 +10,10 @@ from ._classes import State, Transfer, transfer_to_state
 from ._arg_utils import _check_for_state_or_transfer
 
 
+__all__ = ['staircase', 'cancellation_distance', 'minimal_realization',
+           'hessenberg_realization']
+
+
 def staircase(A, B, C, compute_T=False, form='c', invert=False,
               block_indices=False):
     """
