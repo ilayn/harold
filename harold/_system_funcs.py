@@ -323,7 +323,7 @@ def minimal_realization(G, tol=1e-6):
 
     if isinstance(G, State):
         if G._isgain:
-            return State(G.to_array)
+            return State(G.to_array())
         else:
             A, B, C, D = G.matrices
             Am, Bm, Cm = _minimal_realization_state(A, B, C, tol=tol)
@@ -333,7 +333,7 @@ def minimal_realization(G, tol=1e-6):
                 return State(D, dt=G.SamplingPeriod)
     else:
         if G._isgain:
-            return Transfer(G.to_array)
+            return Transfer(G.to_array())
         else:
             num, den = G.polynomials
             numm, denm = _minimal_realization_transfer(num, den, tol=tol)

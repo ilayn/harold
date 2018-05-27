@@ -26,7 +26,7 @@ from harold import (staircase, minimal_realization, hessenberg_realization,
                     State, Transfer, matrix_slice, cancellation_distance)
 
 import numpy as np
-from numpy import array, poly, zeros, eye, empty, triu_indices_from
+from numpy import array, poly, zeros, eye, empty, triu_indices_from, zeros_like
 
 from numpy.testing import assert_almost_equal, assert_, assert_raises
 
@@ -39,8 +39,11 @@ def test_staircase():
                [1., 1., 0., 0., 0., 0., 0.]])
     A, B, C, D = matrix_slice(M, (1, 4), corner='sw')
     a, b, c, T = staircase(A, B, C, form='o', invert=True)
+    assert_raises(ValueError, staircase, A, B, C, form='zzz')
     assert_almost_equal(a[2:, :2], zeros((2, 2)))
     assert_almost_equal(T.T @ A @ T, a)
+    a, b, c, T = staircase(A, zeros_like(B), C, form='o', invert=True)
+    assert_almost_equal(b, zeros_like(B))
 
 
 def test_cancellation_distance():
@@ -89,6 +92,12 @@ def test_minimal_realization_Transfer():
     assert_almost_equal(H_f.num, array([[1]]))
     H_nf = minimal_realization(G, tol=1e-7)
     assert_almost_equal(H_nf.num, array([[1., -7., 21., -37., 30.]]))
+    H = minimal_realization(Transfer(eye(4)))
+    assert H._isgain
+    assert not H._isSISO
+    H = minimal_realization(State(eye(4)))
+    assert H._isgain
+    assert not H._isSISO
 
 
 def test_simple_hessenberg_trafo():
