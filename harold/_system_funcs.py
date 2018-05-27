@@ -1,64 +1,23 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
 from copy import deepcopy
 import numpy as np
 from numpy.linalg import cond, eig, norm
-from numpy import flipud, fliplr
-from scipy.linalg import svdvals, qr, block_diag, hessenberg
+from numpy import array, flipud, fliplr, eye, zeros
+from numpy.random import rand
+from scipy.linalg import (solve, svdvals, qr, block_diag,
+                          hessenberg, matrix_balance)
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
 from ._classes import State, Transfer, transfer_to_state
 from ._arg_utils import _check_for_state_or_transfer
 
 
-__all__ = ['staircase', 'cancellation_distance', 'minimal_realization',
-           'hessenberg_realization']
-
-
-# TODO : Too much matlab-ish coding, clean up !!
 def staircase(A, B, C, compute_T=False, form='c', invert=False,
               block_indices=False):
     """
-    The staircase form is used typically used to assess system controllability
-    observability properties.
+    Given a state model data A, B, C, Returns the so-called staircase form
+    State realization to assess the controllability/observability properties.
 
-    Given a state system matrix triplet ``A``, ``B``, ``C``, this function
-    computes the so-called controller/observer block Hessenberg form or
-    staircase form such that the resulting system matrices have the
-    quasi-block diagonal form.
-
-    For controllability and observability, the existence of zero
-    subdiagonal blocks can be checked, as opposed to forming the Kalman
-    matrix and checking the rank. Staircase method can numerically be
-    more stable since for certain matrices, A^n computations can
-    introduce large errors (for some A that have entries with varying
-    order of magnitudes). But it is also prone to numerical rank guessing
-    mismatches.
-    Notice that, if we use the pertransposed data, then we have the
-    observer form which is usually asked from the user to supply
-    the data as :math:`A,B,C \Rightarrow A^T,C^T,B^T` and then transpose
-    back the result. Instead, the additional ``form`` option denoting
-    whether it is the observer or the controller form that is requested.
+    If observer-form is requested, internally the system is pertransposed
+    and same controllable-form machinery is applied.
 
     Parameters
     ----------
@@ -68,17 +27,13 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
         Input array
     C : (p, n) array_like
         Output array
-    compute_T : bool, optional
-        Whether the transformation matrix T should be computed or not
     form : str, optional
         Determines whether the controller- or observer-staircase form
-        will be computed via ``'c'`` or ``'o'`` values.
+        will be computed via "c" or "o" values.
     invert : bool, optional
-        Whether to select which side the B or C matrix will be compressed.
-        For example, the default case returns the B matrix with (if any)
-        zero rows at the bottom. invert option flips this choice either in
-        B or C matrices depending on the "form" switch.
-    block_indices : bool, optional
+        If True, the full rank part of B/C matrix will be compressed to
+        lower/right part of the array. Naturally, this also effects the A
+        matrix blocks to appear as lower/upper triangular block matrix.
 
     Returns
     -------
@@ -89,129 +44,80 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
     Ch : (p, n) ndarray
         Resulting Output array
     T : (n, n) ndarray
-        If the boolean ``compute_T`` is true, returns the transformation
-        matrix such that ::
+        The transformation matrix such that ::
 
             [ T⁻¹AT | T⁻¹B ]   [ Ah | Bh ]
             [-------|------] = [----|----]
             [   CT  |      ]   [ Ch |    ]
 
-        is in the desired staircase form.
-    k : ndarray
-        If the boolean ``block_indices`` is true, returns the array
-        of controllable/observable block sizes identified by the algorithm
-        during elimination.
+    Notes
+    -----
+    For controllability and observability, the existence of zero subdiagonal
+    blocks can be checked in a numerically stable fashion, as opposed to
+    forming the  Kalman matrices and checking the rank. For certain matrices,
+    A^n computations can introduce large errors (for some A that have entries
+    with varying order of magnitudes). But it is also prone to numerical
+    rank identification.
 
     """
 
     if form not in {'c', 'o'}:
-        raise ValueError('The "form" key can only take values'
-                         '\"c\" or \"o\" denoting\ncontroller- or '
-                         'observer-Hessenberg form.')
+        raise ValueError('The "form" key can only take values "c" or "o".')
+
+    _ = State.validate_arguments(A, B, C, zeros((C.shape[0], B.shape[1])))
     if form == 'o':
         A, B, C = A.T, C.T, B.T
 
-    n = A.shape[0]
-    ub, sb, vb, m0 = haroldsvd(B, also_rank=True)
-    cble_block_indices = np.empty((1, 0))
-
-    # Trivially  Uncontrollable Case
-    # Skip the first branch of the loop by making m0 greater than n
-    # such that the matrices are returned as is without any computation
-    if m0 == 0:
-        m0 = n + 1
-        cble_block_indices = np.array([0])
-
-    # After these, start the regular case
-    if n > m0:  # If it is not a square system with full rank B
-
-        A0 = ub.T.dot(A.dot(ub))
-
-        # Row compress B and consistent zero blocks with the reported rank
-        B0 = sb.dot(vb)
-        B0[m0:, :] = 0.
-        C0 = C.dot(ub)
-        cble_block_indices = np.append(cble_block_indices, m0)
-
-        if compute_T:
-            P = block_diag(np.eye(n-ub.T.shape[0]), ub.T)
-
-        # Since we deal with submatrices, we need to increase the
-        # default tolerance to reasonably high values that are
-        # related to the original data to get exact zeros
-        tol_from_A = n*norm(A, 1)*np.spacing(1.)
-
-        # Region of interest
-        m = m0
-        ROI_start = 0
-        ROI_size = 0
-
-        for _ in range(A.shape[0]):
-            ROI_start += ROI_size
-            ROI_size = m
-            h1, h2, h3, h4 = matrix_slice(A0[ROI_start:, ROI_start:],
-                                          (ROI_size, ROI_size))
-            uh3, sh3, vh3, m = haroldsvd(h3, also_rank=True,
-                                         rank_tol=tol_from_A)
-
-            # Make sure reported rank and sh3 are consistent about zeros
-            sh3[sh3 < tol_from_A] = 0.
-
-            # If the resulting subblock is not full row or zero rank
-            if 0 < m < h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices, m)
-                if compute_T:
-                    P = block_diag(np.eye(n-uh3.shape[1]), uh3.T).dot(P)
-                A0[ROI_start:, ROI_start:] = np.r_[np.c_[h1, h2],
-                                                   np.c_[sh3.dot(vh3),
-                                                         uh3.T.dot(h4)]]
-                A0 = A0.dot(block_diag(np.eye(n-uh3.shape[1]), uh3))
-                C0 = C0.dot(block_diag(np.eye(n-uh3.shape[1]), uh3))
-                # Clean up
-                A0[abs(A0) < tol_from_A] = 0.
-                C0[abs(C0) < tol_from_A] = 0.
-            elif m == h3.shape[0]:
-                cble_block_indices = np.append(cble_block_indices, m)
-                break
-            else:
-                break
-
-        if invert:
-            A0 = np.fliplr(np.flipud(A0))
-            B0 = np.flipud(B0)
-            C0 = np.fliplr(C0)
-            if compute_T:
-                P = np.flipud(P)
-
-        if form == 'o':
-            A0, B0, C0 = A0.T, C0.T, B0.T
-
-        if compute_T:
-            if block_indices:
-                return A0, B0, C0, P.T, cble_block_indices
-            else:
-                return A0, B0, C0, P.T
-        else:
-            if block_indices:
-                return A0, B0, C0, cble_block_indices
-            else:
-                return A0, B0, C0
-
-    else:  # Square system B full rank ==> trivially controllable
-        cble_block_indices = np.array([n])
+    # trivially uncontrollable, quick exit
+    if not np.any(B):
         if form == 'o':
             A, B, C = A.T, C.T, B.T
+        return A, B, C, eye(A.shape[0])
 
-        if compute_T:
-            if block_indices:
-                return A, B, C, np.eye(n), cble_block_indices
-            else:
-                return A, B, C, np.eye(n)
+    n = A.shape[0]
+    ub, sb, vb, m = haroldsvd(B, also_rank=True)
+    sb[m:, m:] = 0.
+
+    # After these, start the regular case
+    A0 = ub.T @ A @ ub
+    # Row compress B
+    B0 = sb @ vb
+    C0 = C @ ub
+    T = block_diag(eye(n-ub.shape[1]), ub.T)
+
+    if n == m:
+        # Already triangulized B, nothing else to do
+        if invert:
+            A0, B0, C0 = fliplr(flipud(A0)), flipud(B0), fliplr(C0)
+            T = flipud(T)
+        return (A0, B0, C0, T.T) if form == 'c' else (A0.T, B0.T, C0.T, T.T)
+
+    next_, size_ = -m, m
+    tol_from_A = n*norm(A, 1)*np.spacing(1.)
+
+    for _ in range(A0.shape[0]):
+        next_, size_ = next_ + size_, m
+        h1, h2, h3, h4 = matrix_slice(A0[next_:, next_:], (size_, size_))
+
+        # If turns out to be zero or empty, We are done quick exit
+        if not np.any(h3):
+            break
+
+        uh3, sh3, vh3, m = haroldsvd(h3, also_rank=True, rank_tol=tol_from_A)
+        sh3[m:, m:] = 0.
+        # If the resulting subblock is not full row
+        if 0 < m < h3.shape[0]:
+            T[-uh3.shape[0]:, :] = uh3.T @ T[-uh3.shape[0]:, :]
+            A0[:, next_ + size_:] = A0[:, next_ + size_:] @ uh3
+            A0[next_ + size_:, next_:next_ + size_] = sh3 @ vh3
+            A0[next_ + size_:, next_ + size_:] = uh3.T @ h4
+            p = uh3.shape[0]
+            C0[:, -p:] = C0[:, -p:] @ uh3
         else:
-            if block_indices:
-                return A, B, C, cble_block_indices
-            else:
-                return A, B, C
+            break
+    if invert:
+        A0, B0, C0, T = fliplr(flipud(A0)), flipud(B0), fliplr(C0), flipud(T)
+    return (A0, B0, C0, T.T) if form == 'c' else (A0.T, C0.T, B0.T, T.T)
 
 
 def hessenberg_realization(G, compute_T=False, form='c', invert=False,
@@ -264,8 +170,8 @@ def hessenberg_realization(G, compute_T=False, form='c', invert=False,
     """
     if isinstance(G, tuple):
         a, b, c = G
-        a, b, c, *_ = State.validate_arguments(a, b, c, np.zeros((c.shape[0],
-                                                                  b.shape[1])))
+        a, b, c, *_ = State.validate_arguments(a, b, c, zeros((c.shape[0],
+                                                               b.shape[1])))
         in_is_sys = False
     else:
         _check_for_state_or_transfer(G)
@@ -356,7 +262,7 @@ def cancellation_distance(F, G):
     n, m = A.shape
     B = e_i(n, np.s_[:m])
     D = e_i(n, np.s_[m:])
-    C, _ = qr(2*np.random.rand(n, n-m) - 1, mode='economic')
+    C, _ = qr(2*rand(n, n-m) - 1, mode='economic')
     evals, V = eig(np.c_[A, C])
     K = cond(V)
     X = V[:m, :]
@@ -417,7 +323,7 @@ def minimal_realization(G, tol=1e-6):
 
     if isinstance(G, State):
         if G._isgain:
-            return State(G.to_array)
+            return State(G.to_array())
         else:
             A, B, C, D = G.matrices
             Am, Bm, Cm = _minimal_realization_state(A, B, C, tol=tol)
@@ -427,7 +333,7 @@ def minimal_realization(G, tol=1e-6):
                 return State(D, dt=G.SamplingPeriod)
     else:
         if G._isgain:
-            return Transfer(G.to_array)
+            return Transfer(G.to_array())
         else:
             num, den = G.polynomials
             numm, denm = _minimal_realization_transfer(num, den, tol=tol)
@@ -435,109 +341,69 @@ def minimal_realization(G, tol=1e-6):
 
 
 def _minimal_realization_state(A, B, C, tol=1e-6):
-    keep_looking = True
-    run_out_of_states = False
+    """
+    Low-level function to perform the state removel if any for minimal
+    realizations. No consistency check is performed.
+    """
 
-    while keep_looking:
-        n = A.shape[0]
-        # Make sure that we still have states left
-        if n == 0:
-            A, B, C = [np.array([])]*3
-            break
+    # Empty matrices, don't bother
+    if A.size == 0:
+        return A, B, C
 
-        kc = cancellation_distance(A, B)[0]
-        ko = cancellation_distance(A.T, C.T)[0]
+    # scale the system matrix with possible permutations
+    A, T = matrix_balance(A)
+    # T always has powers of 2 nonzero elements
+    B, C = solve(T, B), C @ T
 
-        if min(kc, ko) > tol:  # no cancellation
-            keep_looking = False
-        else:
+    n = A.shape[0]
+    # Make sure that we still have states left, otherwise done
+    if n == 0:
+        return A, B, C
 
-            Ac, Bc, Cc, blocks_c = staircase(A, B, C, block_indices=True)
-            Ao, Bo, Co, blocks_o = staircase(A, B, C, form='o', invert=True,
-                                             block_indices=True)
+    # Now obtain the c'ble and o'ble staircase forms
+    Ac, Bc, Cc, _ = staircase(A, B, C)
+    Ao, Bo, Co, _ = staircase(A, B, C, form='o', invert=True)
+    # And compute the distance to rank deficiency.
+    kc, *_ = cancellation_distance(Ac, Bc)
+    ko, *_ = cancellation_distance(Ao.T, Co.T)
 
-            # ===============Extra Check============================
-            """
-             Here kc,ko reports a possible cancellation so staircase
-             should also report fewer than n, c'ble/o'ble blocks in the
-             decomposition. If not, staircase tol should be increased.
-             Otherwise either infinite loop or uno'ble branch removes
-             the system matrices
+    # If both distances are above tol then we have already minimality
+    if min(kc, ko) > tol:
+        return A, B, C
+    else:
+        # Here, we have improved the cancellation distance computations by
+        # first scaling the system and then forming the staircase forms.
 
-             Thus, we remove the last scalar or the two-by-two block
-             artificially. Because we trust the cancelling distance,
-             more than our first born. The possible cases of unc'ble
-             modes are
-
-               -- one real distinct eigenvalue
-               -- two real identical eigenvalues
-               -- two complex conjugate eigenvalues
-
-             We don't regret this. This is sparta.
-            """
-
-            # If unobservability distance is closer, let it handle first
-            if ko >= kc:
-                if (sum(blocks_c) == n and kc <= tol):
-                    Ac_mod, Bc_mod, Cc_mod, kc_mod = Ac, Bc, Cc, kc
-
-                    while kc_mod <= tol:  # Until cancel dist gets big
-                        Ac_mod, Bc_mod, Cc_mod = (Ac_mod[:-1, :-1],
-                                                  Bc_mod[:-1, :],
-                                                  Cc_mod[:, :-1])
-
-                        if Ac_mod.size == 0:
-                            A, B, C = [(np.empty((1, 0)))]*3
-                            run_out_of_states = True
-                            break
-                        else:
-                            kc_mod = cancellation_distance(Ac_mod, Bc_mod)[0]
-
-                    kc = kc_mod
-                    # Fake an iterable to fool the sum below
-                    blocks_c = [sum(blocks_c)-Ac_mod.shape[0]]
-
-            # Same with the o'ble modes
-            if (sum(blocks_o) == n and ko <= tol):
-                Ao_mod, Bo_mod, Co_mod, ko_mod = Ao, Bo, Co, ko
-
-                while ko_mod <= tol:  # Until cancel dist gets big
-                    Ao_mod, Bo_mod, Co_mod = (Ao_mod[1:, 1:],
-                                              Bo_mod[1:, :],
-                                              Co_mod[:, 1:])
-
-                    # If there is nothing left, break out everything
-                    if Ao_mod.size == 0:
-                        A, B, C = [(np.empty((1, 0)))]*3
-                        run_out_of_states = True
-                        break
-                    else:
-                        ko_mod = cancellation_distance(Ao_mod, Bo_mod)[0]
-
-                ko = ko_mod
-                blocks_o = [sum(blocks_o)-Ao_mod.shape[0]]
-
-            # ===============End of Extra Check=====================
-
-            if run_out_of_states:
-                break
-
-            if sum(blocks_c) > sum(blocks_o):
-                remove_from = 'o'
-            elif sum(blocks_c) < sum(blocks_o):
-                remove_from = 'c'
-            else:  # both have the same number of states to be removed
-                if kc >= ko:
-                    remove_from = 'o'
+        # If unctrblity distance is smaller, let it first (no reason)
+        if kc <= tol:
+            # Start removing and check if the distance gets bigger
+            # Observability form removes from top left
+            # controllability form removes from bottom right
+            while kc <= tol:
+                Ac, Bc, Cc = (Ac[:-1, :-1], Bc[:-1, :], Cc[:, :-1])
+                if Ac.size == 0:
+                    A, B, C = [array([], dtype=float)]*3
+                    break
                 else:
-                    remove_from = 'c'
+                    kc, *_ = cancellation_distance(Ac, Bc)
+            # Return the resulting matrices
+            A, B, C = Ac, Bc, Cc
+            # Same with the o'ble modes, but now kc might have removed
+            # unobservable mode already so get the distance again
+            ko, *_ = cancellation_distance(A.T, C.T)
 
-            if remove_from == 'c':
-                bs = int(sum(blocks_c))
-                A, B, C = Ac[:bs, :bs], Bc[:bs, :], Cc[:, :bs]
-            else:
-                bs = int(sum(blocks_o))
-                A, B, C = Ao[bs:, bs:], Bo[bs:, :], Co[:, bs:]
+        # Still unobservables ?
+        if ko <= tol:
+            Ao, Bo, Co, To = staircase(A, B, C, form='o', invert=True)
+            while ko <= tol:  # Until cancel dist gets big
+                Ao, Bo, Co = Ao[1:, 1:], Bo[1:, :], Co[:, 1:]
+                if Ao.size == 0:
+                    A, B, C = [array([], dtype=float)]*3
+                else:
+                    ko, *_ = cancellation_distance(Ao, Bo)
+
+            # Return the resulting matrices
+            A, B, C = Ao, Bo, Co
 
     return A, B, C
 
