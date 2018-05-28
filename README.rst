@@ -1,4 +1,4 @@
-|Travis-CI| |License| |Join the chat at Gitter| |Coveralls| |ReadTheDocs|
+|Travis-CI| |License| |Gitter| |Coveralls| |ReadTheDocs| |Downloads|
 
 harold
 ======
@@ -39,15 +39,18 @@ it a try. However, it is somewhat limited to SISO tools and also relies on
 SLICOT library which can lead to installation hassle and/or licensing
 problems for nontrivial tasks.
 
-2- Instead, you are interested in robust control you probably would appreciate
-the `Skogestad-Python`_ project.
+2- You can also use the tools available in SciPy ``signal`` module for basics
+of LTI system manipulations.
+
+3- Instead, if you are interested in robust control you probably would
+appreciate the `Skogestad-Python`_ project.
 
 Help Wanted!
 ============
 
-``harold`` is built on rainy days and boring evenings. If you are missing out
-a feature, don't be shy and contact. User-feedback has higher priority over
-the general development.
+``harold`` is built on rainy days and boring evenings unless you hire me
+directly for a specific tool. If you are missing out a feature, don't be shy
+and contact me. User-feedback has higher priority over the general development.
 
 Bug reports and PR submissions are more than welcome!
 
@@ -63,7 +66,7 @@ If you have questions/comments feel free to shoot one to
 
 .. |License| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/ilayn/harold/blob/master/LICENSE
-.. |Join the chat at Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
+.. |Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 .. |Travis-CI| image:: https://travis-ci.org/ilayn/harold.svg?branch=master
     :target: https://travis-ci.org/ilayn/harold
@@ -72,3 +75,6 @@ If you have questions/comments feel free to shoot one to
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/harold/badge/?version=latest
     :target: http://harold.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+.. |Downloads| image:: http://pepy.tech/badge/harold
+    :target: http://pepy.tech/count/harold
+    :alt: Download Counts
