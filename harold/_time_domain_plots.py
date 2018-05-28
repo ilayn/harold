@@ -54,7 +54,7 @@ def step_response_plot(sys, t=None):
     if sys._isSISO:
         fig, axs = plt.subplots(1, 1, squeeze=False)
         if sys._isdiscrete:
-            axs[0, 0].step(tout, yout)
+            axs[0, 0].step(tout, yout, where='post')
         else:
             axs[0, 0].plot(tout, yout)
 
@@ -66,11 +66,12 @@ def step_response_plot(sys, t=None):
 
         # Get the appropriate plotter line plot or a step plot
         ptype = 'step' if sys._isdiscrete else 'plot'
+        w_dict = {'where': 'post'} if sys._isdiscrete else {}
         for row in range(nrows):
             for col in range(ncols):
                 getattr(axs[row, col], ptype)(tout, yout[:, row, col]
                                               if yout.ndim == 3
-                                              else yout[:, row])
+                                              else yout[:, row], **w_dict)
                 axs[row, col].grid(b=True)
 
     fig.text(0, .5, 'Amplitude', ha='center', va='center', rotation='vertical')
@@ -105,7 +106,7 @@ def impulse_response_plot(sys, t=None):
     if sys._isSISO:
         fig, axs = plt.subplots(1, 1, squeeze=False)
         if sys._isdiscrete:
-            axs[0, 0].step(tout, yout)
+            axs[0, 0].step(tout, yout, where='post')
         else:
             axs[0, 0].plot(tout, yout)
 
@@ -117,11 +118,12 @@ def impulse_response_plot(sys, t=None):
 
         # Get the appropriate plotter line plot or a step plot
         ptype = 'step' if sys._isdiscrete else 'plot'
+        w_dict = {'where': 'post'} if sys._isdiscrete else {}
         for row in range(nrows):
             for col in range(ncols):
                 getattr(axs[row, col], ptype)(tout, yout[:, row, col]
                                               if yout.ndim == 3
-                                              else yout[:, row])
+                                              else yout[:, row], **w_dict)
                 axs[row, col].grid(b=True)
 
     fig.text(0, .5, 'Amplitude', ha='center', va='center', rotation='vertical')
