@@ -46,7 +46,7 @@ class Transfer:
         ...              [1, 2, 3, 4, 5]) # common den
 
     Setting  SamplingPeriod property to 'False' value to the will make
-    the system continous time again and relevant properties are reset
+    the system continuous time again and relevant properties are reset
     to continuous-time properties.
     """
     def __init__(self, num, den=None, dt=None):
@@ -103,7 +103,7 @@ class Transfer:
     def SamplingSet(self):
         """
         If this property is called ``G.SamplingSet`` then returns the
-        set ``Z`` or ``R`` for discrete and continous models respectively.
+        set ``Z`` or ``R`` for discrete and continuous models respectively.
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
@@ -144,7 +144,7 @@ class Transfer:
         """
         This property is used internally to keep track of (if applicable)
         the original method used for discretization. It is used by the
-        ``undiscretize()`` function to reach back to the continous model that
+        ``undiscretize()`` function to reach back to the continuous model that
         would hopefully minimize the discretization errors. It is also
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
@@ -250,16 +250,9 @@ class Transfer:
                                  ' it. Discretize the model first via '
                                  '"discretize" function.')
             else:
-                if value == 'lft':
-                    self._DiscretizedWith = value
-                    print('\"lft\" method also needs an interconnection'
-                          ' matrix. Please don\'t forget to set the '
-                          '\"DiscretizationMatrix\" property as well')
-                else:
-                    self._DiscretizedWith = value
+                self._DiscretizedWith = value
         else:
-            raise ValueError('Excuse my ignorance but I don\'t know '
-                             'that method.')
+            raise ValueError('The {} method is unknown.'.format(value))
 
     @DiscretizationMatrix.setter
     def DiscretizationMatrix(self, value):
@@ -443,7 +436,7 @@ class Transfer:
                 return self + float(other)
 
             if self._shape == other.shape:
-                return self + Transfer(other, dt=self._dt)
+                return self + Transfer(other.tolist(), dt=self._dt)
             else:
                 raise IndexError('Addition of systems requires their '
                                  'shape to match but the system shapes '
@@ -818,7 +811,7 @@ class Transfer:
     def __repr__(self):
         p, m = self.NumberOfOutputs, self.NumberOfInputs
         if self.SamplingSet == 'R':
-            desc_text = 'Continous-Time Transfer function\n'
+            desc_text = 'Continuous-Time Transfer function\n'
         else:
             desc_text = ('Discrete-Time Transfer function with '
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
@@ -1243,7 +1236,8 @@ class Transfer:
                         print('Denominator is MIMO, Numerator is SISO')
                     # We have to check noncausal entries
                     # flatten den list of lists and compare the size
-                    num_deg = np.trim_zeros(returned_numden_list[0], 'f').size
+                    num_deg = np.trim_zeros(returned_numden_list[0][0],
+                                            'f').size
 
                     flattened_den = sum(returned_numden_list[1], [])
 
@@ -1420,7 +1414,7 @@ class State:
     the rows/columns of "c"/"b" arrays.
 
     Setting  SamplingPeriod property to 'False' value to the will make
-    the system continous time again and relevant properties are reset
+    the system continuous time again and relevant properties are reset
     to continuous-time properties.
     """
     def __init__(self, a, b=None, c=None, d=None, dt=None):
@@ -1497,7 +1491,7 @@ class State:
     def SamplingSet(self):
         """
         If this property is called ``G.SamplingSet`` then returns the
-        set ``Z`` or ``R`` for discrete and continous models respectively.
+        set ``Z`` or ``R`` for discrete and continuous models respectively.
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
@@ -1544,7 +1538,7 @@ class State:
         """
         This property is used internally to keep track of (if applicable)
         the original method used for discretization. It is used by the
-        ``undiscretize()`` function to reach back to the continous model that
+        ``undiscretize()`` function to reach back to the continuous model that
         would hopefully minimize the discretization errors. It is also
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
@@ -2280,9 +2274,9 @@ class State:
     def __repr__(self):
         p, m, n = self._p, self._m, self.NumberOfStates
         if self._rz == 'R':
-            desc_text = '\n Continous-time state represantation\n'
+            desc_text = '\nContinuous-time state representation\n'
         else:
-            desc_text = ('Discrete-Time state representation with '
+            desc_text = ('\nDiscrete-Time state representation with '
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
                          ''.format(float(self.SamplingPeriod),
                                    1/float(self.SamplingPeriod)))

@@ -91,6 +91,31 @@ def test_Transfer_Instantiations():
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
 
+def test_Transfer_property():
+    G = Transfer([1, 1], [1, 1, 1])
+    assert G.DiscretizedWith is None
+    G.SamplingPeriod = 0.1
+    G.DiscretizedWith = 'zoh'
+    assert G.DiscretizedWith == 'zoh'
+    G = Transfer([1, 1], [1, 1, 1])
+    G.num = [1, 2, 1]
+    with assert_raises(IndexError):
+        G.num = [[1, [1, 2]]]
+    G.den = [1, 2, 1]
+    with assert_raises(IndexError):
+        G.den = [[[1, 2, 3], [1, 2, 5]]]
+    with assert_raises(ValueError):
+        G.DiscretizedWith = 'zoh'
+    with assert_raises(ValueError):
+        G.DiscretizationMatrix = 1.
+    G = Transfer([0.1, 0.1, -0.5], [1, 1.3, 0.43], 0.1)
+    G.DiscretizedWith = 'lft'
+    with assert_raises(ValueError):
+        G.DiscretizationMatrix = [1., 1.]
+    with assert_raises(ValueError):
+        G.PrewarpFrequency = 200
+
+
 def test_Transfer_to_array():
     G = Transfer(1, [1, 1])
     H = Transfer(2, 10)
@@ -190,6 +215,27 @@ def test_Transfer_algebra_matmul_rmatmul():
 
 
 def test_Transfer_algebra_neg_add_radd():
+    G = Transfer(1, [1, 2, 1])
+    assert_equal(-(G.num), (-G).num)
+    H = Transfer([1, 1], [1, 0.2], 0.1)
+    with assert_raises(ValueError):
+        G + H
+    G, H = Transfer(1), Transfer(2)
+    assert_equal((G+H).num, np.array([[3.]]))
+
+    G, H = Transfer(1), State(5)
+    assert isinstance(G+H, State)
+
+    G = Transfer(1, [1, 1])
+    assert_equal((G+(-G)).num, np.array([[0.]]))
+    assert_almost_equal((G + 5).num, np.array([[5, 6]]))
+
+    G = Transfer([[1, 2]], [1, 1])
+    H = G + np.array([[3, 4]])
+    assert_equal(H.num[0][0], np.array([[3., 4.]]))
+    with assert_raises(IndexError):
+        G + np.array([3, 4])
+
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
     F = - G
     assert_almost_equal(G.num[0][0], -F.num[0][0])
@@ -375,6 +421,37 @@ def test_State_matmul_rmatmul_ndarray():
     assert_array_almost_equal(J2, Fm)
     Fm = concatenate_state_matrices(H @ mat)
     assert_array_almost_equal(J2, Fm)
+
+    G, H = random_state_model(2, 2, 2), random_state_model(2, 3, 3)
+    with assert_raises(ValueError):
+        G @ H
+
+    # Scalars
+    G = random_state_model(1)
+    H = 0. @ G
+    assert H._isgain
+    H = 1. @ G
+    assert_almost_equal(concatenate_state_matrices(G),
+                        concatenate_state_matrices(H))
+
+    # static gain mults
+    G = random_state_model(0, 4, 5)
+    H = random_state_model(0, 5, 4)
+    assert (G@H)._isgain
+    assert_equal((G@H).shape, (4, 4))
+    H = random_state_model(0, 3, 3)
+    with assert_raises(ValueError):
+        G @ H
+
+    G = State(1.)
+    H = random_state_model(1, 2, 2)
+    assert_almost_equal(concatenate_state_matrices(G @ H),
+                        concatenate_state_matrices(H @ G))
+
+    G = random_state_model(1, 4, 5)
+    H = random_state_model(1, 4, 5)
+    with assert_raises(ValueError):
+        G @ H
 
 
 def test_State_algebra_mul_rmul_mimo_siso():
