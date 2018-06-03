@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from numpy import zeros_like, kron, ndarray, zeros, exp
 from numpy.random import rand, choice
-from scipy.linalg import eigvals, block_diag, qz, norm, solve
+from scipy.linalg import eigvals, block_diag, qz, norm, solve, expm
 from scipy.linalg.decomp import _asarray_validated
 from scipy.stats import ortho_group
 from tabulate import tabulate
@@ -3207,6 +3207,9 @@ def random_state_model(n, p=1, m=1, dt=None, prob_dist=None, stable=True):
         pr = -exp(exp(rand())) if stable else ps*exp(exp(rand()))
         a[diag_i, diag_i] = pr
 
+    # Convert poles to discrete if dt != None
+    if dt is not None:
+        a = expm(a*dt)
     # Perform a random similarity transformation to shuffle the data
     T = ortho_group.rvs(n)
     a = solve(T, a) @ T
