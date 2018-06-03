@@ -1,31 +1,10 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
-
 import numpy as np
 import warnings
-from numpy import zeros_like, kron, ndarray
-from scipy.linalg import eigvals, block_diag, qz, norm
+from numpy import zeros_like, kron, ndarray, zeros, exp
+from numpy.random import rand, choice
+from scipy.linalg import eigvals, block_diag, qz, norm, solve
+from scipy.linalg.decomp import _asarray_validated
+from scipy.stats import ortho_group
 from tabulate import tabulate
 from itertools import zip_longest, chain
 
@@ -37,7 +16,8 @@ from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
 
 __all__ = ['Transfer', 'State', 'state_to_transfer', 'transfer_to_state',
-           'transmission_zeros', 'concatenate_state_matrices']
+           'transmission_zeros', 'random_state_model',
+           'concatenate_state_matrices']
 
 
 class Transfer:
@@ -3220,6 +3200,142 @@ def _state_or_abcd(arg, n=4):
                          ''.format(type(arg).__qualname__))
 
     return system_or_not, returned_args
+
+
+def random_state_model(n, p=1, m=1, dt=None, prob_dist=None, stable=True):
+    """
+    Generates a State model with a shape based on the arguments provided. The
+    poles of the model is selected from randomly generated numbers with a
+    predefined probability assigned to each pick which can also be provided by
+    external array. The specification of the probability is a simple 5-element
+    array-like ``[p0, p1, p2, p3]`` denoting ::
+
+        p0 : Probability of having a real pole
+        p1 : Probability of having a complex pair anywhere except real line
+        p2 : Probability of having an integrator (s or z domain)
+        p3 : Probability of having a pair on the imaginary axis/unit circle
+
+    Hence, ``[0, 0, 0, 1]`` would return a model with only real poles. Notice
+    that the sum of entries should sum up to 1. See numpy.random.choice for
+    more details. The default probabilities are ::
+
+        [p0, p1, p2, p3] = [0.475, 0.475, 0.025, 0.025]
+
+    If ``stable`` keyword is set to True ``prob_dist`` must be 2-entry
+    arraylike denoting only ``[p0, p1]``. The default is uniform i.e. ::
+
+        [p0, p1] = [0.5, 0.5]
+
+    Parameters
+    ----------
+    n : int
+        The number of states. For static models use ``n=0``.
+    p : int, optional
+        The number of outputs. The default is 1
+    m : int, optional
+        The number of inputs. The default is 1
+    prob_dist : arraylike, optional
+        An arraylike with 4 nonnegative entries of which the sum adds up to 1.
+        If ``stable`` key is True then it needs only 2 entries. Internally, it
+        uses ``numpy.random.choice`` for selection.
+    dt : float, optional
+        If ``dt`` is not None, then the value will be used as sampling period
+        to create a discrete time model. This argument must be nonnegative.
+    stable : bool, optional
+        If True a stable model is returned, otherwise stability model would
+        not be checked
+
+    Returns
+    -------
+    G : State
+        The resulting State model
+
+    Notes
+    -----
+    Internally, n, p, m will be converted to integers if possible. This means
+    that no checks about the decimal part will be performed.
+
+    Similarly ``prob_dist`` will be passed directly to a numpy.ndarray with
+    explicitly taking the real part.
+
+    Note that probabilities denote the choice not the distribution of the
+    poles, in other words for a 3-state model, single real pole and a
+    complex pair have the same probability of choice however real pole
+    constitute one third.
+
+    """
+    # Check arguments
+    n, p, m = int(n), int(p), int(m)
+
+    if prob_dist is None:
+        if stable:
+            pdist = np.array([0.5, 0.5])
+        else:
+            pdist = np.array([0.475, 0.475, 0.025, 0.025])
+    else:
+        pdist = _asarray_validated(prob_dist).real
+
+    # pdist will err inside numpy.random.choice so skip checks.
+
+    # Static model
+    if n == 0:
+        return State(rand(p, m), dt=dt)
+    elif n == 1:
+        a, b, c, d = rand(1), rand(1, m), rand(p, 1), rand(p, m)
+        return State(-a, b, c, d, dt=dt)
+
+    # Get random pole types
+    choose_from = [0, 1] if stable else [0, 1, 2, 3]
+    diag_i = 0
+    a = zeros((n, n))
+
+    # Walk over the diagonal of "a"
+    for _ in range(n):
+
+        p_type = choice(choose_from, 1, replace=True, p=pdist)
+        if p_type == 0:
+            ps = choice([1, -1], 1)
+            pr = -exp(exp(rand())) if stable else ps*exp(exp(rand()))
+            a[diag_i, diag_i] = pr
+            diag_i += 1
+
+        elif p_type == 1:
+            if diag_i >= n-1:
+                break
+            ps = choice([1, -1], 1)
+            pr = -exp(exp(rand())) if stable else ps*exp(exp(rand()))
+            pi = exp(exp(rand()))
+            a[[diag_i, diag_i, diag_i+1, diag_i+1],
+              [diag_i, diag_i+1, diag_i, diag_i+1]] = [pr, pi, -pi, pr]
+            diag_i += 2
+
+        elif p_type == 2:
+            a[diag_i, diag_i] = 0.
+            diag_i += 1
+
+        elif p_type == 3:
+            if diag_i >= n-1:
+                break
+            pi = exp(exp(rand()))
+            a[[diag_i, diag_i, diag_i+1, diag_i+1],
+              [diag_i, diag_i+1, diag_i, diag_i+1]] = [0., pi, -pi, 0.]
+            diag_i += 2
+
+        # Finished all diagonals
+        if diag_i == n:
+            break
+
+    # Complex didn't fit, fill the remaining
+    if diag_i == n-1:
+        ps = choice([1, -1], 1)
+        pr = -exp(exp(rand())) if stable else ps*exp(exp(rand()))
+        a[diag_i, diag_i] = pr
+
+    # Perform a random similarity transformation to shuffle the data
+    T = ortho_group.rvs(n)
+    a = solve(T, a) @ T
+
+    return State(a, rand(n, m), rand(p, n), rand(p, m), dt=dt)
 
 
 def concatenate_state_matrices(G):
