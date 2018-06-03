@@ -46,7 +46,7 @@ class Transfer:
         ...              [1, 2, 3, 4, 5]) # common den
 
     Setting  SamplingPeriod property to 'False' value to the will make
-    the system continous time again and relevant properties are reset
+    the system continuous time again and relevant properties are reset
     to continuous-time properties.
     """
     def __init__(self, num, den=None, dt=None):
@@ -103,7 +103,7 @@ class Transfer:
     def SamplingSet(self):
         """
         If this property is called ``G.SamplingSet`` then returns the
-        set ``Z`` or ``R`` for discrete and continous models respectively.
+        set ``Z`` or ``R`` for discrete and continuous models respectively.
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
@@ -144,7 +144,7 @@ class Transfer:
         """
         This property is used internally to keep track of (if applicable)
         the original method used for discretization. It is used by the
-        ``undiscretize()`` function to reach back to the continous model that
+        ``undiscretize()`` function to reach back to the continuous model that
         would hopefully minimize the discretization errors. It is also
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
@@ -250,16 +250,9 @@ class Transfer:
                                  ' it. Discretize the model first via '
                                  '"discretize" function.')
             else:
-                if value == 'lft':
-                    self._DiscretizedWith = value
-                    print('\"lft\" method also needs an interconnection'
-                          ' matrix. Please don\'t forget to set the '
-                          '\"DiscretizationMatrix\" property as well')
-                else:
-                    self._DiscretizedWith = value
+                self._DiscretizedWith = value
         else:
-            raise ValueError('Excuse my ignorance but I don\'t know '
-                             'that method.')
+            raise ValueError('The {} method is unknown.'.format(value))
 
     @DiscretizationMatrix.setter
     def DiscretizationMatrix(self, value):
@@ -398,10 +391,8 @@ class Transfer:
                     # Same as SISO but over all rows/cols
                     for row in range(self._p):
                         for col in range(self._m):
-                            lcm, mults = haroldlcm(
-                                            self._den[row][col],
-                                            other.den[row][col]
-                                            )
+                            lcm, mults = haroldlcm(self._den[row][col],
+                                                   other.den[row][col])
 
                             newnum[row][col] = np.atleast_2d(
                                     haroldpolyadd(
@@ -424,8 +415,7 @@ class Transfer:
                                 nonzero_num[row, col] = True
 
                     if any(nonzero_num.ravel()):
-                        return Transfer(newnum, newden,
-                                        dt=self._dt)
+                        return Transfer(newnum, newden, dt=self._dt)
                     else:
                         # Numerators all cancelled to zero hence 0-gain MIMO
                         return Transfer(np.zeros(self._shape).tolist())
@@ -434,8 +424,8 @@ class Transfer:
 
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other, (int, float)):
-            return Transfer((other * np.ones(self._shape)).tolist(),
-                            dt=self._dt) + self
+            return self + Transfer((other * np.ones(self._shape)).tolist(),
+                                   dt=self._dt)
 
         elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
@@ -443,7 +433,7 @@ class Transfer:
                 return self + float(other)
 
             if self._shape == other.shape:
-                return self + Transfer(other, dt=self._dt)
+                return self + Transfer(other.tolist(), dt=self._dt)
             else:
                 raise IndexError('Addition of systems requires their '
                                  'shape to match but the system shapes '
@@ -677,9 +667,9 @@ class Transfer:
                 return self*float(other)
 
             if other.ndim == 1:
-                arr = np.atleast_2d(other.real)
+                arr = np.atleast_2d(other.real).astype(float)
             else:
-                arr = other.real
+                arr = other.real.astype(float)
 
             if not self._m == arr.shape[0]:
                 raise ValueError(f'Size mismatch: Transfer representation '
@@ -688,18 +678,24 @@ class Transfer:
 
             # If self is gain, this is just matrix multiplication
             if self._isgain:
-                return Transfer(self.to_array() @ arr,
-                                dt=self._dt)
+                return Transfer(self.to_array() @ arr, dt=self._dt)
 
             tp, tm = self._shape[0], arr.shape[1]
+
             newnum = [[None]*tm for n in range(tp)]
             newden = [[None]*tm for n in range(tp)]
 
             for r in range(tp):
                 for c in range(tm):
-                    t_G = sum(*(self[r]*arr[:, c]))
-                    newnum[tp][tm] = t_G.num
-                    newden[tp][tm] = t_G.den
+                    t_G = Transfer(0, 1, dt=self._dt)
+                    for ind in range(self._m):
+                        t_G += self[r, ind] * other[ind, [c]]
+                    newnum[r][c] = t_G.num
+                    newden[r][c] = t_G.den
+
+            if (tp, tm) == (1, 1):
+                newnum = newnum[0][0]
+                newden = newden[0][0]
 
             return Transfer(newnum, newden, dt=self.SamplingPeriod)
 
@@ -769,7 +765,7 @@ class Transfer:
             else:
                 arr = other.real
 
-            return Transfer(arr, self._dt) @ self
+            return Transfer(arr.tolist(), self._dt) @ self
 
         elif isinstance(other, (int, float)):
             return self * other
@@ -818,7 +814,7 @@ class Transfer:
     def __repr__(self):
         p, m = self.NumberOfOutputs, self.NumberOfInputs
         if self.SamplingSet == 'R':
-            desc_text = 'Continous-Time Transfer function\n'
+            desc_text = 'Continuous-Time Transfer function\n'
         else:
             desc_text = ('Discrete-Time Transfer function with '
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
@@ -1243,7 +1239,8 @@ class Transfer:
                         print('Denominator is MIMO, Numerator is SISO')
                     # We have to check noncausal entries
                     # flatten den list of lists and compare the size
-                    num_deg = np.trim_zeros(returned_numden_list[0], 'f').size
+                    num_deg = np.trim_zeros(returned_numden_list[0][0],
+                                            'f').size
 
                     flattened_den = sum(returned_numden_list[1], [])
 
@@ -1420,7 +1417,7 @@ class State:
     the rows/columns of "c"/"b" arrays.
 
     Setting  SamplingPeriod property to 'False' value to the will make
-    the system continous time again and relevant properties are reset
+    the system continuous time again and relevant properties are reset
     to continuous-time properties.
     """
     def __init__(self, a, b=None, c=None, d=None, dt=None):
@@ -1497,7 +1494,7 @@ class State:
     def SamplingSet(self):
         """
         If this property is called ``G.SamplingSet`` then returns the
-        set ``Z`` or ``R`` for discrete and continous models respectively.
+        set ``Z`` or ``R`` for discrete and continuous models respectively.
         This is a read only property and cannot be set. Instead an appropriate
         setting should be given to the ``SamplingPeriod`` property.
         """
@@ -1544,7 +1541,7 @@ class State:
         """
         This property is used internally to keep track of (if applicable)
         the original method used for discretization. It is used by the
-        ``undiscretize()`` function to reach back to the continous model that
+        ``undiscretize()`` function to reach back to the continuous model that
         would hopefully minimize the discretization errors. It is also
         possible to manually set this property such that ``undiscretize``
         uses the provided method.
@@ -2280,9 +2277,9 @@ class State:
     def __repr__(self):
         p, m, n = self._p, self._m, self.NumberOfStates
         if self._rz == 'R':
-            desc_text = '\n Continous-time state represantation\n'
+            desc_text = '\nContinuous-time state representation\n'
         else:
-            desc_text = ('Discrete-Time state representation with '
+            desc_text = ('\nDiscrete-Time state representation with '
                          'sampling time: {0:.3f} ({1:.3f} Hz.)\n'
                          ''.format(float(self.SamplingPeriod),
                                    1/float(self.SamplingPeriod)))
@@ -2474,129 +2471,6 @@ class State:
             return a, b, c, d, d.shape, Gain_flag
 
 
-def _investigate_other(self_, other_, method_):
-    '''
-    This helper function checks the argument of the dunder arithmetic
-    methods of State and Transfer classes, such as __mul__(), __add__()
-    etc. and returns informative flags for quick branching.
-
-    Concise two character flag logic (but passed as an integer):
-        '##'
-         ||__ 1 for dynamic, 0 for static models
-         |___ 1 for MIMO, 0 for SISO models
-    hence
-        0 is SISO static gain
-        1 is SISO dynamic model
-        2 is MIMO static gain
-        3 is MIMO dynamic model
-       -1 is numpy.ndarray
-
-    Parameters
-    ----------
-    self_ : State, Transfer
-        State or Transfer instance for which the dunder method is called.
-
-    other_ : object
-        object to be recognized.
-
-    method_ : str
-        Method specifier for proper size checks and error messages
-
-    Returns
-    -------
-
-    '''
-    msg_dict = {'add': 'addition',
-                'mul': 'elementwise multiplication',
-                'matmul': 'right multiplication',
-                'radd': 'left addition',
-                'rmul': 'elementwise multiplication',
-                'rmatmul': 'left multiplication'}
-
-    # Massage possible real valued complex objects to reals
-    if np.iscomplexobj(other_):
-        # Fine check further
-        if hasattr(other_, 'imag'):
-            if np.any(other_.imag):
-                raise ValueError('Complex valued models are not supported.')
-            else:
-                other_ = other_.real
-        else:
-            # Numpy thinks it's a complex object so probably it is array_like
-            other_ = np.array(other_, ndmin=2)
-            if np.any(other_.imag):
-                raise ValueError('Complex valued models are not supported.')
-            else:
-                other_ = other_.real
-
-    # Check for allowed objects
-    if not isinstance(other_, (int, float, np.ndarray, State, Transfer)):
-        raise ValueError('I don\'t know how to perform {0} of {1} and'
-                         ' {2} types.'.format(msg_dict[method_],
-                                              type(self_).__qualname__,
-                                              type(other_).__qualname__)
-                         )
-    # check and forgive size-1 arrays
-    if isinstance(other_, np.ndarray):
-        if other_.ndim == 1:
-            try:
-                other_ = np.atleast_2d(other_).astype(float)
-            except ValueError:
-                raise ValueError('Operand could not be casted to float dtype')
-        elif other_.ndim > 2:
-            raise ValueError('For {0}, the operand dimension must be at '
-                             'most 2d but got a {1}d-array.'
-                             ''.format(msg_dict[method_], other_.ndim))
-        elif other_.size == 1:
-            other_ = float(other_)
-        else:
-            other_ = other_.astype(float)
-        # Reject if the size don't match
-        if method_ in ('add', 'mul'):
-            shape_1 = self_.shape
-            shape_2 = other_.shape
-        else:
-            shape_1 = self_.shape[1]
-            shape_2 = other_.shape[0]
-
-        if shape_1 != shape_2:
-            raise ValueError('For {0}, model shapes don\'t match. The shapes'
-                             ' are {1} vs. {2}'.format(msg_dict[method_],
-                                                       self_.shape,
-                                                       other_.shape)
-                             )
-        other_type = -1
-
-    if isinstance(other_, (int, float)):
-        other_ = np.atleast_2d(other_).astype(float)
-        other_type = -1
-
-    if isinstance(other_, (State, Transfer)):
-
-        if not self_.SamplingPeriod == other_.SamplingPeriod:
-            raise ValueError('The sampling periods of the models don\'t match '
-                             'for {0}.'.format(msg_dict[method_]))
-
-        # Reject if the size don't match
-        if method_ in ('add', 'mul'):
-            shape_1 = self_.shape
-            shape_2 = other_.shape
-        else:
-            shape_1 = self_.shape[1]
-            shape_2 = other_.shape[0]
-
-        if shape_1 != shape_2:
-            raise ValueError('For {0}, model shapes don\'t match. The shapes'
-                             ' are {1} vs. {2}'.format(msg_dict[method_],
-                                                       self_.shape,
-                                                       other_.shape)
-                             )
-
-        other_type = 2 * (not other_._isSISO) + (not other_._isgain)
-
-    return other_, other_type
-
-
 def _pole_properties(poles, dt=None, output_data=False):
     '''
     This function provides the natural frequency, damping and time constant
@@ -2607,6 +2481,8 @@ def _pole_properties(poles, dt=None, output_data=False):
     ----------
     poles : ndarray
         Poles of the system representation. p must be a 1D array.
+    dt : float
+        Sampling period for discrete-time poles.
 
     Returns
     -------
@@ -2638,7 +2514,7 @@ def _pole_properties(poles, dt=None, output_data=False):
     if n == 0:
         return None
     freqn = np.empty_like(p, dtype=float)
-    damp = np.empty_like(p, dtype=float)\
+    damp = np.empty_like(p, dtype=float)
 
     # Check for pure integrators
     if dt is not None:  # Discrete

@@ -1,27 +1,3 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
-
 import numpy as np
 from numpy.random import seed
 from harold import (Transfer, State, e_i, haroldcompanion,
@@ -91,6 +67,44 @@ def test_Transfer_Instantiations():
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
 
 
+def test_Transfer_property():
+    G = Transfer([1, 1], [1, 1, 1])
+    assert G.DiscretizedWith is None
+
+    G.SamplingPeriod = 0.1
+    G.DiscretizedWith = 'zoh'
+    assert G.DiscretizedWith == 'zoh'
+
+    G = Transfer([1, 1], [1, 1, 1])
+    G.num = [1, 2, 1]
+    with assert_raises(IndexError):
+        G.num = [[1, [1, 2]]]
+    G.den = [1, 2, 1]
+    with assert_raises(IndexError):
+        G.den = [[[1, 2, 3], [1, 2, 5]]]
+
+    with assert_raises(ValueError):
+        G.DiscretizedWith = 'zoh'
+    with assert_raises(ValueError):
+        G.DiscretizationMatrix = 1.
+    G = Transfer([0.1, 0.1, -0.5], [1, 1.3, 0.43], 0.1)
+    with assert_raises(ValueError):
+        G.DiscretizedWith = 'some dummy method'
+
+    G.DiscretizedWith = 'lft'
+    G.DiscretizationMatrix = np.array([[1, 2], [1.5, 5.]])  # dummy array
+    assert_array_equal(G.DiscretizationMatrix, np.array([[1, 2], [1.5, 5.]]))
+    with assert_raises(ValueError):
+        G.DiscretizationMatrix = [1., 1.]
+
+    with assert_raises(ValueError):
+        G.PrewarpFrequency = 200
+    G = Transfer([1, 1], [1, 1, 1], dt=0.1)
+    G.DiscretizedWith = 'tustin'
+    G.PrewarpFrequency = 0.02
+    assert G.PrewarpFrequency == 0.02
+
+
 def test_Transfer_to_array():
     G = Transfer(1, [1, 1])
     H = Transfer(2, 10)
@@ -143,6 +157,33 @@ def test_Transfer_algebra_mul_rmul_scalar_array():
     assert_equal(float(H.num[1][0]), 1.)
     assert_equal(float(H.num[1][1]), -4.)
 
+    G = Transfer([[1, 2]], [1, 1])
+    H = np.array([2, 1]) * G
+    assert_array_equal(H.num[0][0], np.array([[2.]]))
+    assert_array_equal(H.num[0][1], np.array([[2.]]))
+
+    H = np.array([2, 0]) * G
+    assert_array_equal(H.num[0][1], np.array([[0.]]))
+    assert_array_equal(H.den[0][1], np.array([[1.]]))
+
+    H = np.array([[2]]) * G
+    assert_array_equal(H.num[0][0], np.array([[2.]]))
+    assert_array_equal(H.num[0][1], np.array([[4.]]))
+
+    with assert_raises(ValueError):
+        H = np.array([2+1j, 1]) * G
+
+    J = H*0.
+    assert_array_equal(J.num[0][0], np.array([[0.]]))
+    assert_array_equal(J.num[0][1], np.array([[0.]]))
+    assert_array_equal(J.den[0][0], np.array([[1.]]))
+    assert_array_equal(J.den[0][1], np.array([[1.]]))
+
+    G = Transfer(1, [1, 1])
+    H = G*0.
+    assert_array_equal(H.num, np.array([[0.]]))
+    assert_array_equal(H.den, np.array([[1.]]))
+
 
 def test_Transfer_algebra_mul_rmul_siso_mimo():
     F = Transfer(2, [1, 1])
@@ -166,6 +207,13 @@ def test_Transfer_algebra_mul_rmul_siso_mimo():
         assert_equal(sum(HH.den, [])[x], np.array([[1., 4., 10., 12., 9.]]))
         assert_equal(sum(HH.num, [])[x], (x+1)**2 * np.array([[1., 4., 4.]]))
 
+    F = Transfer(1, [1, 1])
+    H = State(1, 2, 3, 4, 0.1)
+    with assert_raises(ValueError):
+        F*H
+    with assert_raises(ValueError):
+        F*'string'
+
 
 def test_Transfer_algebra_matmul_rmatmul():
 
@@ -188,8 +236,60 @@ def test_Transfer_algebra_matmul_rmatmul():
     F = Transfer(2) @ Transfer(np.eye(2)) @ Transfer(2)
     assert_equal(F.to_array(), 4*np.eye(2))
 
+    G = Transfer([[1, 2]], [1, 1])
+    H = np.array([[2], [1]]) @ G
+    assert_array_equal(H.num[0][0], np.array([[2.]]))
+    assert_array_equal(H.num[0][1], np.array([[4.]]))
+    assert_array_equal(H.num[1][0], np.array([[1.]]))
+    assert_array_equal(H.num[1][1], np.array([[2.]]))
+
+    G = Transfer([[1, 2]], [1, 1])
+    H = G @ np.array([[2], [1]])
+    assert H._isSISO
+    assert_array_almost_equal(H.num, np.array([[4.]]))
+    assert_array_almost_equal(H.den, np.array([[1., 1.]]))
+
+    H = np.array([[2]]) @ G
+    assert_array_equal(H.num[0][0], np.array([[2.]]))
+    assert_array_equal(H.num[0][1], np.array([[4.]]))
+
+    with assert_raises(ValueError):
+        H = np.array([2+1j, 1]) * G
+
+    J = H*0.
+    assert_array_equal(J.num[0][0], np.array([[0.]]))
+    assert_array_equal(J.num[0][1], np.array([[0.]]))
+    assert_array_equal(J.den[0][0], np.array([[1.]]))
+    assert_array_equal(J.den[0][1], np.array([[1.]]))
+
+    G = Transfer(1, [1, 1])
+    H = G*0.
+    assert_array_equal(H.num, np.array([[0.]]))
+    assert_array_equal(H.den, np.array([[1.]]))
+
 
 def test_Transfer_algebra_neg_add_radd():
+    G = Transfer(1, [1, 2, 1])
+    assert_equal(-(G.num), (-G).num)
+    H = Transfer([1, 1], [1, 0.2], 0.1)
+    with assert_raises(ValueError):
+        G + H
+    G, H = Transfer(1), Transfer(2)
+    assert_equal((G+H).num, np.array([[3.]]))
+
+    G, H = Transfer(1), State(5)
+    assert isinstance(G+H, State)
+
+    G = Transfer(1, [1, 1])
+    assert_equal((G+(-G)).num, np.array([[0.]]))
+    assert_almost_equal((G + 5).num, np.array([[5, 6]]))
+
+    G = Transfer([[1, 2]], [1, 1])
+    H = G + np.array([[3, 4]])
+    assert_equal(H.num[0][0], np.array([[3., 4.]]))
+    with assert_raises(IndexError):
+        G + np.array([3, 4])
+
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
     F = - G
     assert_almost_equal(G.num[0][0], -F.num[0][0])
@@ -375,6 +475,37 @@ def test_State_matmul_rmatmul_ndarray():
     assert_array_almost_equal(J2, Fm)
     Fm = concatenate_state_matrices(H @ mat)
     assert_array_almost_equal(J2, Fm)
+
+    G, H = random_state_model(2, 2, 2), random_state_model(2, 3, 3)
+    with assert_raises(ValueError):
+        G @ H
+
+    # Scalars
+    G = random_state_model(1)
+    H = 0. @ G
+    assert H._isgain
+    H = 1. @ G
+    assert_almost_equal(concatenate_state_matrices(G),
+                        concatenate_state_matrices(H))
+
+    # static gain mults
+    G = random_state_model(0, 4, 5)
+    H = random_state_model(0, 5, 4)
+    assert (G@H)._isgain
+    assert_equal((G@H).shape, (4, 4))
+    H = random_state_model(0, 3, 3)
+    with assert_raises(ValueError):
+        G @ H
+
+    G = State(1.)
+    H = random_state_model(1, 2, 2)
+    assert_almost_equal(concatenate_state_matrices(G @ H),
+                        concatenate_state_matrices(H @ G))
+
+    G = random_state_model(1, 4, 5)
+    H = random_state_model(1, 4, 5)
+    with assert_raises(ValueError):
+        G @ H
 
 
 def test_State_algebra_mul_rmul_mimo_siso():
@@ -571,3 +702,11 @@ def test_random_state_model():
     G = random_state_model(11, stable=False, prob_dist=[0, 0, 0.5, 0.5])
     assert_array_almost_equal(np.abs(G.poles.real), np.zeros(11))
     assert np.any(G.poles.imag)
+
+
+def test_basic_pole_properties():
+    G = Transfer(0.5, [1, 4, 3]) + 5
+    zzz = G.pole_properties()
+    assert_array_almost_equal(zzz,
+                              np.array([[-1.+0.j, 1.+0.j, 1.+0.j],
+                                        [-3.+0.j, 3.+0.j, 1.+0.j]]))
