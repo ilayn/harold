@@ -23,9 +23,10 @@ THE SOFTWARE.
 """
 
 import numpy as np
+from numpy.random import seed
 from harold import (Transfer, State, e_i, haroldcompanion,
                     transmission_zeros, state_to_transfer, transfer_to_state,
-                    concatenate_state_matrices)
+                    random_state_model, concatenate_state_matrices)
 
 from numpy.testing import (assert_,
                            assert_equal,
@@ -550,3 +551,23 @@ def test_static_model_conversion_sampling_period():
     assert_equal(H.SamplingPeriod, 0.001)  # 2
     K = transfer_to_state(H)
     assert_equal(K.SamplingPeriod, 0.001)  # 3
+
+
+def test_random_state_model():
+    seed(12345)
+    # Simple arguments
+    G = random_state_model(0)
+    assert G._isgain
+    assert G._isSISO
+    G = random_state_model(1)
+    assert not G._isgain
+    assert G._isSISO
+    G = random_state_model(1, 1, 2)
+    assert not G._isgain
+    assert not G._isSISO
+
+    G = random_state_model(5, 2, 4, stable=False)
+    assert np.any(G.poles.real > 0)
+    G = random_state_model(11, stable=False, prob_dist=[0, 0, 0.5, 0.5])
+    assert_array_almost_equal(np.abs(G.poles.real), np.zeros(11))
+    assert np.any(G.poles.imag)
