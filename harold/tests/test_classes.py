@@ -702,3 +702,11 @@ def test_random_state_model():
     G = random_state_model(11, stable=False, prob_dist=[0, 0, 0.5, 0.5])
     assert_array_almost_equal(np.abs(G.poles.real), np.zeros(11))
     assert np.any(G.poles.imag)
+
+
+def test_basic_pole_properties():
+    G = Transfer(0.5, [1, 4, 3]) + 5
+    zzz = G.pole_properties()
+    assert_array_almost_equal(zzz,
+                              np.array([[-1.+0.j, 1.+0.j, 1.+0.j],
+                                        [-3.+0.j, 3.+0.j, 1.+0.j]]))

@@ -424,8 +424,8 @@ class Transfer:
 
         # Last chance for matrices, convert to static gain matrices and add
         elif isinstance(other, (int, float)):
-            return Transfer((other * np.ones(self._shape)).tolist(),
-                            dt=self._dt) + self
+            return self + Transfer((other * np.ones(self._shape)).tolist(),
+                                   dt=self._dt)
 
         elif isinstance(other, np.ndarray):
             # It still might be a scalar inside an array
@@ -2471,129 +2471,6 @@ class State:
             return a, b, c, d, d.shape, Gain_flag
 
 
-def _investigate_other(self_, other_, method_):
-    '''
-    This helper function checks the argument of the dunder arithmetic
-    methods of State and Transfer classes, such as __mul__(), __add__()
-    etc. and returns informative flags for quick branching.
-
-    Concise two character flag logic (but passed as an integer):
-        '##'
-         ||__ 1 for dynamic, 0 for static models
-         |___ 1 for MIMO, 0 for SISO models
-    hence
-        0 is SISO static gain
-        1 is SISO dynamic model
-        2 is MIMO static gain
-        3 is MIMO dynamic model
-       -1 is numpy.ndarray
-
-    Parameters
-    ----------
-    self_ : State, Transfer
-        State or Transfer instance for which the dunder method is called.
-
-    other_ : object
-        object to be recognized.
-
-    method_ : str
-        Method specifier for proper size checks and error messages
-
-    Returns
-    -------
-
-    '''
-    msg_dict = {'add': 'addition',
-                'mul': 'elementwise multiplication',
-                'matmul': 'right multiplication',
-                'radd': 'left addition',
-                'rmul': 'elementwise multiplication',
-                'rmatmul': 'left multiplication'}
-
-    # Massage possible real valued complex objects to reals
-    if np.iscomplexobj(other_):
-        # Fine check further
-        if hasattr(other_, 'imag'):
-            if np.any(other_.imag):
-                raise ValueError('Complex valued models are not supported.')
-            else:
-                other_ = other_.real
-        else:
-            # Numpy thinks it's a complex object so probably it is array_like
-            other_ = np.array(other_, ndmin=2)
-            if np.any(other_.imag):
-                raise ValueError('Complex valued models are not supported.')
-            else:
-                other_ = other_.real
-
-    # Check for allowed objects
-    if not isinstance(other_, (int, float, np.ndarray, State, Transfer)):
-        raise ValueError('I don\'t know how to perform {0} of {1} and'
-                         ' {2} types.'.format(msg_dict[method_],
-                                              type(self_).__qualname__,
-                                              type(other_).__qualname__)
-                         )
-    # check and forgive size-1 arrays
-    if isinstance(other_, np.ndarray):
-        if other_.ndim == 1:
-            try:
-                other_ = np.atleast_2d(other_).astype(float)
-            except ValueError:
-                raise ValueError('Operand could not be casted to float dtype')
-        elif other_.ndim > 2:
-            raise ValueError('For {0}, the operand dimension must be at '
-                             'most 2d but got a {1}d-array.'
-                             ''.format(msg_dict[method_], other_.ndim))
-        elif other_.size == 1:
-            other_ = float(other_)
-        else:
-            other_ = other_.astype(float)
-        # Reject if the size don't match
-        if method_ in ('add', 'mul'):
-            shape_1 = self_.shape
-            shape_2 = other_.shape
-        else:
-            shape_1 = self_.shape[1]
-            shape_2 = other_.shape[0]
-
-        if shape_1 != shape_2:
-            raise ValueError('For {0}, model shapes don\'t match. The shapes'
-                             ' are {1} vs. {2}'.format(msg_dict[method_],
-                                                       self_.shape,
-                                                       other_.shape)
-                             )
-        other_type = -1
-
-    if isinstance(other_, (int, float)):
-        other_ = np.atleast_2d(other_).astype(float)
-        other_type = -1
-
-    if isinstance(other_, (State, Transfer)):
-
-        if not self_.SamplingPeriod == other_.SamplingPeriod:
-            raise ValueError('The sampling periods of the models don\'t match '
-                             'for {0}.'.format(msg_dict[method_]))
-
-        # Reject if the size don't match
-        if method_ in ('add', 'mul'):
-            shape_1 = self_.shape
-            shape_2 = other_.shape
-        else:
-            shape_1 = self_.shape[1]
-            shape_2 = other_.shape[0]
-
-        if shape_1 != shape_2:
-            raise ValueError('For {0}, model shapes don\'t match. The shapes'
-                             ' are {1} vs. {2}'.format(msg_dict[method_],
-                                                       self_.shape,
-                                                       other_.shape)
-                             )
-
-        other_type = 2 * (not other_._isSISO) + (not other_._isgain)
-
-    return other_, other_type
-
-
 def _pole_properties(poles, dt=None, output_data=False):
     '''
     This function provides the natural frequency, damping and time constant
@@ -2604,6 +2481,8 @@ def _pole_properties(poles, dt=None, output_data=False):
     ----------
     poles : ndarray
         Poles of the system representation. p must be a 1D array.
+    dt : float
+        Sampling period for discrete-time poles.
 
     Returns
     -------
@@ -2635,7 +2514,7 @@ def _pole_properties(poles, dt=None, output_data=False):
     if n == 0:
         return None
     freqn = np.empty_like(p, dtype=float)
-    damp = np.empty_like(p, dtype=float)\
+    damp = np.empty_like(p, dtype=float)
 
     # Check for pure integrators
     if dt is not None:  # Discrete
