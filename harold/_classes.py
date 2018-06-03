@@ -391,10 +391,8 @@ class Transfer:
                     # Same as SISO but over all rows/cols
                     for row in range(self._p):
                         for col in range(self._m):
-                            lcm, mults = haroldlcm(
-                                            self._den[row][col],
-                                            other.den[row][col]
-                                            )
+                            lcm, mults = haroldlcm(self._den[row][col],
+                                                   other.den[row][col])
 
                             newnum[row][col] = np.atleast_2d(
                                     haroldpolyadd(
@@ -417,8 +415,7 @@ class Transfer:
                                 nonzero_num[row, col] = True
 
                     if any(nonzero_num.ravel()):
-                        return Transfer(newnum, newden,
-                                        dt=self._dt)
+                        return Transfer(newnum, newden, dt=self._dt)
                     else:
                         # Numerators all cancelled to zero hence 0-gain MIMO
                         return Transfer(np.zeros(self._shape).tolist())
@@ -670,9 +667,9 @@ class Transfer:
                 return self*float(other)
 
             if other.ndim == 1:
-                arr = np.atleast_2d(other.real)
+                arr = np.atleast_2d(other.real).astype(float)
             else:
-                arr = other.real
+                arr = other.real.astype(float)
 
             if not self._m == arr.shape[0]:
                 raise ValueError(f'Size mismatch: Transfer representation '
@@ -681,18 +678,24 @@ class Transfer:
 
             # If self is gain, this is just matrix multiplication
             if self._isgain:
-                return Transfer(self.to_array() @ arr,
-                                dt=self._dt)
+                return Transfer(self.to_array() @ arr, dt=self._dt)
 
             tp, tm = self._shape[0], arr.shape[1]
+
             newnum = [[None]*tm for n in range(tp)]
             newden = [[None]*tm for n in range(tp)]
 
             for r in range(tp):
                 for c in range(tm):
-                    t_G = sum(*(self[r]*arr[:, c]))
-                    newnum[tp][tm] = t_G.num
-                    newden[tp][tm] = t_G.den
+                    t_G = Transfer(0, 1, dt=self._dt)
+                    for ind in range(self._m):
+                        t_G += self[r, ind] * other[ind, [c]]
+                    newnum[r][c] = t_G.num
+                    newden[r][c] = t_G.den
+
+            if (tp, tm) == (1, 1):
+                newnum = newnum[0][0]
+                newden = newden[0][0]
 
             return Transfer(newnum, newden, dt=self.SamplingPeriod)
 
@@ -762,7 +765,7 @@ class Transfer:
             else:
                 arr = other.real
 
-            return Transfer(arr, self._dt) @ self
+            return Transfer(arr.tolist(), self._dt) @ self
 
         elif isinstance(other, (int, float)):
             return self * other
