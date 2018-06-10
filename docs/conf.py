@@ -4,10 +4,15 @@
 # harold documentation build configuration file, created by
 # sphinx-quickstart on Sat Sep 19 17:38:48 2015.
 #
-
 import sys
 import os
 import mock
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+sys.path.insert(0, os.path.abspath('..'))
+
 # import cloud_sptheme for themes, etc
 import cloud_sptheme as csp
 from harold import __version__ as release
@@ -15,14 +20,6 @@ from harold import __version__ as release
 MOCK_MODULES = ['tabulate', 'scipy.signal']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
-
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('..'))
-
-# -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '1.7.4'
@@ -97,7 +94,7 @@ issue_tracker_url = "gh:ilayn/harold/issues"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = os.environ.get("SPHINX_THEME") or 'cloud'
+html_theme = 'cloud'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
