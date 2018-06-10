@@ -4,11 +4,19 @@
 Welcome to harold's documentation!
 ==================================
 
+``harold`` is an open-source control systems library for Python 3.6 and greater.
+It implements operations to create, manipulate, and analyse dynamic models for
+feedback control systems.
+
+In addition to this documentation, you can also find Jupyter notebooks inside
+the code repository located on GitHub under ``notebooks`` folder.
+
+
 Contents:
 ---------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    intro
    preflight

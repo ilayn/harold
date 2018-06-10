@@ -185,3 +185,27 @@ This method can also be used to verify whether a certain input is a valid
 argument for creating model objects hence the name. 
 
 Same class method is also available for the ``State()`` class. 
+
+Generating Random Models
+------------------------
+
+It is possible to generate random models with prescribed pole types. The main
+function call is quite straightforward. The number of states and the system
+shape is sufficient to generate a random State model ::
+
+    >>> G = random_state_model(5, p=3, m=2)
+    >>> G.poles
+    array([ -7.10875825+13.87615012j,  -7.10875825-13.87615012j,
+       -11.52895761 +0.j        ])
+       
+We can change the choice probabilities to make the model more interesting. For
+example, we can force the model to have more complex pole pairs compared to 
+real poles
+
+    >>> G = random_state_model(1000, p=3, m=2, prob_dist=[0.2, 0.8])
+    >>> np.count_nonzero(G.poles.imag)
+    42
+
+We can also make the random model unstable via setting `stable=False`. Then
+probability argument have 4 entries and denote the chances of having, real,
+complex pair, integrator, pure imaginary pair.
