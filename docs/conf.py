@@ -6,16 +6,92 @@
 #
 import sys
 import os
+import subprocess
 import mock
+import cloud_sptheme as csp
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
-# import cloud_sptheme for themes, etc
-import cloud_sptheme as csp
-from harold import __version__ as release
+# Readthedocs doesn't support setup.py execution hence we replicate
+# the version retrieval here
+
+VERSION = ''
+
+with open('../setup.py', 'rt') as setuppy:
+    for line in setuppy:
+        if line[:5] == 'MAJOR':
+            VERSION += line[8:-1] + '.'
+        elif line[:5] == 'MINOR':
+            VERSION += line[8:-1] + '.'
+        elif line[:5] == 'MICRO':
+            VERSION += line[8:-1]
+        elif line[:10] == 'ISRELEASED':
+            ISRELEASED = line[13:-1] == 'True'
+            break
+        else:
+            continue
+
+
+# Return the git revision as a string
+def git_version():
+    def _minimal_ext_cmd(cmd):
+        # construct minimal environment
+        env = {}
+        for k in ['SYSTEMROOT', 'PATH']:
+            v = os.environ.get(k)
+            if v is not None:
+                env[k] = v
+        # LANGUAGE is used on win32
+        env['LANGUAGE'] = 'C'
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
+        out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                               env=env).communicate()[0]
+        return out
+
+    try:
+        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
+        GIT_REVISION = out.strip().decode('ascii')
+    except OSError:
+        GIT_REVISION = "Unknown"
+
+    return GIT_REVISION
+
+
+def get_version_info():
+    FULLVERSION = VERSION
+    if os.path.exists('.git'):
+        GIT_REVISION = git_version()
+    else:
+        GIT_REVISION = "Unknown"
+
+    if not ISRELEASED:
+        FULLVERSION += '.dev0+' + GIT_REVISION[:7]
+
+    return FULLVERSION, GIT_REVISION
+
+
+def write_version_py(filename='../harold/_version.py'):
+    FULLVERSION, GIT_REVISION = get_version_info()
+    s = (f'''# THIS FILE IS AUTO-GENERATED FROM SETUP.PY\n'''
+         f'''short_version = "{VERSION}"\n'''
+         f'''version = "{VERSION}"\n'''
+         f'''full_version = "{FULLVERSION}"\n'''
+         f'''git_revision = "{GIT_REVISION}"\n'''
+         f'''release = {ISRELEASED}\n'''
+         f'''if not release:\n'''
+         f'''    version = full_version\n''')
+    a = open(filename, 'w')
+    try:
+        a.write(s)
+    finally:
+        a.close()
+
+
+write_version_py()
 
 MOCK_MODULES = ['tabulate', 'scipy.signal']
 for mod_name in MOCK_MODULES:
@@ -65,7 +141,7 @@ copyright = "2015-2018, " + author
 
 # release: The full version, including alpha/beta/rc tags.
 # version: The short X.Y version.
-version = csp.get_version(release)
+version = csp.get_version(get_version_info()[0])
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
@@ -106,10 +182,10 @@ html_theme_path = [csp.get_theme_dir()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "%s v%s Documentation".format(project, release)
+html_title = "{} v{} Documentation".format(project, version)
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "%s %s Documentation".format(project, version)
+# html_short_title = "%s %s Documentation".format(project, version)
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
