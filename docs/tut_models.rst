@@ -1,4 +1,4 @@
-﻿System Representations
+System Representations
 ======================
 
 For creating dynamic/static models, ``harold`` currently offers two options: 
