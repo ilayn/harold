@@ -713,3 +713,49 @@ def test_basic_pole_properties():
     assert_array_almost_equal(zzz,
                               np.array([[-1.+0.j, 1.+0.j, 1.+0.j],
                                         [-3.+0.j, 3.+0.j, 1.+0.j]]))
+
+
+def test_transfer_to_state():
+    # Models with static column/row
+    num, den = [[1, -1], [[1, -1], 0]], [[[1, 2], 1], [[1, 2], 1]]
+    den2, num2 = [list(i) for i in zip(*den)], [list(i) for i in zip(*num)]
+
+    G = Transfer(num, den)
+    H = Transfer(num2, den2)
+
+    Gs = transfer_to_state(G)
+    Hs = transfer_to_state(H)
+    Gm = concatenate_state_matrices(Gs)
+    Hm = concatenate_state_matrices(Hs)
+    assert_array_almost_equal(Gm, np.array([[-2, 1, 0],
+                                            [1, 0, -1],
+                                            [-3, 1, 0]]))
+    assert_array_almost_equal(Hm, np.array([[-2., 0., 1., 0.],
+                                            [0., -2., 0., 1.],
+                                            [1., -3., 0., 1.],
+                                            [0., 0., -1., 0.]]))
+
+    # Example from Kalman 1963
+    num = [[3*np.poly([-3, -5]), [6, 6], [2, 7], [2, 5]],
+           [2, 1, [2, 10], [8, 16]],
+           [[2, 14, 36], [-2, 0], 1, 2*np.convolve([5, 17], [1, 2])]]
+    den = [[np.poly([-1, -2, -4]), [1, 6, 8], [1, 7, 12], [1, 5, 6]],
+           [[1, 8, 15], [1, 3], np.poly([-1, -2, -3]), np.poly([-1, -3, -5])],
+           [np.poly([-1, -3, -5]), [1, 4, 3], [1, 3], np.poly([-1, -3, -5])]]
+
+    G = Transfer(num, den)
+    H = transfer_to_state(G)
+    p = H.poles
+    p.sort()
+    assert_array_almost_equal(p, np.array([-5.+0.j, -5.+0.j, -4.+0.j,
+                                           -3.+0.j, -3.+0.j, -3.+0.j,
+                                           -2.+0.j, -2.+0.j, -1.+0.j,
+                                           -1.+0.j, -1.+0.j]))
+
+
+def test_state_to_transfer():
+    G = State(-2*np.eye(2), np.eye(2), [[1, -3], [0, 0]], [[0, 1], [-1, 0]])
+    H = state_to_transfer(G)
+    H11 = H[1, 1]
+    assert_array_equal(H11.num, np.array([[0.]]))
+    assert_array_equal(H11.den, np.array([[1.]]))
