@@ -16,18 +16,11 @@ Contents:
 ---------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    intro
-   preflight
-   tut_models
-   tut_convert
-   tut_discrete
-   tut_kalman
-   tut_model_props
-   tut_polyfuncs
-   tut_freq_domain
-   tut_time_domain
+   function_reference
+
 
    
 Additional Information

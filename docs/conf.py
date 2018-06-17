@@ -108,6 +108,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
+    'sphinx.ext.autosummary',
 
     # cloud's extensions
     'cloud_sptheme.ext.autodoc_sections',
@@ -116,6 +117,8 @@ extensions = [
     'cloud_sptheme.ext.issue_tracker',
     'cloud_sptheme.ext.table_styling',
     ]
+
+autosummary_generate = True
 
 # == CSP theme ===============================================================
 # The suffix of source filenames.
