@@ -22,35 +22,34 @@ __all__ = ['Transfer', 'State', 'state_to_transfer', 'transfer_to_state',
 
 class Transfer:
     """
-
-    Transfer() is a system representation class.
-
-    For SISO system creation, 1D lists or 1D numpy arrays are expected,
-    e.g.,::
-
-        >>> G = Transfer(1,[1,2,1])
-
-    For MIMO systems, the array like objects are expected to be inside the
-    appropriate shaped list of lists ::
-
-        >>> G = Transfer([[ [1,3,2], [1,3] ],
-        ...               [   [1]  , [1,0] ]],# end of num
-        ...              [[ [1,2,1] ,  [1,3,3]  ],
-        ...               [ [1,0,0] , [1,2,3,4] ]])
-
-    If the denominator is common then the denominator can be given as a single
-    array like object.
-
-        >>> G = Transfer([[ [1,3,2], [1,3] ],
-        ...               [   [1]  , [1,0] ]],# end of num
-        ...              [1, 2, 3, 4, 5]) # common den
-
-    Setting  SamplingPeriod property to 'False' value to the will make
-    the system continuous time again and relevant properties are reset
-    to continuous-time properties.
+    A class for creating Transfer functions.
     """
     def __init__(self, num, den=None, dt=None):
+        """
+        For SISO models, 1D lists or 1D numpy arrays are expected, e.g.,::
 
+            >>> G = Transfer(1,[1,2,1])
+
+        For MIMO systems, the array like objects are expected to be inside the
+        appropriate shaped list of lists ::
+
+            >>> G = Transfer([[ [1,3,2], [1,3] ],
+            ...               [   [1]  , [1,0] ]],# end of num
+            ...              [[ [1,2,1] ,  [1,3,3]  ],
+            ...               [ [1,0,0] , [1,2,3,4] ]])
+
+        If the denominator is common then the denominator can be given as a
+        single array like object.
+
+            >>> G = Transfer([[ [1,3,2], [1,3] ],
+            ...               [   [1]  , [1,0] ]],# end of num
+            ...              [1, 2, 3, 4, 5]) # common den
+
+        Setting  ``SamplingPeriod`` property to ``'None'`` will make the
+        system continuous time again and relevant properties are reset
+        to continuous-time properties. However the numerical data will still
+        be the same.
+        """
         # Initialization Switch and Variable Defaults
 
         self._isgain = False
@@ -1405,23 +1404,25 @@ class Transfer:
 
 class State:
     """
-    State() is a system representation class.
-
-    A State object can be instantiated in a straightforward manner by
-    entering array like objects.::
-
-        >>> G = State([[0, 1], [-4, -5]], [[0], [1]], [[1, 0]], 1)
-
-    For zero feedthrough (strictly proper) models, "d" matrix can be skipped
-    and will be replaced with the zeros array whose shape is inferred from
-    the rows/columns of "c"/"b" arrays.
-
-    Setting  SamplingPeriod property to 'False' value to the will make
-    the system continuous time again and relevant properties are reset
-    to continuous-time properties.
+    A class for creating State space models.
     """
     def __init__(self, a, b=None, c=None, d=None, dt=None):
+        """
+        A State object can be instantiated in a straightforward manner by
+        entering arraylikes.::
 
+            >>> G = State([[0, 1], [-4, -5]], [[0], [1]], [1, 0], 1)
+
+        For zero feedthrough (strictly proper) models, "d" matrix can be
+        skipped and will be replaced with the zeros array whose shape is
+        inferred from the rows/columns of "c"/"b" arrays.
+
+        Setting  ``SamplingPeriod`` property to ``'None'`` will make the
+        system continuous time again and relevant properties are reset
+        to continuous-time properties. However the numerical data will still
+        be the same.
+
+        """
         self._dt = False
         self._DiscretizedWith = None
         self._DiscretizationMatrix = None
@@ -2536,23 +2537,19 @@ def _pole_properties(poles, dt=None, output_data=False):
 
 def state_to_transfer(*state_or_abcd, output='system'):
     """
-    Given a State() object or a tuple of A,B,C,D array-likes, converts
-    the argument into the transfer representation. The output can be
-    selected as a Transfer() object or the numerator, denominator pair if
-    'output' keyword is given with the option 'polynomials'.
+    Converts a :class:`State` to a :class:`Transfer`
 
-    If the input is a Transfer() object it returns the argument with no
+    If the input is a :class:`Transfer` object it returns the argument with no
     modifications.
 
-    The algorithm is Varga,Sima 1981 which can be summarized as iterating
-    over every row/cols of B and C to get SISO Transfer representations
-    via c*(sI-A)^(-1)*b+d.
+    The algorithm [1]_ can be summarized as iterating over every row/columns
+    of C/B to get SISO Transfer representations via :math:`c(sI-A)^{-1}b+d`.
 
     Parameters
-    ----------
+    -----------
     state_or_abcd : State, tuple
     output : str
-        Selects whether a State() object or individual numerator, denominator
+        Selects whether a State object or individual numerator, denominator
         will be returned via the options ``'system'``,``'polynomials'``.
 
     Returns
@@ -2560,7 +2557,12 @@ def state_to_transfer(*state_or_abcd, output='system'):
     G : Transfer, tuple
         If ``output`` keyword is set to ``'system'`` otherwise a 2-tuple of
         ndarrays is returned as ``num`` and ``den`` if the ``output`` keyword
-        is set to ``polynomials``
+        is set to ``'polynomials'``
+
+    References
+    ----------
+
+    .. [1] Varga, Sima, 1981, :doi:`10.1080/00207178108922980`.
 
     """
     # FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
@@ -2572,23 +2574,23 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
-    ZR = None
+    dt = None
     system_given, validated_matrices = _state_or_abcd(state_or_abcd[0], 4)
 
     if system_given:
         A, B, C, D = state_or_abcd[0].matrices
         p, m = state_or_abcd[0].shape
         it_is_gain = state_or_abcd[0]._isgain
-        ZR = state_or_abcd[0].SamplingPeriod
+        dt = state_or_abcd[0].SamplingPeriod
     else:
         A, B, C, D, (p, m), it_is_gain = State.validate_arguments(
                                                     *validated_matrices)
-        ZR = None
+        dt = None
 
     if it_is_gain:
         if output.lower() is 'polynomials':
             return D, np.ones_like(D)
-        return Transfer(D, dt=ZR)
+        return Transfer(D, dt=dt)
 
     n = A.shape[0]
 
@@ -2655,11 +2657,13 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     if output.lower() is 'polynomials':
         return (num_list, den_list)
-    return Transfer(num_list, den_list, ZR)
+    return Transfer(num_list, den_list, dt)
 
 
 def transfer_to_state(G, output='system'):
     """
+    Converts a :class:`Transfer` to a :class:`State`
+
     Given a Transfer() object of a tuple of numerator and denominator,
     converts the argument into the state representation. The output can
     be selected as a State() object or the A,B,C,D matrices if 'output'
@@ -2890,12 +2894,14 @@ def transfer_to_state(G, output='system'):
 
 def transmission_zeros(A, B, C, D):
     """
-    Computes the transmission zeros of a (A,B,C,D) system matrix quartet.
+    Computes the transmission zeros of :class:`State` data arrays ``A``, ``B``,
+    ``C``, ``D``
 
     Parameters
     ----------
     A,B,C,D : ndarray
-        The input data matrices with (nxn), (nxm), (p,n), (p,m) shapes.
+        The input data matrices with ``n x n``, ``n x m``, ``p x n``, ``p x m``
+        shapes.
 
     Returns
     -------
@@ -2905,9 +2911,13 @@ def transmission_zeros(A, B, C, D):
 
     Notes
     -----
-    This is a straightforward implementation of the algorithm of Misra, van
-    Dooren, Varga 1994 but skipping the descriptor matrix which in turn
-    becomes Emami-Naeini, van Dooren 1979.
+    This is a straightforward implementation of [1]_ but via skipping the
+    descriptor matrix which in turn becomes [2]_.
+
+    References
+    ----------
+    .. [1] Misra, van Dooren, Varga, 1994, :doi:`10.1016/0005-1098(94)90052-3`
+    .. [2] Emami-Naeini, van Dooren, 1979, :doi:`10.1016/0005-1098(82)90070-X`
 
     """
     n, (p, m) = A.shape[0], D.shape
@@ -3078,8 +3088,9 @@ def _state_or_abcd(arg, n=4):
 
 def random_state_model(n, p=1, m=1, dt=None, prob_dist=None, stable=True):
     """
-    Generates a State model with a shape based on the arguments provided. The
-    poles of the model is selected from randomly generated numbers with a
+    Generates a continuous or discrete State model with random data.
+
+    The poles of the model is selected from randomly generated numbers with a
     predefined probability assigned to each pick which can also be provided by
     external array. The specification of the probability is a simple 5-element
     array-like ``[p0, p1, p2, p3]`` denoting ::

@@ -122,7 +122,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
-
+    'sphinx.ext.extlinks',
     # cloud's extensions
     'cloud_sptheme.ext.autodoc_sections',
     'cloud_sptheme.ext.relbar_links',
@@ -132,6 +132,8 @@ extensions = [
     ]
 
 autosummary_generate = True
+
+extlinks = {'doi': ('https://dx.doi.org/%s', 'DOI:')}
 
 # == CSP theme ===============================================================
 # The suffix of source filenames.
@@ -178,7 +180,7 @@ pygments_style = 'sphinx'
 # =============================================================================
 todo_include_todos = True
 keep_warnings = True
-issue_tracker_url = "gh:ilayn/harold/issues"
+issue_tracker_url = "gh:ilayn/harold/"
 
 # =============================================================================
 # Options for HTML output
@@ -215,11 +217,11 @@ html_title = "{} v{} Documentation".format(project, version)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-# #html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = '%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
@@ -295,7 +297,7 @@ todo_include_todos = True
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'harolddoc'

@@ -36,6 +36,7 @@ Model Functions
 .. autosummary::
     :toctree: generated/
 
+    transmission_zeros
     system_norm
     cancellation_distance
 
