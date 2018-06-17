@@ -2575,6 +2575,7 @@ def state_to_transfer(*state_or_abcd, output='system'):
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
     dt = None
+
     system_given, validated_matrices = _state_or_abcd(state_or_abcd[0], 4)
 
     if system_given:
@@ -2585,7 +2586,6 @@ def state_to_transfer(*state_or_abcd, output='system'):
     else:
         A, B, C, D, (p, m), it_is_gain = State.validate_arguments(
                                                     *validated_matrices)
-        dt = None
 
     if it_is_gain:
         if output.lower() is 'polynomials':
