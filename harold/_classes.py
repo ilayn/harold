@@ -2550,19 +2550,17 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     Parameters
     ----------
-    state_or_abcd : State() or a tuple of A,B,C,D matrices.
+    state_or_abcd : State, tuple
     output : str
         Selects whether a State() object or individual numerator, denominator
         will be returned via the options ``'system'``,``'polynomials'``.
 
     Returns
     -------
-    G : Transfer
-        If ``output`` keyword is set to 'system'
-    num : {List of lists of 2D-numpy arrays for MIMO case,
-              2D-Numpy arrays for SISO case}
-        If the ``output`` keyword is set to ``polynomials``
-    den : Same as num
+    G : Transfer, tuple
+        If ``output`` keyword is set to ``'system'`` otherwise a 2-tuple of
+        ndarrays is returned as ``num`` and ``den`` if the ``output`` keyword
+        is set to ``polynomials``
 
     """
     # FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
@@ -2687,7 +2685,7 @@ def transfer_to_state(G, output='system'):
 
     Returns
     -------
-    Gs : State()
+    Gs : State
         If 'output' keyword is set to 'system'
     A,B,C,D : {(nxn),(nxm),(p,n),(p,m)} 2D Numpy-arrays
         If the 'output' keyword is set to 'matrices'

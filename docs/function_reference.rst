@@ -18,16 +18,17 @@ System creation
     State
     Transfer
     random_state_model
+    transfer_to_state
+    state_to_transfer
 
-Frequency domain simulation
-===========================
+Discretization
+==============
 
 .. autosummary::
     :toctree: generated/
-
-    frequency_response
-    bode_plot
-    nyquist_plot
+    
+    discretize
+    undiscretize
 
 Model Functions
 ===============
@@ -36,6 +37,7 @@ Model Functions
     :toctree: generated/
 
     system_norm
+    cancellation_distance
 
 Kalman tests
 ------------
@@ -60,6 +62,16 @@ Time domain simulation
     impulse_response_plot
     step_response_plot
 
+Frequency domain simulation
+===========================
+
+.. autosummary::
+    :toctree: generated/
+
+    frequency_response
+    bode_plot
+    nyquist_plot
+
 Model simplification tools
 ==========================
 .. autosummary::
@@ -69,6 +81,7 @@ Model simplification tools
     minimal_realization
     hessenberg_realization
     staircase
+    kalman_decomposition
 
 Polynomial Operations
 ======================
@@ -80,6 +93,7 @@ Polynomial Operations
     haroldlcm
     haroldpolyadd
     haroldpolymul
+    haroldpolydiv
     haroldcompanion
     haroldker
 
@@ -89,6 +103,7 @@ Auxillary Functions
 .. autosummary::
     :toctree: generated/
 
+    matrix_slice
     e_i
     concatenate_state_matrices
     haroldsvd
