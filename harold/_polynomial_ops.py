@@ -44,10 +44,7 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
     of LCM and a list, of which entries are the polynomial
     multipliers to arrive at the LCM of each input element.
 
-    For the multiplier computation, a variant of Karcanias, Mitrouli,
-    *System theoretic based characterisation and computation of the
-    least common multiple of a set of polynomials*, Lin Alg App, 381, 2004,
-    is used.
+    For the multiplier computation, a variant of [1]_ is used.
 
     Parameters
     ----------
@@ -86,8 +83,14 @@ def haroldlcm(*args, compute_multipliers=True, cleanup_threshold=1e-9):
      array([  1.,  -3.,  -6.,   8.]),
      array([  1.,  -3., -12.,  20.,  48.]),
      array([  1.,  -5.,   1.,  21., -18.])]
-    >>> np.convolve([1,3,0,-4],b[0]) # or haroldpolymul() for poly mult
+    >>> np.convolve([1, 3, 0, -4], b[0]) # or haroldpolymul() for poly mult
     (array([   1.,   -7.,    3.,   59.,  -68., -132.,  144.]),
+
+    References
+    ----------
+    .. [1] Karcanias, Mitrouli, "System theoretic based characterisation and
+        computation of the least common multiple of a set of polynomials",
+        2004, :doi:`10.1016/j.laa.2003.11.009`
 
     """
     # Regularize the arguments
@@ -309,7 +312,7 @@ def haroldcompanion(somearray):
     array([], dtype=float64)
 
     """
-    if not isinstance(somearray, (list, type(np.array([0.])))):
+    if not isinstance(somearray, (list, np.ndarray)):
         raise TypeError('Companion matrices are meant only for '
                         '1D lists or 1D Numpy arrays. I found '
                         'a \"{0}\"'.format(type(somearray).__name__))

@@ -47,9 +47,9 @@ coverage.xml
 *,cover
 .hypothesis/
 
-
 # Sphinx documentation
 docs/_build/
+docs/generated/
 
 # PyBuilder
 target/
@@ -59,3 +59,6 @@ target/
 
 # pyenv
 .python-version
+
+# harold specific
+harold/_version.py

@@ -37,7 +37,8 @@ __all__ = ['discretize', 'undiscretize']
 
 def discretize(G, dt, method='tustin', prewarp_at=0., q=None):
     """
-    Perform a continuous to discrete time model conversion via various methods.
+    Continuous- to discrete-time model conversion.
+
     The default discretization method is 'tustin'.
 
     Parameters
@@ -218,7 +219,8 @@ def _discretize(T, dt, method, prewarp_at, q):
 
 def undiscretize(G, method=None, prewarp_at=0., q=None):
     """
-    Converts a discrete time system model continuous system model.
+    Discrete- to continuous-time model conversion.
+
     If the model has the Discretization Method set and no method is given,
     then uses that discretization method to reach back to the continous
     system model.
@@ -315,9 +317,9 @@ def _undiscretize(T, dt, method, prewarp_at, q):
                 Ad = exp(Ac*t) = Φ
                 Bd = Ac⁻²(Φ - I)²Bc/t                      (*)
                 Cd = Cc
-                Dc = Dc + Cc[Ac⁻²(Φ - I) - Ac⁻]Bc/t
+                Dc = Dc + Cc[Ac⁻²(Φ - I) - Ac⁻¹]Bc/t
 
-        since Ac⁻(Φ-I) = ∫exp(Ac)dt and Ac⁻ commutes with Φ, Bd*t = Φ²*Bc,
+        since Ac⁻¹(Φ-I) = ∫exp(Ac)dt and Ac⁻¹ commutes with Φ, Bd*t = Φ²*Bc,
         the solution follows.
         """
         if np.any(np.abs(eigvals(T.a)) < np.sqrt(np.spacing(norm(T.a, 1)))):

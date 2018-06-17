@@ -1,15 +1,10 @@
 name: py36
 dependencies:
-- scipy>=1.0
-- numpy>=1.13
-- matplotlib>=2.0
 - pip>=8.1.1
 - python>=3.6
 - readline=6.2=2
 - setuptools>=20.3
 - wheel>=0.29.0
 - pip:
-  - momoko>=2.2.3
-  - psycopg2>=2.6.1
-  - tornado>=4.1
-  - guzzle-sphinx-theme>=0.7.11
+  - sphinx>=1.7.4
+  - cloud-sptheme>=1.9.4

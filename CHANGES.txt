@@ -1,5 +1,12 @@
 ﻿ChangeLog
 ============
+v.1.0.1
+-------
++ Restructured documentation, now has a function reference template.
++ State and Transfer conversion with static cols/rows bugs fixed.
++ minimal_realization and staircase bugs fixed
++ random model creation in continuous and discrete time is possible.
+
 v.1.0.0
 -------
 + First public release
@@ -8,7 +15,7 @@ v.1.0.0
 + Lots and lots of bug fixes.
 + Change the documentation theme to guzzle
 + Added first order hold discretization method
-- Removed FAQ from docs
++ Removed FAQ from docs
 
 v.0.1.1rc1
 ----------
@@ -37,16 +44,16 @@ v0.1.1b4
 + minimal_realization for Transfer uses the pole zero cancellation check
 + more housekeeping and bug fixes
 + added damping, natural frequency properties of poles
-- state_to_transfer does not return minimal realizations (per request)
++ state_to_transfer does not return minimal realizations (per request)
 
 v0.1.1b3
 --------
 + More tests
 + bode, nyquist plots with matplotlib
 + Rewritten the transmission_zeros to improve accuracy
-- Removed the single file and replaced it with modular files.
-- Refactored Riccati solvers to SciPy official repo
-- Lyapunov solver safety net is moot. Created PR #6775 in SciPy
++ Removed the single file and replaced it with modular files.
++ Refactored Riccati solvers to SciPy official repo
++ Lyapunov solver safety net is moot. Created PR #6775 in SciPy
 
 v0.1.1b2
 --------
@@ -58,7 +65,7 @@ v0.1.1b1
 --------
 + Added Lyapunov solvers
 + Fixed many bugs
-- Removed block diag and switched to scipy version
++ Removed block diag and switched to scipy version
 
 v0.1.1a
 -------
