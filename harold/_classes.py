@@ -1592,7 +1592,7 @@ class State:
 
         .. note:: SciPy actually uses a variant of this LFT
             representation as given in the paper of `Zhang et al.
-            <http://dx.doi.org/10.1080/00207170802247728>`_
+            :doi:`10.1080/00207170802247728>`
 
         """
         return self._DiscretizationMatrix
@@ -2561,7 +2561,6 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     References
     ----------
-
     .. [1] Varga, Sima, 1981, :doi:`10.1080/00207178108922980`.
 
     """
@@ -2575,7 +2574,6 @@ def state_to_transfer(*state_or_abcd, output='system'):
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
     dt = None
-
     system_given, validated_matrices = _state_or_abcd(state_or_abcd[0], 4)
 
     if system_given:
@@ -2608,47 +2606,45 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
             b = B[:, colind:colind+1]
             c = C[rowind:rowind+1, :]
-            # zz might contain noisy imaginary numbers but since
-            # the result should be a real polynomial, we can get
-            # away with it (on paper)
+            # zz might contain noisy imaginary numbers but since the result
+            # should be a real polynomial, we should be able to get away
+            # with it
 
             zz = transmission_zeros(A, b, c, np.array([[0]]))
 
             # For finding k of a G(s) we compute
-            #          pole polynomial evaluated at s0
-            # G(s0) * ---------------------------------
-            #          zero polynomial evaluated at s0
+            #          pole polynomial evaluated at some s0
+            # G(s0) * --------------------------------------
+            #          zero polynomial evaluated at some s0
             # s0 : some point that is not a pole or a zero
 
-            # Additional *2 are just some tolerances
+            # Additional factor of 2 are just some tolerances
 
             if zz.size != 0:
-                s0 = max(np.max(np.abs(np.real(np.hstack((pp, zz))))), 1)*2
-            else:
-                s0 = max(np.max(np.abs(np.real(pp))), 1.0)*2
-
-            CAB = c @ np.linalg.lstsq((s0*np.eye(n)-A), b, rcond=-1)[0]
-            if np.size(zz) != 0:
+                s0 = max(np.abs([*pp, *zz]).max(), .5)*2
                 zero_prod = np.real(np.prod(s0*np.ones_like(zz) - zz))
             else:
+                s0 = max(np.abs(pp).max(), .5)*2
                 zero_prod = 1.0  # Not zero!
 
-            pole_prod = np.real(np.prod(s0 - pp))
-
+            CAB = c @ np.linalg.lstsq((s0*np.eye(n)-A), b, rcond=-1)[0]
+            pole_prod = np.prod(s0 - pp).real
             entry_gain = (CAB*pole_prod/zero_prod).flatten()
 
-            # Now, even if there are no zeros (den x DC gain) becomes
+            # Now, even if there are no zeros, den(s) x DC gain becomes
             # the new numerator hence endless fun there
 
             dentimesD = D[rowind, colind] * entry_den
             if zz.size == 0:
                 entry_num = entry_gain
             else:
-                entry_num = np.real(haroldpoly(zz))
+                entry_num = haroldpoly(zz).real
                 entry_num = np.convolve(entry_gain, entry_num)
-
             entry_num = haroldpolyadd(entry_num, dentimesD)
-            num_list[rowind][colind] = np.array(entry_num)
+            if entry_num.size == 0:
+                entry_num = np.array([0.])
+                den_list[rowind][colind] = np.array([[1.]])
+            num_list[rowind][colind] = entry_num[None, :]
 
     # Strip SISO result from List of list and return as arrays.
     if (p, m) == (1, 1):
@@ -2657,7 +2653,8 @@ def state_to_transfer(*state_or_abcd, output='system'):
 
     if output.lower() is 'polynomials':
         return (num_list, den_list)
-    return Transfer(num_list, den_list, dt)
+
+    return Transfer(num_list, den_list, dt=dt)
 
 
 def transfer_to_state(G, output='system'):
@@ -2807,8 +2804,8 @@ def transfer_to_state(G, output='system'):
                     den[x][y] = np.array([1/den[x][y][0, 0]])*den[x][y]
 
         # OK first check if the denominator is common in all entries
-        if all([np.array_equal(den[x][y], den[0][0])
-                for x in range(len(den)) for y in range(len(den[0]))]):
+        if all([np.array_equal(den[x][y], den[0][0]) for x in range(p)
+                for y in range(m)]):
 
             # Nice, less work. Off to realization. Decide rows or cols?
             if p >= m:  # Tall or square matrix => Right Coprime Fact.
@@ -2833,7 +2830,7 @@ def transfer_to_state(G, output='system'):
             for y in range(m):
                 for x in range(p):
                     C[x, k:k+num[x][y].size] = num[x][y]
-                k += d  # Shift to the next canonical group position
+                k += d  # Shift to the next companion group position
 
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
@@ -2851,40 +2848,47 @@ def transfer_to_state(G, output='system'):
                 p, m = m, p
 
             coldens = [x for x in zip(*den)]
-            for x in range(m):
-                lcm, mults = haroldlcm(*coldens[x])
-                for y in range(p):
-                    den[y][x] = lcm
-                    num[y][x] = np.atleast_2d(
-                                    haroldpolymul(
-                                        num[y][x].flatten(), mults[y],
-                                        trim_zeros=False
-                                    )
-                                )
+            for col in range(m):
+                lcm, mults = haroldlcm(*coldens[col])
+                for row in range(p):
+                    den[row][col] = lcm
+                    num[row][col] = haroldpolymul(num[row][col][0],
+                                                  mults[row],
+                                                  trim_zeros=False)[None, :]
+
                     # if completely zero, then trim to single entry
-                    num[y][x] = np.atleast_2d(np.trim_zeros(num[y][x][0], 'f'))
+                    # Notice that trim_zeros removes everything if all zero
+                    # Hence work with temporary variable
+                    temp = np.trim_zeros(num[row][col][0], 'f')[None, :]
+                    if temp.size == 0:
+                        num[row][col] = np.array([[0.]])
+                    else:
+                        num[row][col] = temp
 
             coldegrees = [x.size-1 for x in den[0]]
 
-            A = haroldcompanion(den[0][0])
-            B = e_i(A.shape[0], -1)
+            # Make sure that all static columns are handled
+            # Since D is extracted it doesn't matter if denominator is not 1.
+            Alist = []
+            for x in range(m):
+                if den[0][x].size > 1:
+                    Alist += [haroldcompanion(den[0][x])]
+                else:
+                    Alist += [np.empty((0, 0))]
 
-            for x in range(1, m):
-                Atemp = haroldcompanion(den[0][x])
-                Btemp = e_i(Atemp.shape[0], -1)
-
-                A = block_diag(A, Atemp)
-                B = block_diag(B, Btemp)
-
+            A = block_diag(*Alist)
             n = A.shape[0]
-            C = np.zeros((p, n))
+            B = zeros((n, m), dtype=float)
+            C = np.zeros((p, n), dtype=float)
             k = 0
 
-            for y in range(m):
-                for x in range(p):
-                    C[x, k:k+num[x][y].size] = num[x][y][0, ::-1]
+            for col in range(m):
+                if den[0][col].size > 1:
+                    B[sum(coldegrees[:col+1])-1, col] = 1.
 
-                k += coldegrees[y]
+                for row in range(p):
+                    C[row, k:k+num[row][col].size] = num[row][col][0, ::-1]
+                k += coldegrees[col]
 
             if factorside == 'l':
                 A, B, C = A.T, C.T, B.T
