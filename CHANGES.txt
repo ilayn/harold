@@ -1,5 +1,12 @@
 ﻿ChangeLog
 ============
+v.1.0.1
+-------
++ Restructured documentation, now has a function reference template.
++ State and Transfer conversion with static cols/rows bugs fixed.
++ minimal_realization and staircase bugs fixed
++ random model creation in continuous and discrete time is possible.
+
 v.1.0.0
 -------
 + First public release
