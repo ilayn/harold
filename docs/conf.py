@@ -102,7 +102,7 @@ MOCK_MODULES = ['scipy',
                 'matplotlib.pyplot',
                 'numpy',
                 'numpy.linalg',
-                'np.linalg._umath_linalg',
+                'numpy.linalg._umath_linalg',
                 'numpy.random',
                 'numpy.testing',
                 'tabulate']
