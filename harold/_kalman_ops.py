@@ -1,26 +1,3 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
 import numpy as np
 from scipy.linalg import block_diag, solve
 from ._classes import State, _state_or_abcd
@@ -34,18 +11,17 @@ __all__ = ['controllability_matrix', 'observability_matrix',
 
 def controllability_matrix(G, compress=False):
     """
-    Computes the Kalman controllability related quantities. The algorithm
-    is the literal computation of the controllability matrix with increasing
-    powers of A. Numerically, this test is not robust and prone to errors if
-    the A matrix is not well-conditioned or its entries have varying order
-    of magnitude as at each additional power of A the entries blow up or
-    converge to zero rapidly.
+    Computes the Kalman controllability and the transformation matrix. The
+    algorithm is the literal computation of the controllability matrix with
+    increasing powers of A.
+
+    Numerically, this test is not robust and prone to errors.
 
     Parameters
     ----------
-    G : State(), tuple
+    G : State, tuple
         System or a tuple of (n,n), (n,m) arraylike
-    compress : Boolean
+    compress : bool, optional
         If set to True, then the returned controllability matrix is row
         compressed, and in case of uncontrollable modes, has that many
         zero rows.
@@ -85,25 +61,25 @@ def controllability_matrix(G, compress=False):
 
 def observability_matrix(G, compress=False):
     """
-    Computes the Kalman observability related objects. The algorithm
-    is the literal computation of the observability matrix with increasing
-    powers of A. Numerically, this test is not robust and prone to errors if
-    the A matrix is not well-conditioned or too big as at each additional
-    power of A the entries blow up or converge to zero rapidly.
+    Computes the Kalman controllability and the transformation matrix. The
+    algorithm is the literal computation of the observability matrix with
+    increasing powers of A.
+
+    Numerically, this test is not robust and prone to errors.
 
     Parameters
     ----------
-    G : State(), tuple
+    G : State, tuple
         System or a tuple of (n,n), (n,m) arraylike
-    compress : bool
+    compress : bool, optional
         If set to True, then the returned observability matrix is row
         compressed, and in case of unobservability modes, has that many
         zero rows.
 
     Returns
     -------
-    Co : (nm,n) ndarray
-        Kalman observability matrix
+    Co : ndarray
+        Kalman observability matrix with shape (nm x n)
     T : (n,n) ndarray
         The transformation matrix such that `T.T @ Cc` is row compressed
         and the number of zero rows on the right corresponds to the number
@@ -163,32 +139,35 @@ def kalman_decomposition(G, compute_T=False, output='system',
         Selects whether the similarity transformation matrix will be
         returned.
     output : {'system','matrices'}
-        Selects whether a State() object or individual state matrices
-        will be returned.
+        Selects whether a State object or individual state matrices will
+        be returned.
     cleanup_threshold : float
-        After the similarity transformation, the matrix entries smaller
-        than this threshold in absolute value would be zeroed. Setting
-        this value to zero turns this behavior off.
+        After the similarity transformation, the matrix entries smaller than
+        this threshold in absolute value would be zeroed. Setting this value
+        to zero turns this behavior off.
 
     Returns
     -------
     Gk : State, tuple
         Returns a state representation or its matrices as a tuple if
-        `output = 'matrices'`
-    T  : (nxn) ndarray
-        If compute_T is True, returns the similarity transform matrix
-        that brings the state representation in the resulting decomposed
-        form.
+        ``output = 'matrices'``
+    T  : ndarray
+        If ``compute_T`` is ``True``, returns the similarity transform matrix
+        that brings the state representation in the resulting decomposed form.
 
     Examples
     --------
-    >>> G = State([[2,1,1],[5,3,6],[-5,-1,-4]],[[1],[0],[0]],[[1,0,0]],0)
-    >>> print('Is it Kalman Cont\'ble ? ',is_kalman_controllable(G))
-    Is it Kalman Cont'ble ?  False
-    >>> print('Is it Kalman Obsv\'ble ? ',is_kalman_observable(G))
-    Is it Kalman Obsv'ble ?  False
+    >>> G = State([[2, 1, 1],
+    ...            [5, 3, 6],
+    ...            [-5, -1, -4]],
+    ...            [[1], [0], [0]],  # B array
+    ...            [1, 0, 0])
+    >>> is_kalman_controllable(G)
+    False
+    >>> is_kalman_observable(G)
+    False
     >>> F = kalman_decomposition(G)
-    >>> print(F.a,F.b,F.c, sep='\n')
+    >>> print(F.a, F.b, F.c, sep='\n')
     [[ 2.          0.         -1.41421356]
      [ 7.07106781 -3.         -7.        ]
      [ 0.          0.          2.        ]]
@@ -196,9 +175,9 @@ def kalman_decomposition(G, compute_T=False, output='system',
      [ 0.]
      [ 0.]]
     [[-1.  0.  0.]]
-    >>> H = minimal_realization(F.a,F.b,F.c)
-    >>> print('The minimal system matrices are:',*H.matrices)
-    The minimal system matrices are: [[2.]] [[1.]] [[1.]] [[0.]]
+    >>> H = minimal_realization(F)
+    >>> H.matrices
+    (array([[2.]]), array([[1.]]), array([[1.]]), array([[0.]]))
 
     """
     _check_for_state(G)

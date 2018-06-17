@@ -30,6 +30,14 @@ Discretization
     discretize
     undiscretize
 
+Controller Design
+=================
+    
+.. autosummary::
+    :toctree: generated/
+    
+    lqr
+
 Model Functions
 ===============
 

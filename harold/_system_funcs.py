@@ -222,17 +222,17 @@ def hessenberg_realization(G, compute_T=False, form='c', invert=False,
 
 def cancellation_distance(F, G):
     """
-    Given matrices :math:`F,G`, computes the upper and lower bounds of
-    the perturbation needed to render the pencil :math:`[F-pI | G]` rank
-    deficient. It is used for assessing the controllability/observability
-    degeneracy distance and hence for minimality assessment.
+    Computes the upper and lower bounds of the perturbation needed to render
+    the pencil :math:`[F-pI | G]` rank deficient. It is used for assessing
+    the controllability/observability degeneracy distance and hence for
+    minimality assessment.
 
     Parameters
     ----------
-    A : (n, n) array_like
-        Square input array
-    B : (n, m) array_like
-        Input array
+    A : array_like
+        Square input array (n x n)
+    B : array_like
+        Input array (n x m)
 
     Returns
     -------
@@ -254,7 +254,13 @@ def cancellation_distance(F, G):
 
     Notes
     -----
-    Implements the algorithm of D.Boley given in DOI:10.1137/0611046
+    Implements the upper bounds given in [1]_
+
+    References
+    ----------
+
+    .. [1] D. Boley, Estimating the Sensitivity of the Algebraic Structure
+        of Pencils with Simple Eigenvalue Estimates, :doi:`10.1137/0611046`
 
     """
     if not np.equal(*F.shape):

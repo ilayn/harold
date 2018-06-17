@@ -68,11 +68,12 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
 
     .. [1] N.A. Bruinsma, M. Steinbuch: Fast Computation of H∞-norm of
         transfer function. System and Control Letters, 14, 1990.
+        :doi:`10.1016/0167-6911(90)90049-Z`
 
     .. [2] S. Boyd and V. Balakrishnan. A regularity result for the singular
            values of a transfer matrix and a quadratically convergent
            algorithm for computing its L∞-norm. System and Control Letters,
-           1990.
+           1990. :doi:`10.1016/0167-6911(90)90037-U`
 
     """
 

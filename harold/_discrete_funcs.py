@@ -317,9 +317,9 @@ def _undiscretize(T, dt, method, prewarp_at, q):
                 Ad = exp(Ac*t) = Φ
                 Bd = Ac⁻²(Φ - I)²Bc/t                      (*)
                 Cd = Cc
-                Dc = Dc + Cc[Ac⁻²(Φ - I) - Ac⁻]Bc/t
+                Dc = Dc + Cc[Ac⁻²(Φ - I) - Ac⁻¹]Bc/t
 
-        since Ac⁻(Φ-I) = ∫exp(Ac)dt and Ac⁻ commutes with Φ, Bd*t = Φ²*Bc,
+        since Ac⁻¹(Φ-I) = ∫exp(Ac)dt and Ac⁻¹ commutes with Φ, Bd*t = Φ²*Bc,
         the solution follows.
         """
         if np.any(np.abs(eigvals(T.a)) < np.sqrt(np.spacing(norm(T.a, 1)))):
