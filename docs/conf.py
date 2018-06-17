@@ -93,7 +93,17 @@ def write_version_py(filename='../harold/_version.py'):
 
 write_version_py()
 
-MOCK_MODULES = ['tabulate', 'scipy.signal']
+MOCK_MODULES = ['scipy',
+                'scipy.linalg',
+                'scipy.signal',
+                'matplotlib',
+                'matplotlib.pyplot',
+                'numpy',
+                'numpy.linalg',
+                'numpy.random',
+                'numpy.testing',
+                'tabulate']
+
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
