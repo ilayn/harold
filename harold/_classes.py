@@ -3029,7 +3029,7 @@ def _state_or_abcd(arg, n=4):
 
     Parameters
     ----------
-    arg : State(), tuple
+    arg : State, tuple
         The argument to be parsed and checked for validity. Expects either
         a State model or a tuple holding the model matrices
     n : integer {-1,1,2,3,4}
@@ -3104,7 +3104,7 @@ def random_state_model(n, p=1, m=1, dt=None, prob_dist=None, stable=True):
         p2 : Probability of having an integrator (s or z domain)
         p3 : Probability of having a pair on the imaginary axis/unit circle
 
-    Hence, ``[0, 0, 0, 1]`` would return a model with only real poles. Notice
+    Hence, ``[1, 0, 0, 0]`` would return a model with only real poles. Notice
     that the sum of entries should sum up to 1. See numpy.random.choice for
     more details. The default probabilities are ::
 

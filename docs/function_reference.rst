@@ -37,6 +37,7 @@ Controller Design
     :toctree: generated/
     
     lqr
+    ackermann
 
 Model Functions
 ===============
