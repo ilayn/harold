@@ -26,7 +26,7 @@ A brief tutorial about the basics can be found under the notebooks folder.
 Documentation
 =============
 
-See the `Sphinx documentation`_ . (currently under significant reconstruction)
+See the `Sphinx documentation`_ .
 
 Useful Links
 ============
