@@ -1,36 +1,16 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2017 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
-from numpy import eye, zeros, block, array
+import numpy as np
+from numpy import eye, zeros, block, array, poly
+from numpy.linalg import matrix_power
 from scipy.linalg import (solve, eigvals, block_diag,
                           solve_continuous_are as care,
                           solve_discrete_are as dare)
 
 from ._arg_utils import _check_for_state_or_transfer
-from ._classes import Transfer, transfer_to_state
+from ._classes import Transfer, transfer_to_state, _state_or_abcd
+from ._kalman_ops import controllability_matrix
 from ._aux_linalg import matrix_slice
 
-__all__ = ['lqr']
+__all__ = ['lqr', 'ackermann']
 
 
 def lqr(G, Q, R=None, S=None, weight_on='state'):
@@ -86,6 +66,10 @@ def lqr(G, Q, R=None, S=None, weight_on='state'):
 
     Moreover, for the output weighted case, the returned solution is not
     always guaranteed to be the stabilizing solution.
+
+    If a Transfer is given, a the mismatch between the ``Q`` shape and
+    the resulting number of states after the conversion can happen. It is
+    recommended to work with State realizations directly.
 
     """
     _check_for_state_or_transfer(G)
@@ -146,3 +130,56 @@ def lqr(G, Q, R=None, S=None, weight_on='state'):
                             solve(T.b.T @ X @ T.b + R, T.b.T @ X @ T.a + S.T)
 
     return K, X, eigvals(T.a - T.b @ K)
+
+
+def ackermann(G, loc):
+    """
+    Pole placement using Ackermann's polynomial method.
+
+    Parameters
+    ----------
+    G : State, tuple
+        The model or state and input arrays of the model as a tuple
+    loc: arraylike
+        Desired eigenvalue locations given as a 1D arraylike
+
+    Returns
+    -------
+    K: ndarray
+        Resulting static full state feedback gain such that the array ``A-B@K``
+        has the eigenvalues prescribed by ``loc``
+
+    Notes
+    -----
+    This is a naive implementation method of pole placement. Numerically it is
+    quite fragile and instable. Hence it might only give meaningful results for
+    small and well-controllable systems.
+
+    """
+    # Check input arguments.
+    is_sys, arrs = _state_or_abcd(G, n=2)
+    A, B = (G.a, G.b) if is_sys else arrs
+    n, m = A.shape[0], B.shape[1]
+
+    if m != 1:
+        raise ValueError('Ackermann method is only applicable to single input'
+                         ' systems.')
+
+    loc = array(loc, dtype=float)
+    if loc.ndim > 1:
+        raise ValueError('Pole location array must be 1D.')
+
+    Cc, _, r = controllability_matrix((A, B), compress=False)
+    # if not controllable
+    if r < Cc.shape[0]:
+        raise ValueError('The system is numerically uncontrollable. Pole '
+                         'placement is not possible.')
+    # Desired characteristic polynomial
+    p = poly(loc).real[::-1]
+    # Get the state-matrix-to-be via matrix evaluation of the polynomial
+    # TODO: Maybe implement Horner's scheme for evaluation?
+    pmat = np.zeros((n, n), dtype=float)
+    for pow_a in range(n+1):
+        pmat += p[pow_a] * matrix_power(A, pow_a)
+
+    return solve(Cc, pmat)[[-1], :]

@@ -1,33 +1,8 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
-
-from numpy import eye, array
-from scipy.linalg import block_diag
-from numpy.random import rand
-from numpy.testing import assert_almost_equal
+from numpy import eye, array, sort
+from scipy.linalg import block_diag, eigvals
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
 from pytest import raises as assert_raises
-from harold import lqr, State, Transfer
+from harold import lqr, ackermann, State, Transfer, haroldcompanion
 
 
 def test_lqr_arguments():
@@ -81,3 +56,29 @@ def test_simple_dlqr():
     f, _, _ = lqr(H[:, 0], block_diag(0, 0, 1e-5, 1e-5), 0.1)
     assert_almost_equal(k, array([[0, 0, -2.08727337333631e-06, 0]]))
     assert_almost_equal(f,  array([[1.71884123e-11, 0, 0, -1.79301359e-15]]))
+
+
+def test_ackermann_args():
+    # Not SIxO system
+    G = State(eye(2), eye(2), eye(2))
+    assert_raises(ValueError, ackermann, G, [1, 2])
+    # Wrong # of poles
+    G = State(eye(2), [[1], [0]], [1, 0])
+    assert_raises(ValueError, ackermann, G, [1, 2, 3])
+
+
+def test_ackermann_controllable():
+    #
+    A = haroldcompanion([1, 6, 5, 1])
+    B = eye(3)[:, [-1]]
+    p = [-10, -9, -8]
+    K = ackermann((A, B), p)
+    pa = eigvals(A - B@K)
+    assert_array_almost_equal(array(p, dtype=complex), sort(pa))
+
+
+def test_ackermann_uncontrollable():
+    A = block_diag(haroldcompanion([1, 6, 5, 1]), 1)
+    B = eye(4)[:, [-2]]
+    p = [-10, -9, -8, -7]
+    assert_raises(ValueError, ackermann, (A, B), p)

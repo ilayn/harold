@@ -6,6 +6,7 @@ v.1.0.1
 + State and Transfer conversion with static cols/rows bugs fixed.
 + minimal_realization and staircase bugs fixed
 + random model creation in continuous and discrete time is possible.
++ pole placement via ackermann
 
 v.1.0.0
 -------
