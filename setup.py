@@ -13,7 +13,7 @@ if sys.version_info[:2] < (3, 6):
 MAJOR = 1
 MINOR = 0
 MICRO = 1
-ISRELEASED = False
+ISRELEASED = True
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
 
