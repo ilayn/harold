@@ -48,6 +48,7 @@ Model Functions
     transmission_zeros
     system_norm
     cancellation_distance
+    controllability_indices
 
 Kalman tests
 ------------

@@ -198,13 +198,19 @@ def controllability_indices(A, B, tol=None):
         2D (n, m) real-valued array
     tol : float
         Tolerance value for the Arnoldi iteration to decide linear dependence.
-        By default it is sqrt(eps)*n**2
+        By default it is `sqrt(eps)*n²`
 
     Returns
     -------
     ind : ndarray
         1D array that holds the computed controllability indices. The sum of
-        the values add up to n.
+        the values add up to `n` if (A, B) is controllable.
+
+    Notes
+    -----
+    Though internally not used, this function can also be used as a
+    controllability/observability test by summing up the resulting indices and
+    comparing to `n`.
 
     References
     ----------
@@ -238,8 +244,8 @@ def controllability_indices(A, B, tol=None):
     indices[remaining_cols] += 1
 
     w = np.empty((n, 1), dtype=float)
-    # Start the iteration - at most n spins
-    for k in range(n):
+    # Start the iteration - at most n-1 spins
+    for k in range(1, n):
         # prepare new A @ Q test vectors
         q_bank = a @ q[:, -len(remaining_cols):]
         for ind, col in enumerate(remaining_cols.copy()):
