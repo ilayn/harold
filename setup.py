@@ -12,7 +12,7 @@ if sys.version_info[:2] < (3, 6):
 
 MAJOR = 1
 MINOR = 0
-MICRO = 1
+MICRO = 2
 ISRELEASED = False
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
@@ -137,6 +137,7 @@ def setup_package():
         extras_require={
             'dev': ['check-manifest'],
             'test': ['coverage'],
+            'docs': ['sphinx>=1.7.4', 'cloud-sptheme>=1.9.4']
         },
         version=get_version_info()[0]
     )

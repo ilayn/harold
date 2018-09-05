@@ -214,7 +214,7 @@ def controllability_indices(A, B, tol=None):
 
     References
     ----------
-    [1] : W.M. Wonham, "Linear Multivariable Control: A Geometric Approach",
+    .. [1] : W.M. Wonham, "Linear Multivariable Control: A Geometric Approach",
         3rd edition, 1985, Springer, ISBN:9780387960715
     """
     a, _ = _makearray(A)

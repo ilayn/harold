@@ -2546,8 +2546,9 @@ def state_to_transfer(*state_or_abcd, output='system'):
     of C/B to get SISO Transfer representations via :math:`c(sI-A)^{-1}b+d`.
 
     Parameters
-    -----------
+    ----------
     state_or_abcd : State, tuple
+
     output : str
         Selects whether a State object or individual numerator, denominator
         will be returned via the options ``'system'``,``'polynomials'``.

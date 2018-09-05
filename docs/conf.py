@@ -15,8 +15,20 @@ import cloud_sptheme as csp
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
+MOCK_MODULES = [
+                'matplotlib',
+                'matplotlib.pyplot',
+                'tabulate',
+                '_tkinter'
+                ]
+
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
+
+import harold
+
 # Readthedocs doesn't support setup.py execution hence we replicate
-# the version retrieval here
+# the version retrieval here -- ilayn
 
 VERSION = ''
 
@@ -93,22 +105,6 @@ def write_version_py(filename='../harold/_version.py'):
 
 write_version_py()
 
-MOCK_MODULES = ['scipy',
-                'scipy.linalg',
-                'scipy.signal',
-                'scipy.linalg.decomp',
-                'scipy.stats',
-                'matplotlib',
-                'matplotlib.pyplot',
-                'numpy',
-                'numpy.linalg',
-                'numpy.linalg._umath_linalg',
-                'numpy.random',
-                'numpy.testing',
-                'tabulate']
-
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '1.7.4'
@@ -118,10 +114,10 @@ needs_sphinx = '1.7.4'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
-    'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
     # cloud's extensions
     'cloud_sptheme.ext.autodoc_sections',
