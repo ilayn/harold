@@ -155,7 +155,7 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
         return (gamma_lb + gamma_ub)/2
 
 
-def controllability_indices(A, B):
+def controllability_indices(A, B, tol=None):
     """Computes the controllability indices for a controllable pair (A, B)
 
     Controllability indices are defined as the maximum number of independent
@@ -196,6 +196,9 @@ def controllability_indices(A, B):
         2D (n, n) real-valued array
     B : ndarray
         2D (n, m) real-valued array
+    tol : float
+        Tolerance value for the Arnoldi iteration to decide linear dependence.
+        By default it is sqrt(eps)*n**2
 
     Returns
     -------
@@ -220,7 +223,7 @@ def controllability_indices(A, B):
         raise ValueError("A and B should have the same number of rows")
 
     # FIXME: Tolerance is a bit arbitrary for now!!
-    tol = np.sqrt(np.spacing(1.))*n**2
+    tol = np.sqrt(np.spacing(1.))*n**2 if tol is None else tol
 
     # Will be populated below
     remaining_cols = np.arange(m)
