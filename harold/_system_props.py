@@ -1,36 +1,15 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
 import numpy as np
 from numpy import count_nonzero, block
-from scipy.linalg import solve, norm, eigvals
+from numpy.linalg.linalg import (_assertRank2, _assertSquareness,
+                                 _assertNoEmpty2d, _makearray)
+from scipy.linalg import solve, norm, eigvals, qr
 
 from ._frequency_domain import frequency_response
 from ._classes import Transfer, transfer_to_state
 from ._solvers import lyapunov_eq_solver
 from ._arg_utils import _check_for_state_or_transfer
 
-__all__ = ['system_norm']
+__all__ = ['system_norm', 'controllability_indices']
 
 
 def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
@@ -174,3 +153,116 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
                     gamma_lb = np.max(norm(f, ord=2, axis=2))
 
         return (gamma_lb + gamma_ub)/2
+
+
+def controllability_indices(A, B, tol=None):
+    """Computes the controllability indices for a controllable pair (A, B)
+
+    Controllability indices are defined as the maximum number of independent
+    columns per input column of B in the following sense: consider the Kalman
+    controllability matrix (widely known as Krylov sequence) ::
+
+        C = [B, AB, ..., A^(n-1)B]
+
+    We start testing (starting from the left-most) every column of this matrix
+    whether it is a linear combination of the previous columns. Obviously,
+    since C is (n x nm), there are many ways to pick a linearly independent
+    subset. We select a version from [1]_. If a new column is dependent
+    we delete that column and keep doing this until we are left with a
+    full-rank square matrix (this is guaranteed if (A, B) is controllable).
+
+    Then at some point, we are necessarily left with columns that are obtained
+    from different input columns ::
+
+        ̅C = [b₁,b₂,b₃...,Ab₁,Ab₃,...,A²b₁,A²b₃,...,A⁽ᵏ⁻¹⁾b₃,...]
+
+    For example, it seems like Ab₂ is deleted due to dependence on the previous
+    columns to its left. It can be shown that the higher powers will also be
+    dependent and can be removed too. By reordering these columns, we combine
+    the terms that involve each bⱼ ::
+
+        ̅C = [b₁,Ab₁,A²b₁,b₂,b₃,Ab₃,A²b₃,...,A⁽ᵏ⁻¹⁾b₃,...]
+
+    The controllability index associated with each input column is defined as
+    the number of columns per bⱼ appearing in the resulting matrix. Here, 3
+    for first input 1 for second and so on.
+
+    If B is not full rank then the index will be returned as 0 as that column
+    bⱼ will be dropped too.
+
+    Parameters
+    ----------
+    A : ndarray
+        2D (n, n) real-valued array
+    B : ndarray
+        2D (n, m) real-valued array
+    tol : float
+        Tolerance value for the Arnoldi iteration to decide linear dependence.
+        By default it is `sqrt(eps)*n²`
+
+    Returns
+    -------
+    ind : ndarray
+        1D array that holds the computed controllability indices. The sum of
+        the values add up to `n` if (A, B) is controllable.
+
+    Notes
+    -----
+    Though internally not used, this function can also be used as a
+    controllability/observability test by summing up the resulting indices and
+    comparing to `n`.
+
+    References
+    ----------
+    [1] : W.M. Wonham, "Linear Multivariable Control: A Geometric Approach",
+        3rd edition, 1985, Springer, ISBN:9780387960715
+    """
+    a, _ = _makearray(A)
+    b, _ = _makearray(B)
+    _assertRank2(a, b)
+    _assertNoEmpty2d(a, b)
+    _assertSquareness(a)
+
+    n, m = b.shape
+
+    if a.shape[0] != b.shape[0]:
+        raise ValueError("A and B should have the same number of rows")
+
+    # FIXME: Tolerance is a bit arbitrary for now!!
+    tol = np.sqrt(np.spacing(1.))*n**2 if tol is None else tol
+
+    # Will be populated below
+    remaining_cols = np.arange(m)
+    indices = np.zeros(m, dtype=int)
+
+    # Get the orthonormal columns of b first
+    q, r, p = qr(b, mode='economic', pivoting=True)
+    rank_b = sum(np.abs(np.diag(r)) > max(m, n)*np.spacing(norm(b, 2)))
+
+    remaining_cols = remaining_cols[p][:rank_b].tolist()
+    q = q[:, :rank_b]
+    indices[remaining_cols] += 1
+
+    w = np.empty((n, 1), dtype=float)
+    # Start the iteration - at most n-1 spins
+    for k in range(1, n):
+        # prepare new A @ Q test vectors
+        q_bank = a @ q[:, -len(remaining_cols):]
+        for ind, col in enumerate(remaining_cols.copy()):
+            w[:] = q_bank[:, [ind]]
+
+            for reorthogonalization in range(2):
+                w -= ((q.T @ w).T * q).sum(axis=1, keepdims=True)
+
+            normw = norm(w)
+            if normw <= tol:
+                remaining_cols.remove(col)
+                continue
+            else:
+                q = np.append(q, w/normw, axis=1)
+                indices[col] += 1
+
+        if len(remaining_cols) == 0:
+            break
+
+    return indices

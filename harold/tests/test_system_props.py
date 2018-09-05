@@ -22,9 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from harold import Transfer, system_norm, transfer_to_state
+from harold import (Transfer, system_norm, transfer_to_state,
+                    controllability_indices)
+from test_static_ctrl_design import byersnash_A_B_test_pairs
 
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_equal
 from pytest import raises as assert_raises
 
 
@@ -43,3 +45,12 @@ def test_system_norm_simple():
     F = transfer_to_state(G)
     assert_almost_equal(system_norm(F), 1.1547, decimal=5)
     assert_almost_equal(system_norm(F, p=2), 2.2360679)
+
+
+def test_controllability_indices():
+    test_cont_ind = [[2, 2], [3, 2], [2, 2], [1, 2], [2, 3], [1, 3],
+                     [2, 3, 3], [2, 1, 1], [2, 2], [2, 2], [1, 3]]
+    example_gen = byersnash_A_B_test_pairs()
+    for ind, (A, B) in enumerate(example_gen):
+        indices = controllability_indices(A, B)
+        assert_equal(indices, test_cont_ind[ind])
