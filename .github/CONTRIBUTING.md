@@ -1,6 +1,6 @@
 # How to contribute to harold?
 
-A big thank you in advance, in case you are considering to contribute to `harold`. Contributions, regardless of their size and content, are always welcome. Below you can find some pointers to make things a bit more easier for your workflow.
+A big thank you in advance, in case you are considering to contribute to `harold`. Contributions, regardless of their size and content, are always welcome. Just in case, below you can find some pointers to make things a bit more easier for your workflow.
 
 ### Opening an issue
 
@@ -67,7 +67,7 @@ TST: addition or modification of tests
 
 For example, if you have changed only the documentation of some function `func`, your PR title can be `DOC: Removed @ilayn's email password from the docs` which unfortunately can be a real PR :)
 
-### Linking PRs to issueson GitHub
+### Linking PRs to issues on GitHub
 
-Suppose you have contributed a PR to `harold` about fixing a previously opened issue (again Awesome!).  A nice property of GitHub is that you can link these two by placing any of `Closes` or `Fixes` followed by a hashtag `#` and typing the issue number in the PR description. For example if you add `Closes #89` then when the PR is merged the related issue is also automatically closed. Probably someone else will fix this if you forget it but it is good to keep in mind.
+Suppose you have contributed a PR to `harold` about fixing a previously opened issue (again Awesome!).  A nice property of GitHub is that you can link these two by placing any of `Closes` or `Fixes` followed by a hashtag `#` and typing the issue number in the PR description. For example if you add `Closes #89` then when the PR is merged the related issue is also automatically closed. Probably someone else will fix this if you forget it but it is good to keep in mind. The PR that added the first version of this document also used a similar instruction (see https://github.com/ilayn/harold/pull/35 ).
 
