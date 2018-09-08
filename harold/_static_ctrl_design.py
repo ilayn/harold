@@ -10,7 +10,7 @@ from ._classes import Transfer, transfer_to_state, _state_or_abcd
 from ._kalman_ops import controllability_matrix
 from ._aux_linalg import matrix_slice
 
-__all__ = ['lqr', 'ackermann']
+__all__ = ['lqr', 'ackermann', 'pole_placement']
 
 
 def lqr(G, Q, R=None, S=None, weight_on='state'):
@@ -184,3 +184,7 @@ def ackermann(G, loc):
         pmat += p[pow_a] * matrix_power(A, pow_a)
 
     return solve(Cc, pmat)[[-1], :]
+
+
+def pole_placement(sys_or_ab, target_poles):
+    pass

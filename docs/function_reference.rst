@@ -26,18 +26,19 @@ Discretization
 
 .. autosummary::
     :toctree: generated/
-    
+
     discretize
     undiscretize
 
 Controller Design
 =================
-    
+
 .. autosummary::
     :toctree: generated/
-    
+
     lqr
     ackermann
+    pole_placement
 
 Model Functions
 ===============
@@ -60,7 +61,7 @@ Kalman tests
     observability_matrix
     is_kalman_controllable
     is_kalman_observable
-    
+
 Time domain simulation
 ======================
 
@@ -118,4 +119,3 @@ Auxillary Functions
     e_i
     concatenate_state_matrices
     haroldsvd
-    
