@@ -369,18 +369,34 @@ def haroldpoly(rootlist):
 def haroldpolyadd(*args, trim_zeros=True):
     """
     Similar to official polyadd from numpy but allows for
-    multiple args and doesn't invert the order,
+    multiple args and doesn't invert the order. It adds
+    two polynoms and returns their sum as a np.array.
+
+    Parameters
+    ----------
+    args : iterable
+        An iterable with 1D array-like elements.
+    trim_zeros : bool, optional
+        If True, the zeros at the front of the arrays are truncated.
+        Default is True.
+
+    Returns
+    -------
+    p : ndarray
+        The resulting polynomial coefficients.
+
+
     """
-    if trim_zeros:
-        trimmedargs = [np.trim_zeros(x, 'f') for x in args]
-    else:
-        trimmedargs = args
+    trimmedargs = [np.trim_zeros(x, 'f') for x in args]
 
     degs = [len(m) for m in trimmedargs]  # Get the max len of args
     s = np.zeros((1, max(degs)))
     for ind, x in enumerate(trimmedargs):
         s[0, max(degs)-degs[ind]:] += np.real(x)
-    return s[0]
+    if trim_zeros:
+        return np.trim_zeros(s[0], 'f')
+    else:
+        return s[0]
 
 
 def haroldpolymul(*args, trim_zeros=True):
@@ -395,6 +411,7 @@ def haroldpolymul(*args, trim_zeros=True):
         An iterable with 1D array-like elements.
     trim_zeros : bool, optional
         If True, the zeros at the front of the arrays are truncated.
+        Default is True.
 
     Returns
     -------
