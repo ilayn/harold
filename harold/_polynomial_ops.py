@@ -377,7 +377,7 @@ def haroldpolyadd(*args, trim_zeros=True):
     args : iterable
         An iterable with 1D array-like elements.
     trim_zeros : bool, optional
-        If True, the zeros at the front of the arrays are truncated.
+        If True, the zeros at the front of the input arrays are truncated.
         Default is True.
 
     Returns
@@ -385,18 +385,30 @@ def haroldpolyadd(*args, trim_zeros=True):
     p : ndarray
         The resulting polynomial coefficients.
 
+    Example
+    -------
+    >>> a = np.array([2, 3, 5, 8])
+    >>> b = np.array([1, 3, 4])
+    >>> c = np.array([6, 9, 10, -8, 6])
+    >>> haroldpolyadd(a, b, c)
+    array([ 6., 11., 14.,  0., 18.])
+    >>> d = np.array([-2, -4 ,3, -1])
+    >>> haroldpolyadd(a, b, d)
+    array([ 0.,  0., 11., 11.])
+    >>> haroldpolyadd(a, b, d, trim_zeros=False)
+    array([ 0.,  0., 11., 11.])
 
     """
-    trimmedargs = [np.trim_zeros(x, 'f') for x in args]
+    if trim_zeros:
+        trimmedargs = [np.trim_zeros(x, 'f') for x in args]
+    else:
+        trimmedargs = args
 
     degs = [len(m) for m in trimmedargs]  # Get the max len of args
     s = np.zeros((1, max(degs)))
     for ind, x in enumerate(trimmedargs):
         s[0, max(degs)-degs[ind]:] += np.real(x)
-    if trim_zeros:
-        return np.trim_zeros(s[0], 'f')
-    else:
-        return s[0]
+    return s[0]
 
 
 def haroldpolymul(*args, trim_zeros=True):
@@ -424,7 +436,6 @@ def haroldpolymul(*args, trim_zeros=True):
     >>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
     array([ 1.,  4.,  6.,  4.,  1.,  0.])
 
-
     """
 
     if trim_zeros:
@@ -449,8 +460,18 @@ def haroldpolydiv(dividend, divisor):
     function. Takes two arguments and divides the first
     by the second.
 
-    Returns, two arguments: the factor and the remainder,
-    both passed through a left zeros trimming function.
+    Parameters
+    ----------
+    dividend : iterable
+        The polynomial to be divided
+    divisor : iterable
+        The polynomial that divides
+
+    Returns
+    -------
+    p : ndarray
+        The resulting polynomial coeffients.
+
     """
     h_factor, h_remainder = (np.trim_zeros(x, 'f') for x
                              in deconvolve(dividend, divisor))
