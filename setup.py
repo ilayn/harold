@@ -137,7 +137,7 @@ def setup_package():
         extras_require={
             'dev': ['check-manifest'],
             'test': ['coverage'],
-            'docs': ['sphinx>=1.7.4', 'cloud-sptheme>=1.9.4']
+            'docs': ['sphinx>=1.7.4', 'cloud-sptheme>=1.9.4', 'numpydoc']
         },
         version=get_version_info()[0]
     )
