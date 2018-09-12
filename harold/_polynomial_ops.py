@@ -208,8 +208,8 @@ def haroldgcd(*args):
     gcdpoly : ndarray
         Computed GCD of args.
 
-    Example
-    -------
+    Examples
+    --------
     >>> a = haroldgcd(*map(haroldpoly,([-1,-1,-2,-1j,1j],
                                        [-2,-3,-4,-5],
                                        [-2]*10)))
@@ -401,8 +401,8 @@ def haroldpolymul(*args, trim_zeros=True):
     p : ndarray
         The resulting polynomial coefficients.
 
-    Example
-    -------
+    Examples
+    --------
 
     >>> haroldpolymul([0,2,0],[0,0,0,1,3,3,1],[0,0.5,0.5])
     array([ 1.,  4.,  6.,  4.,  1.,  0.])

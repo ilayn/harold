@@ -9,6 +9,7 @@ import os
 import subprocess
 import mock
 import cloud_sptheme as csp
+import numpydoc
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -119,6 +120,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.extlinks',
+    'numpydoc',
+    'sphinx.ext.intersphinx',
     # cloud's extensions
     'cloud_sptheme.ext.autodoc_sections',
     'cloud_sptheme.ext.relbar_links',
@@ -178,6 +181,12 @@ todo_include_todos = True
 keep_warnings = True
 issue_tracker_url = "gh:ilayn/harold/"
 
+intersphinx_mapping = {
+        'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+        'scipy': ('https://docs.scipy.org/doc/scipy/reference', None)}
+
+numpydoc_show_class_members = False
+
 # =============================================================================
 # Options for HTML output
 # =============================================================================
@@ -213,7 +222,7 @@ html_title = "{} v{} Documentation".format(project, version)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = []
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
