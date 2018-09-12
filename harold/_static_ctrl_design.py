@@ -62,7 +62,8 @@ def lqr(G, Q, R=None, S=None, weight_on='state'):
     Notes
     -----
     For the conditions that weight matrices should satisfy, see SciPy
-    documentation over ``solve_continous_are`` and ``solve_discrete_are``.
+    documentation over :func:`scipy.linalg.solve_continuous_are` and
+    :func:`scipy.linalg.solve_discrete_are`
 
     Moreover, for the output weighted case, the returned solution is not
     always guaranteed to be the stabilizing solution.

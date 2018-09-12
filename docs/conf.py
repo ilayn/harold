@@ -119,6 +119,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.extlinks',
+    'numpydoc',
+    'sphinx.ext.intersphinx',
     # cloud's extensions
     'cloud_sptheme.ext.autodoc_sections',
     'cloud_sptheme.ext.relbar_links',
@@ -177,6 +179,12 @@ pygments_style = 'sphinx'
 todo_include_todos = True
 keep_warnings = True
 issue_tracker_url = "gh:ilayn/harold/"
+
+intersphinx_mapping = {
+        'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+        'scipy': ('https://docs.scipy.org/doc/scipy/reference', None)}
+
+numpydoc_show_class_members = False
 
 # =============================================================================
 # Options for HTML output
