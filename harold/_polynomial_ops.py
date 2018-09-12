@@ -393,7 +393,7 @@ def haroldpolyadd(*args, trim_zeros=True):
     array([ 6., 11., 14.,  0., 18.])
     >>> d = np.array([-2, -4 ,3, -1])
     >>> haroldpolyadd(a, b, d)
-    array([11., 11.])
+    array([ 0.,  0., 11., 11.])
     >>> haroldpolyadd(a, b, d, trim_zeros=False)
     array([ 0.,  0., 11., 11.])
 
@@ -404,13 +404,11 @@ def haroldpolyadd(*args, trim_zeros=True):
         trimmedargs = args
 
     degs = [len(m) for m in trimmedargs]  # Get the max len of args
-    s = np.zeros(max(degs))
+    s = np.zeros((1, max(degs)))
     for ind, x in enumerate(trimmedargs):
-        s[max(degs)-degs[ind]:] += np.real(x)
-    s = np.trim_zeros(s, 'f') if trim_zeros else s
-    
-    # In case all are trimmed
-    return s if s.size > 0 else np.array([0.])
+        s[0, max(degs)-degs[ind]:] += np.real(x)
+
+    return s[0]
 
 
 def haroldpolymul(*args, trim_zeros=True):
