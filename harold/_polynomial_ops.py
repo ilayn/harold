@@ -474,6 +474,18 @@ def haroldpolydiv(dividend, divisor):
     remainder : ndarray
         The resulting polynomial coefficients of the remainder
 
+    Examples
+    --------
+
+    >>> a = np.array([2, 3, 4 ,6])
+    >>> b = np.array([1, 3, 6])
+    >>> haroldpolydiv(a, b)
+    (array([ 2., -3.]), array([ 1., 24.]))
+    >>> c = np.array([1, 3, 3, 1])
+    >>> d = np.array([1, 2, 1])
+    >>> haroldpolydiv(c, d)
+    (array([1., 1.]), array([], dtype=float64))
+
     """
     h_factor, h_remainder = (np.trim_zeros(x, 'f') for x
                              in deconvolve(dividend, divisor))
