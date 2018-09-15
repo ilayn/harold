@@ -413,10 +413,13 @@ def haroldpolyadd(*args, trim_zeros=True):
 
 def haroldpolymul(*args, trim_zeros=True):
     """
-    Simple wrapper around the NumPy convolve() function for polynomial
+    Simple wrapper around the :func:`numpy.convolve` function for polynomial
     multiplication with multiple args. The arguments are passed through
     the left zero trimming function first.
-    For more information see :func:`scipy.signal.convolve`
+    
+    See Also
+    --------
+    haroldpolydiv, :func:`numpy.convolve`, :func:`scipy.signal.convolve`
 
     Parameters
     ----------
@@ -457,7 +460,7 @@ def haroldpolymul(*args, trim_zeros=True):
 
 def haroldpolydiv(dividend, divisor):
     """
-    Polynomial division wrapped around :code:`scipy.signal.deconvolve`
+    Polynomial division wrapped around :func:`scipy.signal.deconvolve`
     function. Takes two arguments and divides the first
     by the second.
 
