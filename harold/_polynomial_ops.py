@@ -413,9 +413,13 @@ def haroldpolyadd(*args, trim_zeros=True):
 
 def haroldpolymul(*args, trim_zeros=True):
     """
-    Simple wrapper around the NumPy convolve() function for polynomial
+    Simple wrapper around the :func:`numpy.convolve` function for polynomial
     multiplication with multiple args. The arguments are passed through
     the left zero trimming function first.
+    
+    See Also
+    --------
+    haroldpolydiv, :func:`numpy.convolve`, :func:`scipy.signal.convolve`
 
     Parameters
     ----------
@@ -456,7 +460,7 @@ def haroldpolymul(*args, trim_zeros=True):
 
 def haroldpolydiv(dividend, divisor):
     """
-    Polynomial division wrapped around scipy deconvolve
+    Polynomial division wrapped around :func:`scipy.signal.deconvolve`
     function. Takes two arguments and divides the first
     by the second.
 
@@ -473,6 +477,18 @@ def haroldpolydiv(dividend, divisor):
         The resulting polynomial coeffients of the factor
     remainder : ndarray
         The resulting polynomial coefficients of the remainder
+
+    Examples
+    --------
+
+    >>> a = np.array([2, 3, 4 ,6])
+    >>> b = np.array([1, 3, 6])
+    >>> haroldpolydiv(a, b)
+    (array([ 2., -3.]), array([ 1., 24.]))
+    >>> c = np.array([1, 3, 3, 1])
+    >>> d = np.array([1, 2, 1])
+    >>> haroldpolydiv(c, d)
+    (array([1., 1.]), array([], dtype=float64))
 
     """
     h_factor, h_remainder = (np.trim_zeros(x, 'f') for x
