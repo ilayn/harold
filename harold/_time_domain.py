@@ -324,7 +324,7 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     default_tfinal = 5  # Default simulation horizon
     total_cycles = 5  # number of cycles for oscillating modes
     pts_per_cycle = 25  # Number of points divide a period of oscillation
-    decay_percent = 100  # Factor of reduction for real pole decays
+    log_decay_percent = np.log(100)  # Factor of reduction for real pole decays
 
     # if a static model is given, don't bother with checks
     if sys._isgain:
@@ -335,16 +335,24 @@ def _compute_tfinal_and_dt(sys, is_step=True):
 
     if sys._isdiscrete:
         # System already has sampling fixed  hence we can't fall into the same
-        # trap mentioned above. Just get nonintegrating slow modes.
+        # trap mentioned above. Just get nonintegrating slow modes together
+        # with the damping.
         dt = sys._dt
         p = eigvals(sys.a)
         ps = np.log(p)/sys._dt
         ps[np.abs(ps) <= sqrt_eps] = 0.
         wn = np.abs(ps)
+        zeta = -np.cos(np.angle(ps))
 
-        if np.any(ps.real < 0):
-            stable_decay = np.max(ps.real < 0.)
-            tfinal = np.log(decay_percent) / np.abs(stable_decay)
+        if np.any(ps.real < sqrt_eps):
+            # Let the extra underdamped ones ring
+            ind = (ps.real < 0) & (zeta > 1e-3)
+
+            stable_decay = np.abs(wn[ind] * zeta[ind]).max()
+            stable_decay = np.reciprocal(stable_decay)
+            tfinal = np.min([max_points_z * sys._dt,
+                             log_decay_percent / stable_decay])
+            tfinal = np.ceil(tfinal / sys._dt) * sys._dt
         else:
             tfinal = dt * min_points_z
 
@@ -358,7 +366,6 @@ def _compute_tfinal_and_dt(sys, is_step=True):
         elif np.any(ps.real > 0):
             tfinal = tfinal*2
 
-        dt = tfinal / max_points_z if tfinal // dt > max_points_z else dt
         tfinal = dt*min_points_z if tfinal // dt < min_points_z else tfinal
 
         return tfinal, dt
@@ -409,11 +416,11 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     if np.any(iw):
         tfinal += (total_cycles * 2 * np.pi / wnsub[iw]).tolist()
         dt += (2 * np.pi / pts_per_cycle / wnsub[iw]).tolist()
-    # The rest
-    texp_mode = np.log(decay_percent) / np.abs(psub[~iw & ~ints].real)
+    # The rest ~ts = log(%ss value) / exp(Re(λ)t)
+    texp_mode = log_decay_percent / np.abs(psub[~iw & ~ints].real)
     tfinal += texp_mode.tolist()
-    dt += minimum(texp_mode / 50, (2 * np.pi / pts_per_cycle / wnsub[~iw])
-                  ).tolist()
+    dt += minimum(texp_mode / 50,
+                  (2 * np.pi / pts_per_cycle / wnsub[~iw & ~ints])).tolist()
 
     # All integrators?
     if len(tfinal) == 0:
