@@ -324,7 +324,7 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     default_tfinal = 5  # Default simulation horizon
     total_cycles = 5  # number of cycles for oscillating modes
     pts_per_cycle = 25  # Number of points divide a period of oscillation
-    decay_percent = 100  # Factor of reduction for real pole decays
+    log_decay_percent = np.log(100)  # Factor of reduction for real pole decays
 
     # if a static model is given, don't bother with checks
     if sys._isgain:
@@ -335,31 +335,52 @@ def _compute_tfinal_and_dt(sys, is_step=True):
 
     if sys._isdiscrete:
         # System already has sampling fixed  hence we can't fall into the same
-        # trap mentioned above. Just get nonintegrating slow modes.
+        # trap mentioned above. Just get nonintegrating slow modes together
+        # with the damping.
         dt = sys._dt
+        tfinal = default_tfinal
         p = eigvals(sys.a)
-        ps = np.log(p)/sys._dt
-        ps[np.abs(ps) <= sqrt_eps] = 0.
-        wn = np.abs(ps)
+        # Array Masks
+        # unstable
+        m_u = (np.abs(p) >= 1 + sqrt_eps)
+        p_u, p = p[m_u], p[~m_u]
+        if p_u.size > 0:
+            m_u = (p_u.real < 0) & (np.abs(p_u.imag) < sqrt_eps)
+            t_emp = np.max(log_decay_percent / np.abs(np.log(p_u[~m_u])/dt))
+            tfinal = max(tfinal, t_emp)
 
-        if np.any(ps.real < 0):
-            stable_decay = np.max(ps.real < 0.)
-            tfinal = np.log(decay_percent) / np.abs(stable_decay)
+        # zero - negligible effect on tfinal
+        m_z = np.abs(p) < sqrt_eps
+        p = p[~m_z]
+        # Negative reals- treated as oscillary mode
+        m_nr = (p.real < 0) & (np.abs(p.imag) < sqrt_eps)
+        p_nr, p = p[m_nr], p[~m_nr]
+        if p_nr.size > 0:
+            t_emp = np.max(log_decay_percent / np.abs((np.log(p_nr)/dt).real))
+            tfinal = max(tfinal, t_emp)
+        # discrete integrators
+        m_int = (p.real - 1 < sqrt_eps) & (np.abs(p.imag) < sqrt_eps)
+        p_int, p = p[m_int], p[~m_int]
+        # pure oscillatory modes
+        m_w = (np.abs(np.abs(p) - 1) < sqrt_eps)
+        p_w, p = p[m_w], p[~m_w]
+        if p_w.size > 0:
+            t_emp = total_cycles * 2 * np.pi / np.abs(np.log(p_w)/dt).min()
+            tfinal = max(tfinal, t_emp)
+
+        if p.size > 0:
+            t_emp = log_decay_percent / np.abs((np.log(p)/dt).real).min()
+            tfinal = max(tfinal, t_emp)
+
+        if p_int.size > 0:
+            tfinal = tfinal * 5
+
+        # Make tfinal an integer multiple of dt
+        num_samples = tfinal // dt
+        if num_samples > max_points_z:
+            tfinal = dt * max_points_z
         else:
-            tfinal = dt * min_points_z
-
-        iw = (ps.imag != 0.) & (np.abs(ps.real) < sqrt_eps)
-        if np.any(iw):
-            iw_tf = total_cycles * 2 * np.pi / wn[iw]
-            tfinal = np.max([tfinal, iw_tf.max()])
-
-        if np.any(wn == 0.):
-            tfinal = tfinal*5
-        elif np.any(ps.real > 0):
-            tfinal = tfinal*2
-
-        dt = tfinal / max_points_z if tfinal // dt > max_points_z else dt
-        tfinal = dt*min_points_z if tfinal // dt < min_points_z else tfinal
+            tfinal = dt * num_samples
 
         return tfinal, dt
 
@@ -409,11 +430,11 @@ def _compute_tfinal_and_dt(sys, is_step=True):
     if np.any(iw):
         tfinal += (total_cycles * 2 * np.pi / wnsub[iw]).tolist()
         dt += (2 * np.pi / pts_per_cycle / wnsub[iw]).tolist()
-    # The rest
-    texp_mode = np.log(decay_percent) / np.abs(psub[~iw & ~ints].real)
+    # The rest ~ts = log(%ss value) / exp(Re(λ)t)
+    texp_mode = log_decay_percent / np.abs(psub[~iw & ~ints].real)
     tfinal += texp_mode.tolist()
-    dt += minimum(texp_mode / 50, (2 * np.pi / pts_per_cycle / wnsub[~iw])
-                  ).tolist()
+    dt += minimum(texp_mode / 50,
+                  (2 * np.pi / pts_per_cycle / wnsub[~iw & ~ints])).tolist()
 
     # All integrators?
     if len(tfinal) == 0:
