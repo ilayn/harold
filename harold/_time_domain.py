@@ -338,35 +338,49 @@ def _compute_tfinal_and_dt(sys, is_step=True):
         # trap mentioned above. Just get nonintegrating slow modes together
         # with the damping.
         dt = sys._dt
+        tfinal = default_tfinal
         p = eigvals(sys.a)
-        ps = np.log(p)/sys._dt
-        ps[np.abs(ps) <= sqrt_eps] = 0.
-        wn = np.abs(ps)
-        zeta = -np.cos(np.angle(ps))
+        # Array Masks
+        # unstable
+        m_u = (np.abs(p) >= 1 + sqrt_eps)
+        p_u, p = p[m_u], p[~m_u]
+        if p_u.size > 0:
+            m_u = (p_u.real < 0) & (np.abs(p_u.imag) < sqrt_eps)
+            t_emp = np.max(log_decay_percent / np.abs(np.log(p_u[~m_u])/dt))
+            tfinal = max(tfinal, t_emp)
 
-        if np.any(ps.real < sqrt_eps):
-            # Let the extra underdamped ones ring
-            ind = (ps.real < 0) & (zeta > 1e-3)
+        # zero - negligible effect on tfinal
+        m_z = np.abs(p) < sqrt_eps
+        p = p[~m_z]
+        # Negative reals- treated as oscillary mode
+        m_nr = (p.real < 0) & (np.abs(p.imag) < sqrt_eps)
+        p_nr, p = p[m_nr], p[~m_nr]
+        if p_nr.size > 0:
+            t_emp = np.max(log_decay_percent / np.abs((np.log(p_nr)/dt).real))
+            tfinal = max(tfinal, t_emp)
+        # discrete integrators
+        m_int = (p.real - 1 < sqrt_eps) & (np.abs(p.imag) < sqrt_eps)
+        p_int, p = p[m_int], p[~m_int]
+        # pure oscillatory modes
+        m_w = (np.abs(np.abs(p) - 1) < sqrt_eps)
+        p_w, p = p[m_w], p[~m_w]
+        if p_w.size > 0:
+            t_emp = total_cycles * 2 * np.pi / np.abs(np.log(p_w)/dt).min()
+            tfinal = max(tfinal, t_emp)
 
-            stable_decay = np.abs(wn[ind] * zeta[ind]).max()
-            stable_decay = np.reciprocal(stable_decay)
-            tfinal = np.min([max_points_z * sys._dt,
-                             log_decay_percent / stable_decay])
-            tfinal = np.ceil(tfinal / sys._dt) * sys._dt
+        if p.size > 0:
+            t_emp = log_decay_percent / np.abs((np.log(p)/dt).real).min()
+            tfinal = max(tfinal, t_emp)
+
+        if p_int.size > 0:
+            tfinal = tfinal * 5
+
+        # Make tfinal an integer multiple of dt
+        num_samples = tfinal // dt
+        if num_samples > max_points_z:
+            tfinal = dt * max_points_z
         else:
-            tfinal = dt * min_points_z
-
-        iw = (ps.imag != 0.) & (np.abs(ps.real) < sqrt_eps)
-        if np.any(iw):
-            iw_tf = total_cycles * 2 * np.pi / wn[iw]
-            tfinal = np.max([tfinal, iw_tf.max()])
-
-        if np.any(wn == 0.):
-            tfinal = tfinal*5
-        elif np.any(ps.real > 0):
-            tfinal = tfinal*2
-
-        tfinal = dt*min_points_z if tfinal // dt < min_points_z else tfinal
+            tfinal = dt * num_samples
 
         return tfinal, dt
 
