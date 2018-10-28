@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import count_nonzero, block
-from numpy.linalg.linalg import (_assertRank2, _assertSquareness,
+from numpy.linalg.linalg import (_assertRank2, _assertNdSquareness,
                                  _assertNoEmpty2d, _makearray)
 from scipy.linalg import solve, norm, eigvals, qr
 
@@ -221,7 +221,7 @@ def controllability_indices(A, B, tol=None):
     b, _ = _makearray(B)
     _assertRank2(a, b)
     _assertNoEmpty2d(a, b)
-    _assertSquareness(a)
+    _assertNdSquareness(a)
 
     n, m = b.shape
 
