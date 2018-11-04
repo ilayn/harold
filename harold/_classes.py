@@ -636,7 +636,7 @@ class Transfer:
 
         """
         # For convenience of scaling the system via G/5 and so on.
-        return self * (1/other)
+        return self @ (1/other)
 
     def __rtruediv__(self, other):
         """ Support for division .../G
@@ -2258,17 +2258,36 @@ class State:
                              ''.format(type(other).__qualname__))
 
     def __truediv__(self, other):
-        # For convenience of scaling the system via G/5 and so on.
-        # Otherwise reject.
-        if isinstance(other, (int, float)):
-            return self @ (1/other)
-        else:
-            raise ValueError('Currently, division operation for State '
-                             'representations are limited to real scalars.')
+        """ Support for division G/...
+
+        """
+        return self @ (1/other)
 
     def __rtruediv__(self, other):
-        raise ValueError('Currently, right division operation for State '
-                         'representations are not supported.')
+        """ Support for division .../G
+
+        """
+        if not np.equal(*self._shape):
+            raise ValueError('Nonsquare systems cannot be inverted')
+
+        a, b, c, d = self._a, self._b, self._c, self._d
+
+        if np.any(svdvals(d) < np.spacing(1.)):
+            raise LinAlgError('The feedthrough term of the system is not'
+                              ' invertible.')
+        else:
+            # A-BD^{-1}C | BD^{-1}
+            # -----------|--------
+            # -D^{-1}C   | D^{-1}
+            if self._isgain:
+                ai, bi, ci = None, None, None
+            else:
+                ai = a - b @ solve(d, c)
+                bi = (solve(d.T, b.T)).T
+                ci = -solve(d, c)
+            di = inv(d)
+
+            return other @ State(ai, bi, ci, di, dt=self._dt)
 
     def __getitem__(self, num_or_slice):
 

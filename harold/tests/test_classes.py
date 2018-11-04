@@ -440,11 +440,21 @@ def test_State_algebra_truediv_rtruediv():
     F = G/0.5
     assert_equal(F.b, np.array([[4.]]))
     assert_equal(F.d, np.array([[8.]]))
-
-    with assert_raises(ValueError):
+    G.d = 0.
+    with assert_raises(LinAlgError):
         G/G
     with assert_raises(ValueError):
         G/3j
+
+    G.d = 4
+    # nonminimal but acceptable
+    H = G / G
+    ha, hb, hc, hd = H.matrices
+
+    assert_array_almost_equal(ha, [[1, -1.5], [0, -0.5]])
+    assert_array_almost_equal(hb, [[0.5], [0.5]])
+    assert_array_almost_equal(hc, [[3, -3]])
+    assert_array_almost_equal(hd, [[1]])
 
 
 def test_State_algebra_mul_rmul_scalar_array():
