@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import LinAlgError
 from numpy.random import seed
 from harold import (Transfer, State, e_i, haroldcompanion,
                     transmission_zeros, state_to_transfer, transfer_to_state,
@@ -130,10 +131,27 @@ def test_Transfer_algebra_truediv_rtruediv():
     assert_equal(F.num, np.array([[2.]]))
     assert_equal(F.den, np.array([[1., 2.]]))
 
+    # invert a nonproper system
     with assert_raises(ValueError):
         G/G
+    # invert a singular system
+    with assert_raises(LinAlgError):
+        1 / (np.ones((2, 2))*(1+G))
     with assert_raises(ValueError):
         G/3j
+
+    # invert an invertible system
+    J = 1 / (np.eye(2) * G + np.array([[1, 2], [3, 4]]))
+    nn, dd = J.polynomials
+    nnact = np.array([[x[0].tolist() for x in y] for y in nn])
+    ddact = np.array([[x[0].tolist() for x in y] for y in dd])
+    nndes = np.array([[[-2., -8.5, -9.], [1., 4., 4.]],
+                      [[1.5, 6., 6.], [-0.5, -2.5, -3.]]])
+    dddes = np.array([[[1., 1.5, -1.5], [1., 1.5, -1.5]],
+                      [[1., 1.5, -1.5], [1., 1.5, -1.5]]])
+
+    assert_array_almost_equal(nnact, nndes)
+    assert_array_almost_equal(ddact, dddes)
 
 
 def test_Transfer_algebra_mul_rmul_scalar_array():

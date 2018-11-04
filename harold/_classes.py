@@ -2,7 +2,9 @@ import numpy as np
 import warnings
 from numpy import zeros_like, kron, ndarray, zeros, exp
 from numpy.random import rand, choice
-from scipy.linalg import eigvals, block_diag, qz, norm, solve, expm
+from numpy.linalg.linalg import _assertNdSquareness
+from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
+                          inv, LinAlgError)
 from scipy.linalg.decomp import _asarray_validated
 from scipy.stats import ortho_group
 from tabulate import tabulate
@@ -11,7 +13,7 @@ from itertools import zip_longest, chain
 from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
                               haroldpolymul, haroldcompanion, haroldlcm)
 
-from ._aux_linalg import e_i, haroldsvd
+from ._aux_linalg import haroldsvd
 from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
 
@@ -630,17 +632,49 @@ class Transfer:
         return self * other
 
     def __truediv__(self, other):
+        """Support for G / ...
+
+        """
         # For convenience of scaling the system via G/5 and so on.
-        # Otherwise reject.
-        if isinstance(other, (int, float)):
-            return self * (1/other)
-        else:
-            raise ValueError('Currently, division operation for Transfer '
-                             'representations are limited to real scalars.')
+        return self * (1/other)
 
     def __rtruediv__(self, other):
-        raise ValueError('Currently, right division operation for Transfer '
-                         'representations are not supported.')
+        """ Support for division .../G
+
+        """
+        if self._isSISO:
+            numdeg, dendeg = self.num.size, self.den.size
+            if numdeg != dendeg:
+                raise ValueError('Inverse of the system is noncausal which '
+                                 'is not supported.')
+            else:
+                return other * Transfer(self.den, self.num, dt=self._dt)
+
+        if not np.equal(*self._shape):
+            raise ValueError('Nonsquare systems cannot be inverted')
+
+        a, b, c, d = transfer_to_state((self._num, self._den),
+                                       output='matrices')
+
+        if np.any(svdvals(d) < np.spacing(1.)):
+            raise LinAlgError('The feedthrough term of the system is not'
+                              ' invertible.')
+        else:
+            # A-BD^{-1}C | BD^{-1}
+            # -----------|--------
+            # -D^{-1}C   | D^{-1}
+            if self._isgain:
+                ai, bi, ci = a, b, c
+            else:
+                ai = a - b @ solve(d, c)
+                bi = (solve(d.T, b.T)).T
+                ci = -solve(d, c)
+            di = inv(d)
+
+            num_inv, den_inv = state_to_transfer((ai, bi, ci, di),
+                                                 output='polynomials')
+
+            return other * Transfer(num_inv, den_inv, dt=self._dt)
 
     def __matmul__(self, other):
         # @-multiplication has the following rationale, first two items
@@ -2370,7 +2404,7 @@ class State:
             if abcd is None:
                 if verbose:
                     print('{0} is None'.format(entrytext[abcd_index]))
-                returned_abcd_list[abcd_index] = np.array([])
+                returned_abcd_list[abcd_index] = np.empty((0,0))
                 None_flags[abcd_index] = True
                 continue
 
@@ -2535,7 +2569,7 @@ def _pole_properties(poles, dt=None, output_data=False):
     return np.c_[poles.copy(), freqn, damp]
 
 
-def state_to_transfer(*state_or_abcd, output='system'):
+def state_to_transfer(state_or_abcd, output='system'):
     """
     Converts a :class:`State` to a :class:`Transfer`
 
@@ -2567,27 +2601,32 @@ def state_to_transfer(*state_or_abcd, output='system'):
     """
     # FIXME : Resulting TFs are not minimal per se. simplify them, maybe?
 
-    if output.lower() not in ('system', 'polynomials'):
+    if output.lower() not in ('system', 'polynomials', 's', 'p'):
         raise ValueError('The "output" keyword can either be "system" or '
                          '"polynomials". I don\'t know any option as '
                          '"{0}"'.format(output))
 
+    output = output.lower()[0]
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
     dt = None
-    system_given, validated_matrices = _state_or_abcd(state_or_abcd[0], 4)
+    system_given, validated_matrices = _state_or_abcd(state_or_abcd, 4)
 
     if system_given:
-        A, B, C, D = state_or_abcd[0].matrices
-        p, m = state_or_abcd[0].shape
-        it_is_gain = state_or_abcd[0]._isgain
-        dt = state_or_abcd[0].SamplingPeriod
+        A, B, C, D = state_or_abcd.matrices
+        p, m = state_or_abcd.shape
+        it_is_gain = state_or_abcd._isgain
+        dt = state_or_abcd.SamplingPeriod
     else:
-        A, B, C, D, (p, m), it_is_gain = State.validate_arguments(
-                                                    *validated_matrices)
+        # check if static gain
+        if all([x.size == 0 for x in validated_matrices[:-1]]):
+            reg_mats = None, None, None, validated_matrices[-1]
+        else:
+            reg_mats = validated_matrices
+        A, B, C, D, (p, m), it_is_gain = State.validate_arguments(*reg_mats)
 
     if it_is_gain:
-        if output.lower() is 'polynomials':
+        if output == 'p':
             return D, np.ones_like(D)
         return Transfer(D, dt=dt)
 
@@ -2652,8 +2691,8 @@ def state_to_transfer(*state_or_abcd, output='system'):
         num_list = num_list[0][0]
         den_list = den_list[0][0]
 
-    if output.lower() is 'polynomials':
-        return (num_list, den_list)
+    if output == 'p':
+        return num_list, den_list
 
     return Transfer(num_list, den_list, dt=dt)
 
@@ -2722,7 +2761,7 @@ def transfer_to_state(G, output='system'):
     # Arguments should be regularized here.
     # Check if it is just a gain
     if it_is_gain:
-        A, B, C = (np.array([], dtype=float),)*3
+        A, B, C = (np.empty((0, 0)),)*3
         if np.max((m, p)) > 1:
             D = np.empty((m, p), dtype=float)
             for rows in range(p):
@@ -3032,10 +3071,10 @@ def _state_or_abcd(arg, n=4):
     ----------
     arg : State, tuple
         The argument to be parsed and checked for validity. Expects either
-        a State model or a tuple holding the model matrices
-    n : integer {-1,1,2,3,4}
+        a State model or a tuple holding the model matrices.
+    n : int
         If we let A,B,C,D numbered as 1,2,3,4, defines the test scope such
-        that only up to n-th matrix is tested. To test only an A,C use n = -1
+        that only up to n-th matrix is tested. To test only an A,C use n = -1.
 
     Returns
     -------
@@ -3043,49 +3082,60 @@ def _state_or_abcd(arg, n=4):
         True if system and False otherwise
     validated_matrices: ndarray
         The validated n-many 2D arrays.
+
+    Notes
+    -----
+    The n=1 case is just for regularity. Only checks the squareness of A. Also
+    if the args is a tuple and the first element is an empty array then n is
+    assumed to be 4.
     """
+    val_arg = State.validate_arguments
+
+    if n not in [-1, 1, 2, 3, 4]:
+        raise ValueError('n must be one of the [-1, 1, 2, 3, 4] but got {}'
+                         ''.format(n))
     if isinstance(arg, State):
         return True, None
     elif isinstance(arg, tuple):
         system_or_not = False
-        if len(arg) == n or (n == -1 and len(arg) == 2):
-            z, zz = arg[0].shape
+        # Now we assume a tuple with n elements
+        if (len(arg) != n and n != -1) or (n == -1 and len(arg) != 2):
+            raise ValueError('Not enough elements in the argument to test; '
+                             'n = {} but got {} elements. Maybe you forgot '
+                             'to modify the n value?'.format(n, len(arg)))
+
+        # treat static model early, n = 4 necessarily
+
+        if all(x.size == 0 for x in arg[:-1]):
+            returned_args = val_arg(None, None, None, arg[-1])
+        else:
+            # Start with squareness of a, n is at least 1
+            a = arg[0]
+            _assertNdSquareness(a)
+
             if n == 1:
-                if z != zz:
-                    raise ValueError('A matrix is not square.')
-                else:
-                    returned_args = arg[0]
+                returned_args = arg[0]
             elif n == 2:
-                m = arg[1].shape[1]
-                returned_args = State.validate_arguments(
-                                *arg,
-                                c=np.zeros((1, z)),
-                                d=np.zeros((1, m))
-                                )[:2]
+                n, m = arg[1].shape
+                returned_args = val_arg(*arg, c=np.zeros((1, n)),
+                                        d=np.zeros((1, m)))[:2]
             elif n == 3:
                 m = arg[1].shape[1]
                 p = arg[2].shape[0]
-                returned_args = State.validate_arguments(
-                                *arg,
-                                d=np.zeros((p, m)))[:3]
+                returned_args = val_arg(*arg, d=np.zeros((p, m)))[:3]
             elif n == 4:
-                m = arg[1].shape[1]
-                p = arg[2].shape[0]
-                returned_args = State.validate_arguments(*arg)[:4]
+                returned_args = val_arg(*arg)[:4]
             else:
                 p = arg[1].shape[0]
-                returned_args = tuple(State.validate_arguments(
-                                      arg[0],
-                                      np.zeros((z, 1)),
-                                      arg[1],
-                                      np.zeros((p, 1))
-                                      )[x] for x in [0, 2])
-        else:
-            raise ValueError('Not enough elements in the argument to test. '
-                             'Maybe you forgot to modify the n value?')
+                returned_args = tuple(val_arg(arg[0],
+                                              np.zeros((arg[0].shape[0], 1)),
+                                              arg[1],
+                                              np.zeros((p, 1))
+                                              )[x] for x in [0, 2])
+
     else:
-        raise ValueError('The argument is neither a tuple of arrays nor '
-                         'a State() object. The argument is of the type "{}"'
+        raise ValueError('The argument is neither a tuple nor a State() '
+                         'object. The argument is of the type "{}"'
                          ''.format(type(arg).__qualname__))
 
     return system_or_not, returned_args
