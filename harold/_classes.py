@@ -2215,7 +2215,7 @@ class State:
                     mat = s @ self.to_array()
                 except ValueError:
                     # 1
-                    mat = self.to_array * s
+                    mat = self.to_array() * s
                 return State(mat, dt=self._dt)
 
             elif self._isSISO:
@@ -2637,12 +2637,7 @@ def state_to_transfer(state_or_abcd, output='system'):
         it_is_gain = state_or_abcd._isgain
         dt = state_or_abcd.SamplingPeriod
     else:
-        # check if static gain
-        if all([x.size == 0 for x in validated_matrices[:-1]]):
-            reg_mats = None, None, None, validated_matrices[-1]
-        else:
-            reg_mats = validated_matrices
-        A, B, C, D, (p, m), it_is_gain = State.validate_arguments(*reg_mats)
+        A, B, C, D, (p, m), it_is_gain = validated_matrices
 
     if it_is_gain:
         if output == 'p':
