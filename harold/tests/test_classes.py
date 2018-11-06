@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import LinAlgError
 from numpy.random import seed
 from harold import (Transfer, State, e_i, haroldcompanion,
                     transmission_zeros, state_to_transfer, transfer_to_state,
@@ -130,10 +131,30 @@ def test_Transfer_algebra_truediv_rtruediv():
     assert_equal(F.num, np.array([[2.]]))
     assert_equal(F.den, np.array([[1., 2.]]))
 
+    # invert a nonproper system
     with assert_raises(ValueError):
         G/G
+    # invert a singular system
+    with assert_raises(LinAlgError):
+        1 / (np.ones((2, 2))*(1+G))
     with assert_raises(ValueError):
         G/3j
+
+    # invert an invertible system
+    J = 1 / (np.eye(2) * G + np.array([[1, 2], [3, 4]]))
+    nn, dd = J.polynomials
+    nnact = np.array([[x[0].tolist() for x in y] for y in nn])
+    ddact = np.array([[x[0].tolist() for x in y] for y in dd])
+    nndes = np.array([[[-2., -8.5, -9.], [1., 4., 4.]],
+                      [[1.5, 6., 6.], [-0.5, -2.5, -3.]]])
+    dddes = np.array([[[1., 1.5, -1.5], [1., 1.5, -1.5]],
+                      [[1., 1.5, -1.5], [1., 1.5, -1.5]]])
+
+    assert_array_almost_equal(nnact, nndes)
+    assert_array_almost_equal(ddact, dddes)
+
+    G = Transfer(np.eye(3)*0.5)
+    assert_array_almost_equal((1 / G).to_array(), np.eye(3)*2)
 
 
 def test_Transfer_algebra_mul_rmul_scalar_array():
@@ -422,11 +443,24 @@ def test_State_algebra_truediv_rtruediv():
     F = G/0.5
     assert_equal(F.b, np.array([[4.]]))
     assert_equal(F.d, np.array([[8.]]))
-
-    with assert_raises(ValueError):
+    G.d = 0.
+    with assert_raises(LinAlgError):
         G/G
     with assert_raises(ValueError):
         G/3j
+
+    G.d = 4
+    # nonminimal but acceptable
+    H = G / G
+    ha, hb, hc, hd = H.matrices
+
+    assert_array_almost_equal(ha, [[1, -1.5], [0, -0.5]])
+    assert_array_almost_equal(hb, [[0.5], [0.5]])
+    assert_array_almost_equal(hc, [[3, -3]])
+    assert_array_almost_equal(hd, [[1]])
+
+    G = State(np.eye(3)*0.5)
+    assert_array_almost_equal((1 / G).to_array(), np.eye(3)*2)
 
 
 def test_State_algebra_mul_rmul_scalar_array():
