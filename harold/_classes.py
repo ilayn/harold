@@ -2629,7 +2629,7 @@ def state_to_transfer(state_or_abcd, output='system'):
     # If a discrete time system is given this will be modified to the
     # SamplingPeriod later.
     dt = None
-    system_given, validated_matrices = _state_or_abcd(state_or_abcd, 4)
+    system_given = isinstance(state_or_abcd, State)
 
     if system_given:
         A, B, C, D = state_or_abcd.matrices
@@ -2637,7 +2637,16 @@ def state_to_transfer(state_or_abcd, output='system'):
         it_is_gain = state_or_abcd._isgain
         dt = state_or_abcd.SamplingPeriod
     else:
-        A, B, C, D, (p, m), it_is_gain = validated_matrices
+        try:
+            A, B, C, D = state_or_abcd
+            it_is_gain = True if all([x.size == 0 for x in
+                                      [A, B, C]]) else False
+
+        except ValueError:
+            # probably static gain
+            A, B, C, D = None, None, None, state_or_abcd[0]
+            it_is_gain = True
+        p, m = D.shape
 
     if it_is_gain:
         if output == 'p':
@@ -3112,47 +3121,55 @@ def _state_or_abcd(arg, n=4):
         return True, None
     elif isinstance(arg, tuple):
         system_or_not = False
-        # Now we assume a tuple with n elements
-        if (len(arg) != n and n != -1) or (n == -1 and len(arg) != 2):
-            raise ValueError('Not enough elements in the argument to test; '
-                             'n = {} but got {} elements. Maybe you forgot '
-                             'to modify the n value?'.format(n, len(arg)))
-
         # treat static model early, n = 4 necessarily
-
-        if all(x.size == 0 for x in arg[:-1]):
-            returned_args = val_arg(None, None, None, arg[-1])
+        if n != 1 and len(arg) == 1:
+            return system_or_not, (None, None, None, arg[0])
         else:
-            # Start with squareness of a, n is at least 1
+            # Start with squareness of a - always given
             a = arg[0]
             _assertNdSquareness(a)
 
             if n == 1:
-                returned_args = arg[0]
+                return system_or_not, np.atleast_2d(arg[0])
             elif n == 2:
-                n, m = arg[1].shape
-                returned_args = val_arg(*arg, c=np.zeros((1, n)),
-                                        d=np.zeros((1, m)))[:2]
+                b = np.atleast_2d(arg[1])
+                n, m = b.shape
+                if n != a.shape[0]:
+                    raise ValueError('b array should have same number of rows'
+                                     'as a. a is {} but b is {}'
+                                     ''.format(a.shape, b.shape))
+                return system_or_not, (a, b)
             elif n == 3:
-                m = arg[1].shape[1]
-                p = arg[2].shape[0]
-                returned_args = val_arg(*arg, d=np.zeros((p, m)))[:3]
-            elif n == 4:
-                returned_args = val_arg(*arg)[:4]
-            else:
-                p = arg[1].shape[0]
-                returned_args = tuple(val_arg(arg[0],
-                                              np.zeros((arg[0].shape[0], 1)),
-                                              arg[1],
-                                              np.zeros((p, 1))
-                                              )[x] for x in [0, 2])
+                b = np.atleast_2d(arg[1])
+                n, m = b.shape
+                c = np.atleast_2d(arg[2])
+                p, nc = c.shape
+                if n != a.shape[0]:
+                    raise ValueError('b array should have same number of rows'
+                                     'as a. a is {} but b is {}'
+                                     ''.format(a.shape, b.shape))
 
+                if nc != a.shape[0]:
+                    raise ValueError('c array should have same number of cols'
+                                     'as a. a is {} but c is {}'
+                                     ''.format(a.shape, b.shape))
+
+                return system_or_not, (a, b, c)
+            elif n == 4:
+                a, b, c, d, _, _ = val_arg(*arg)
+                return system_or_not, (a, b, c, d)
+            else:
+                c = np.atleast_2d(arg[1])
+                p, nc = c.shape
+                if nc != a.shape[0]:
+                    raise ValueError('c array should have same number of cols'
+                                     'as a. a is {} but c is {}'
+                                     ''.format(a.shape, b.shape))
+                return system_or_not, (a, c)
     else:
         raise ValueError('The argument is neither a tuple nor a State() '
                          'object. The argument is of the type "{}"'
                          ''.format(type(arg).__qualname__))
-
-    return system_or_not, returned_args
 
 
 def random_state_model(n, p=1, m=1, dt=None, prob_dist=None, stable=True):

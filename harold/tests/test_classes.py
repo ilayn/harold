@@ -154,7 +154,7 @@ def test_Transfer_algebra_truediv_rtruediv():
     assert_array_almost_equal(ddact, dddes)
 
     G = Transfer(np.eye(3)*0.5)
-    assert_array_almost_equal((1 / G).to_array(), np.eye(2)*2)
+    assert_array_almost_equal((1 / G).to_array(), np.eye(3)*2)
 
 
 def test_Transfer_algebra_mul_rmul_scalar_array():
@@ -460,7 +460,7 @@ def test_State_algebra_truediv_rtruediv():
     assert_array_almost_equal(hd, [[1]])
 
     G = State(np.eye(3)*0.5)
-    assert_array_almost_equal((1 / G).to_array(), np.eye(2)*2)
+    assert_array_almost_equal((1 / G).to_array(), np.eye(3)*2)
 
 
 def test_State_algebra_mul_rmul_scalar_array():
