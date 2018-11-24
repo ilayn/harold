@@ -509,6 +509,7 @@ class Transfer:
                         else:
                             newnum[row][col] = arr[row, col]*self._num
                             newden[row][col] = self._den
+
                 return Transfer(newnum, newden, dt=self._dt)
 
             # Reminder: This is elementwise multiplication not __matmul__!!
@@ -2853,13 +2854,13 @@ def transfer_to_state(G, output='system'):
                     # Case 3: If all cancelled datanum is returned empty
                     if np.count_nonzero(datanum) == 0:
                         D[x, y] = NumOrEmpty
-                        num[x][y] = np.atleast_2d([[0.]])
-                        den[x][y] = np.atleast_2d([[1.]])
+                        num[x][y] = np.array([[0.]])
+                        den[x][y] = np.array([[1.]])
 
                     # Case 1: Proper case
                     else:
                         D[x, y] = NumOrEmpty
-                        num[x][y] = datanum
+                        num[x][y] = np.atleast_2d(datanum)
 
                 # Make the denominator entries monic
                 if den[x][y][0, 0] != 1.:
@@ -2875,13 +2876,14 @@ def transfer_to_state(G, output='system'):
                 factorside = 'r'
             else:  # Fat matrix, pertranspose the List of Lists => LCF.
                 factorside = 'l'
-                den = [list(i) for i in zip(*den)]
                 num = [list(i) for i in zip(*num)]
                 p, m = m, p
 
+            # Denominator is common pick one
             d = den[0][0].size-1
             A = haroldcompanion(den[0][0])
-            B = np.vstack((np.zeros((A.shape[0]-1, 1)), 1))
+            B = np.zeros((A.shape[0], 1), dtype=float)
+            B[-1, 0] = 1.
             t1, t2 = A, B
 
             for x in range(m-1):
@@ -2892,7 +2894,7 @@ def transfer_to_state(G, output='system'):
             k = 0
             for y in range(m):
                 for x in range(p):
-                    C[x, k:k+num[x][y].size] = num[x][y]
+                    C[x, k:k+num[x][y].size] = num[x][y][0, ::-1]
                 k += d  # Shift to the next companion group position
 
             if factorside == 'l':

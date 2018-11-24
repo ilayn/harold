@@ -786,6 +786,26 @@ def test_transfer_to_state():
                                            -2.+0.j, -2.+0.j, -1.+0.j,
                                            -1.+0.j, -1.+0.j]))
 
+    # Reported in gh-#42
+    G = Transfer([[[87.8, 8.78], [-103.68, -8.64]],
+                  [[129.84, 10.82], [-109.6, -10.96]]],
+                 [562.5, 82.5, 1])
+    Gss = transfer_to_state(G)
+    assert_array_almost_equal(Gss.a, np.kron(np.eye(2), [[0., 1.],
+                                                         [-2/1125, -11/75]]))
+    assert_array_almost_equal(Gss.b, [[0, 0], [1, 0], [0, 0], [0, 1]])
+    des_c = np.array([[0.01560888888888889,
+                       0.1560888888888889,
+                       -0.015360000000000002,
+                       -0.18432],
+                      [0.019235555555555558,
+                       0.23082666666666668,
+                       -0.019484444444444447,
+                       -0.19484444444444443]])
+
+    assert_array_almost_equal(Gss.c, des_c)
+    assert_array_almost_equal(Gss.d, np.zeros([2, 2]))
+
 
 def test_state_to_transfer():
     G = State(-2*np.eye(2), np.eye(2), [[1, -3], [0, 0]], [[0, 1], [-1, 0]])
