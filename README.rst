@@ -8,15 +8,13 @@ A control systems package for Python3 (>=v3.6 required).
 Introduction
 ============
 
-This package is written with the ambition of becoming a daily work-horse of
-a control engineer/student/researcher with complete access to the source code
-with full rights (see ``LICENSE`` file) while still working inside a
-full-fledged programming language. This allows for working in any medium that
-supports Python and its scientific packages NumPy and SciPy.
-
-``harold`` fully supports the mantra of reproducible research and thus aims
-to provide the means of accessible and transparent computational development
-tools.
+This package is written with the ambition of providing a full-fledged control
+systems software that serves a control engineer/student/researcher with complete
+access to the source code with permissive rights (see ``LICENSE`` file). 
+Moreover, via working with a proper high-level computer programming language
+in the meantime, many proprietary software obstacles are avoided and users can
+incorporate this package to their auxiliary tools into their systems in any way
+they see fit.
 
 Usage
 =====
@@ -28,31 +26,39 @@ Documentation
 
 See the `Sphinx documentation`_ . (currently under significant reconstruction)
 
+Roadmap
+=======
+
+The items that are in the pipeline and what possibly lies ahead is enumerated
+in our `roadmap <https://github.com/ilayn/harold/wiki/harold-roadmap>`_.
+
 Useful Links
 ============
 
-1- There is already an almost-matured control toolbox which is led by
-Richard Murray et al. (`click for the Github page`_ ) and it can perform
-already most of the essential tasks. Hence, if you want to have
-something that resembles the basics of matlab control toolbox, you should give
-it a try. However, it is somewhat limited to SISO tools and also relies on
-SLICOT library which can lead to installation hassle and/or licensing
-problems for nontrivial tasks.
+ - There is already an almost-matured control toolbox which is led by
+   Richard Murray et al. (`click for the Github page`_) and it can perform
+   already most of the essential tasks. Hence, if you want to have
+   something that resembles the basics of matlab control toolbox, you should give
+   it a try. However, it is somewhat limited to SISO tools and also relies on
+   SLICOT library which can lead to installation hassle and/or licensing
+   problems for nontrivial tasks.
 
-2- You can also use the tools available in SciPy ``signal`` module for basics
-of LTI system manipulations.
+ - You can also use the tools available in SciPy ``signal`` module for basics
+   of LTI system manipulations. SciPy is a powerful all-purpose scientific
+   package. This makes it extremely useful however admittedly every discipline
+   has a limited presence hence the limited functionality. If you are looking
+   for a quick LTI system manipulation and don't want to install yet another
+   package, then it might be the tool for you.
 
-3- Instead, if you are interested in robust control you probably would
-appreciate the `Skogestad-Python`_ project.
+ - Instead, if you are interested in robust control you probably would
+   appreciate the `Skogestad-Python`_ project. They are replicating the
+   code parts of the now-classic book completely in Python. Awesome!
 
 Help Wanted!
 ============
 
-``harold`` is built on rainy days and boring evenings unless you hire me
-directly for a specific tool. If you are missing out a feature, don't be shy
-and contact me. User-feedback has higher priority over the general development.
-
-Bug reports and PR submissions are more than welcome!
+If you are missing out a feature, or found a bug, get in contact. Such
+reports and PR submissions are more than welcome!
 
 Contact
 --------
