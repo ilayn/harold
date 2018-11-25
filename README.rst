@@ -3,7 +3,7 @@
 harold
 ======
 
-A control systems package for Python3 (>=v3.6 required).
+A control systems package for Python>=3.6.
 
 Introduction
 ============
@@ -30,24 +30,24 @@ in our `roadmap <https://github.com/ilayn/harold/wiki/harold-roadmap>`_.
 Useful Links
 ------------
 
- - There is already an almost-matured control toolbox which is led by
-   Richard Murray et al. (`click for the Github page`_) and it can perform
-   already most of the essential tasks. Hence, if you want to have
-   something that resembles the basics of matlab control toolbox, you should give
-   it a try. However, it is somewhat limited to SISO tools and also relies on
-   SLICOT library which can lead to installation hassle and/or licensing
-   problems for nontrivial tasks.
+- There is already an almost-matured control toolbox which is led by
+  Richard Murray et al. (`click for the Github page`_) and it can perform
+  already most of the essential tasks. Hence, if you want to have
+  something that resembles the basics of matlab control toolbox, you should give
+  it a try. However, it is somewhat limited to SISO tools and also relies on
+  SLICOT library which can lead to installation hassle and/or licensing
+  problems for nontrivial tasks.
 
- - You can also use the tools available in SciPy ``signal`` module for basics
-   of LTI system manipulations. SciPy is a powerful all-purpose scientific
-   package. This makes it extremely useful however admittedly every discipline
-   has a limited presence hence the limited functionality. If you are looking
-   for a quick LTI system manipulation and don't want to install yet another
-   package, then it might be the tool for you.
+- You can also use the tools available in SciPy ``signal`` module for basics
+  of LTI system manipulations. SciPy is a powerful all-purpose scientific
+  package. This makes it extremely useful however admittedly every discipline
+  has a limited presence hence the limited functionality. If you are looking
+  for a quick LTI system manipulation and don't want to install yet another
+  package, then it might be the tool for you.
 
- - Instead, if you are interested in robust control you probably would
-   appreciate the `Skogestad-Python`_ project. They are replicating the
-   code parts of the now-classic book completely in Python. Awesome!
+- Instead, if you are interested in robust control you probably would
+  appreciate the `Skogestad-Python`_ project. They are replicating the
+  code parts of the now-classic book completely in Python. Awesome!
 
 Help Wanted!
 ------------
