@@ -12,28 +12,23 @@ This package is written with the ambition of providing a full-fledged control
 systems software that serves a control engineer/student/researcher with complete
 access to the source code with permissive rights (see ``LICENSE`` file). 
 Moreover, via working with a proper high-level computer programming language
-in the meantime, many proprietary software obstacles are avoided and users can
-incorporate this package to their auxiliary tools into their systems in any way
-they see fit.
+many proprietary software obstacles are avoided and users can incorporate this
+package into their workflow in any way they see fit.
 
-Usage
-=====
+Quick Reference and Documentation
+---------------------------------
 
-A brief tutorial about the basics can be found under the notebooks folder.
-
-Documentation
-=============
-
-See the `Sphinx documentation`_ . (currently under significant reconstruction)
+The documentation is online at `ReadTheDocs`_. A brief tutorial about the basics
+can be found under the notebooks folder to see ``harold`` in action.
 
 Roadmap
-=======
+-------
 
 The items that are in the pipeline and what possibly lies ahead is enumerated
 in our `roadmap <https://github.com/ilayn/harold/wiki/harold-roadmap>`_.
 
 Useful Links
-============
+------------
 
  - There is already an almost-matured control toolbox which is led by
    Richard Murray et al. (`click for the Github page`_) and it can perform
@@ -55,7 +50,7 @@ Useful Links
    code parts of the now-classic book completely in Python. Awesome!
 
 Help Wanted!
-============
+------------
 
 If you are missing out a feature, or found a bug, get in contact. Such
 reports and PR submissions are more than welcome!
@@ -67,7 +62,7 @@ If you have questions/comments feel free to shoot one to
 ``harold.of.python@gmail.com`` or join the Gitter chatroom.
 
 .. _click for the Github page: https://github.com/python-control/python-control
-.. _Sphinx documentation: http://harold.readthedocs.org/en/latest/
+.. _ReadTheDocs: http://harold.readthedocs.org/en/latest/
 .. _Skogestad-Python: https://github.com/alchemyst/Skogestad-Python
 
 .. |License| image:: https://img.shields.io/github/license/mashape/apistatus.svg
