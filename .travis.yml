@@ -4,6 +4,12 @@ python:
 install:
   - pip install tox travis-tox coveralls
 
+# Only turn on the "push branch build" on master
+# PRs are enabled by "push PR" setting.
+branches:
+  only:
+  - master
+
 # Travis complains about plots having no available displays.
 # Taken from https://stackoverflow.com/questions/35403127/
 # configure a headless display to test plot generation
