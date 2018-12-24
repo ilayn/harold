@@ -69,8 +69,8 @@ If you have questions/comments feel free to shoot one to
    :target: https://github.com/ilayn/harold/blob/master/LICENSE
 .. |Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-.. |Travis-CI| image:: https://travis-ci.org/ilayn/harold.svg?branch=master
-    :target: https://travis-ci.org/ilayn/harold
+.. |Travis-CI| image:: https://travis-ci.com/ilayn/harold.svg?branch=master
+    :target: https://travis-ci.com/ilayn/harold
 .. |Coveralls| image:: https://coveralls.io/repos/github/ilayn/harold/badge.svg?branch=master
     :target: https://coveralls.io/github/ilayn/harold?branch=master
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/harold/badge/?version=latest
