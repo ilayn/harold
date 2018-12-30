@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import eye, zeros, block, array, poly
+from numpy import eye, zeros, block, array, poly, diff
 from numpy.linalg import matrix_power
 from scipy.linalg import (solve, eigvals, block_diag,
                           solve_continuous_are as care,
@@ -184,6 +184,59 @@ def ackermann(G, loc):
         pmat += p[pow_a] * matrix_power(A, pow_a)
 
     return solve(Cc, pmat)[[-1], :]
+
+
+def _get_pole_reps(p):
+    """A helper function for finding complex and real pole repetitions
+
+    Parameters
+    ----------
+    p : array_like
+        Desired pole locations
+
+    Returns
+    -------
+    p_reps : tuple
+        A 2-tuple with complex and real repetitions respectively. If no
+        repetition is found, a np.empty((0, 2)) is returned for that type.
+    """
+    # Containers
+    p_reps = []
+
+    # Get the index where reals start
+    # Before calling this function, p is passed through cplx_pair hence p is
+    # e-sorted and reals are always at the end
+    rbool = p.imag == 0.
+    nr = sum(rbool)
+    nc = p.size - nr
+    # It can't repeat with a single complex pair
+    if nc <= 2:
+        p_reps += [np.empty((0, 2), dtype=int)]
+    else:
+        pp = p[:nc:2]
+        boolarray = diff(pp) == 0
+        ind = diff(boolarray).nonzero()[0] + 1
+        ind = np.r_[0, ind] if boolarray[0] else ind
+        ind = np.r_[ind, boolarray.size] if boolarray[-1] else ind
+        ind = (ind.reshape(-1, 2) + [0, 1])  # Add 1 to have the excluded end
+
+        p_reps += [ind]
+
+    if nr < 2:
+        p_reps += [np.empty((0, 2), dtype=int)]
+    else:
+        pp = p[nc:]
+        boolarray = diff(pp) == 0
+        ind = diff(boolarray).nonzero()[0] + 1
+        ind = np.r_[0, ind] if boolarray[0] else ind
+        ind = np.r_[ind, boolarray.size] if boolarray[-1] else ind
+        ind = (ind.reshape(-1, 2) + [0, 1])  # Add 1 to have the excluded end
+        print(ind)
+        ind += nc  # Add the index to shift to the actual real index
+        print(ind)
+        p_reps += [ind]
+
+    return p_reps
 
 
 def pole_placement(sys_or_ab, target_poles):

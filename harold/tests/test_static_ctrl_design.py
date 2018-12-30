@@ -1,9 +1,12 @@
-from numpy import eye, array, sort
+from numpy import eye, array, sort, empty
 from scipy.linalg import block_diag, eigvals
-from numpy.testing import assert_almost_equal, assert_array_almost_equal
+from scipy.signal.filter_design import _cplxpair
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
+                           assert_array_equal)
 
 from pytest import raises as assert_raises
 from harold import lqr, ackermann, State, Transfer, haroldcompanion
+from harold._static_ctrl_design import _get_pole_reps
 
 
 def test_lqr_arguments():
@@ -198,3 +201,61 @@ def byersnash_A_B_test_pairs():
 
     # Return a generator
     return (x for x in ABs)
+
+
+def _test_get_pole_reps():
+
+    # Only complex
+    p = array([1.+1j, 1-1j, 2.+1j, 2-1j])
+    pr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    # Only real
+    p = array([1, 2, 3])
+    pr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    # Mixed, no reps
+    p = array([1.+1j, 1-1j, 3])
+    pr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    # Mixed, complex reps
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 3])
+    p = _cplxpair(p).conj()
+    pr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[0, 2]]))
+    assert_array_equal(pr[1], empty((0, 2)))
+    # Mixed real reps
+    p = array([1.+1j, 1-1j, 1., 1])
+    p = _cplxpair(p).conj()
+    pr = _get_pole_reps(p)
+    assert_array_equal(pr[0], empty((0, 2)))
+    assert_array_equal(pr[1], array([[2, 4]]))
+    # Mixed real reps, real dangling
+    p = array([1.+1j, 1-1j, 1., 1, 0.54, 3.8])
+    p = _cplxpair(p).conj()
+    pr = _get_pole_reps(p)
+    assert_array_equal(pr[0], empty((0, 2)))
+    assert_array_equal(pr[1], array([[3, 5]]))
+    # Mixed complex reps, complex dangling
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 0.+1j, 0-1j, 0.5, 3.])
+    p = _cplxpair(p).conj()
+    pr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[1, 3]]))
+    assert_array_equal(pr[1], empty((0, 2)))
+    # Mixed reps and dangling
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j,
+               2.+1j, 2-1j,
+               3.+1j, 3-1j, 3.+1j, 3-1j, 3.+1j, 3-1j,
+               4.+1j, 4-1j,
+               0,
+               0.5, 0.5,
+               3.,
+               6, 6, 6])
+    p = _cplxpair(p).conj()
+    pr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[0, 2],
+                                     [3, 6]]))
+    assert_array_equal(pr[1], array([[15, 17],
+                                     [18, 21]]))
