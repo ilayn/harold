@@ -206,8 +206,7 @@ def _get_pole_reps(p):
     # Get the index where reals start
     # Before calling this function, p is passed through cplx_pair hence p is
     # e-sorted and reals are always at the end
-    rbool = p.imag == 0.
-    nr = sum(rbool)
+    nr = sum(p.imag == 0.)
     nc = p.size - nr
     # It can't repeat with a single complex pair
     if nc <= 2:
@@ -222,6 +221,8 @@ def _get_pole_reps(p):
 
         p_reps += [ind]
 
+    p_reps += [[-1, -1]]
+
     if nr < 2:
         p_reps += [np.empty((0, 2), dtype=int)]
     else:
@@ -231,12 +232,10 @@ def _get_pole_reps(p):
         ind = np.r_[0, ind] if boolarray[0] else ind
         ind = np.r_[ind, boolarray.size] if boolarray[-1] else ind
         ind = (ind.reshape(-1, 2) + [0, 1])  # Add 1 to have the excluded end
-        print(ind)
         ind += nc  # Add the index to shift to the actual real index
-        print(ind)
         p_reps += [ind]
 
-    return p_reps
+    return p_reps, nc, nr
 
 
 def pole_placement(sys_or_ab, target_poles):
