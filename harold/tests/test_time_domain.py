@@ -1,8 +1,11 @@
 from harold import (State, Transfer,
-                    simulate_linear_system, simulate_step_response)
+                    simulate_linear_system, simulate_step_response,
+                    simulate_impulse_response)
 
+from harold._time_domain import _check_custom_time_input
 from numpy import array, eye, ones, zeros, arange
-from numpy.testing import assert_allclose, assert_raises, assert_equal
+from numpy.testing import assert_allclose, assert_raises
+from pytest import approx
 
 
 def test_simulate_linear_system_check_x0():
@@ -47,6 +50,23 @@ def test_simulate_linear_system_check_u_and_t():
     assert_raises(ValueError, simulate_linear_system, G, u, t)
 
 
+def test_check_custom_time_input():
+    # User-reported at GH-#12
+    t = arange(0., 1., 0.02)
+    t, ts = _check_custom_time_input(t)
+    assert ts == approx(0.02)
+    #
+    t = [1, 2, 3, 4, 5]
+    t, ts = _check_custom_time_input(t)
+    assert_allclose(arange(1, 6), t)
+    assert ts == approx(1)
+    # Numerically not equal spaced
+    t = [1, 2, 3, 4.0001, 5]
+    assert_raises(ValueError, _check_custom_time_input, t)
+    # monotone decreasing
+    assert_raises(ValueError, _check_custom_time_input, t[::-1])
+
+
 def test_simulate_linear_system_response():
     G = Transfer(1, [1, 1, 1], dt=0.01)
     u = [1, 2, 3]
@@ -64,10 +84,32 @@ def test_simulate_linear_system_response():
     assert_allclose(y - u @ mat.T, zeros([10, 5]))
 
 
-def test_simulate_step_response_response():
+def test_simulate_step_response():
     G = State(4)
     yout, tout = simulate_step_response(G)
     assert_allclose(yout, 4*ones(len(yout))[:, None])
     G = State(4, dt=0.01)
     y2, t2 = simulate_step_response(G)
     assert_allclose(y2, 4*ones(len(y2))[:, None])
+    # Custom time input
+    G = Transfer(1, [1, 1, 1])
+    t = [0, 1, 2, 3]
+    yout, tout = simulate_step_response(G, t)
+    assert_allclose(tout, t)
+
+
+def test_simulate_impulse_response():
+    G = State(4)
+    yout, tout = simulate_impulse_response(G)
+    # Check if the DC_gain * dt * u[0] == 1
+    dt = tout[1] - tout[0]
+    assert yout[0] * dt == approx(4)
+    assert_allclose(yout[1:], 0)
+    G = State(4, dt=0.01)
+    y2, t2 = simulate_impulse_response(G)
+    assert y2[0] == approx(400)
+    # Custom time input
+    G = Transfer(1, [1, 1, 1])
+    t = [0, 1, 2, 3]
+    yout, tout = simulate_step_response(G, t)
+    assert_allclose(tout, t)

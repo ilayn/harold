@@ -22,7 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 import numpy as np
-from numpy import reciprocal, einsum, maximum, minimum, zeros_like
+from numpy import (reciprocal, einsum, maximum, minimum, zeros_like,
+                   atleast_1d, squeeze)
 from scipy.linalg import eig, eigvals, matrix_balance, norm
 from harold._classes import Transfer, transfer_to_state
 from harold._discrete_funcs import discretize
@@ -216,6 +217,8 @@ def simulate_step_response(sys, t=None):
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys)
         t = np.arange(0, tf+ts, ts, dtype=float)
+    else:
+        t, ts = _check_custom_time_input(t)
 
     m = sys.shape[1]
     u = np.ones([len(t), m], dtype=float)
@@ -264,6 +267,8 @@ def simulate_impulse_response(sys, t=None):
     if t is None:
         tf, ts = _compute_tfinal_and_dt(sys, is_step=False)
         t = np.arange(0, tf+ts, ts, dtype=float)
+    else:
+        t, ts = _check_custom_time_input(t)
 
     m = sys.shape[1]
     u = np.zeros([len(t), m], dtype=float)
@@ -490,3 +495,28 @@ def _check_u_and_t_for_simulation(m, dt, u, t, isdiscrete):
                          ' of inputs ({}) of the given model.'
                          ''.format(u.shape[1], m))
     return t
+
+
+def _check_custom_time_input(t):
+    """
+    Helper function for simple and rather expensive checks for sanity
+    """
+    t = atleast_1d(t)
+    if t.ndim > 1:
+        t = squeeze(t)
+        if t.ndim > 1:
+            raise ValueError('Time array should be a 1D array but has '
+                             '{} nontrivial dimensions'.format(t.ndim))
+    if t.size < 2:
+        raise ValueError('Time array should have at least two data points.')
+    dt = t[1] - t[0]
+    if dt <= 0.:
+        raise ValueError('The time increment dt cannot be negative; '
+                         'Difference of the first two samples t1 - t0 = {}'
+                         ''.format(dt))
+    # np.diff is somewhat slower than the diff of the views
+    if not np.allclose(t[1:] - t[:-1], dt):
+        raise ValueError('Supplied time array is not numerically equally '
+                         'spaced (checked via numpy.allclose).')
+
+    return t, dt
