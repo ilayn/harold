@@ -347,7 +347,7 @@ class Transfer:
 
             if not self._dt == other._dt:
                 raise ValueError('The sampling periods don\'t match '
-                                 'so I cannot multiply these systems.')
+                                 'so I cannot add these models.')
 
             gainflag = sum([self._isgain, other._isgain])
 

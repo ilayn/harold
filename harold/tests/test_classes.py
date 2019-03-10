@@ -383,6 +383,23 @@ def test_Transfer_algebra_neg_add_radd():
         assert_almost_equal(x.num, np.array([[21.25, 115, 0.25]]))
         assert_almost_equal(x.den, G.den)
 
+    H = G + np.array([[1, 2], [3, 4]])
+    Hnumd = [[np.array([[85., 130., 1.]]),
+             np.array([[170., 150., 2.]])],
+             [np.array([[255., 170., 3.]]),
+              np.array([[340., 190., 4.]])]]
+
+    for x, y in ([0, 0], [0, 1], [1, 0], [1, 1]):
+        assert_almost_equal(H.num[x][y], Hnumd[x][y])
+        assert_almost_equal(H.den[x][y], G.den)
+
+    # Both are static
+    with assert_raises(ValueError):
+        Transfer([[1, 2], [3, 4]]) + Transfer([[3, 4, 5], [1, 2, 3]])
+
+    with assert_raises(ValueError):
+        Transfer([[1, 2], [3, 4]]) + Transfer([[3, 4], [1, 2]], dt=1)
+
 
 def test_Transfer_slicing():
     Hind = [(1, 5), (4, 1),
@@ -824,3 +841,52 @@ def test_state_to_transfer():
     H11 = H[1, 1]
     assert_array_equal(H11.num, np.array([[0.]]))
     assert_array_equal(H11.den, np.array([[1.]]))
+
+
+def test_verbosity_State(capsys):
+    _ = State.validate_arguments(-2*np.eye(2), np.eye(2),
+                                 [[1, -3], [0, 0]], [[0, 1], [-1, 0]],
+                                 verbose=True)
+
+    out, err = capsys.readouterr()
+    assert not err.strip()
+    assert out == ("========================================\n"
+                   "Handling A\n"
+                   "========================================\n"
+                   "Trying to np.array A\n"
+                   "========================================\n"
+                   "Handling B\n"
+                   "========================================\n"
+                   "Trying to np.array B\n"
+                   "========================================\n"
+                   "Handling C\n"
+                   "========================================\n"
+                   "Trying to np.array C\n"
+                   "========================================\n"
+                   "Handling D\n"
+                   "========================================\n"
+                   "Trying to np.array D\n"
+                   "All seems OK. Moving to shape mismatch check\n")
+
+
+def test_verbosity_Transfer(capsys):
+    _ = Transfer.validate_arguments(-2*np.eye(2), [1, 2, 3], verbose=True)
+    out, err = capsys.readouterr()
+    assert not err.strip()
+    assert out == ("========================================\n"
+                   "Handling numerator\n"
+                   "========================================\n"
+                   "I found a numpy array\n"
+                   "The array has multiple elements\n"
+                   "========================================\n"
+                   "Handling denominator\n"
+                   "========================================\n"
+                   "I found a list\n"
+                   "I found a list that has only scalars\n"
+                   "==================================================\n"
+                   "Handling raw entries are done.\n"
+                   "Now checking the SISO/MIMO context and regularization.\n"
+                   "==================================================\n"
+                   "One of the MIMO flags are true\n"
+                   "Numerator is MIMO, Denominator is something else\n"
+                   "Numerator is MIMO, Denominator is SISO\n")
