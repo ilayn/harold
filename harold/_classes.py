@@ -1,6 +1,6 @@
 import numpy as np
 import warnings
-from numpy import zeros_like, kron, ndarray, zeros, exp
+from numpy import zeros_like, kron, ndarray, zeros, exp, convolve
 from numpy.random import rand, choice
 from numpy.linalg.linalg import _assertNdSquareness
 from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
@@ -334,116 +334,199 @@ class Transfer:
         return Transfer(newnum, self._den, self._dt)
 
     def __add__(self, other):
-        # Addition to a Transfer object is possible via four types
-        # 1. Another shape matching State()
-        # 2. Another shape matching Transfer()
-        # 3. Integer or float that is multiplied with a proper "ones" matrix
-        # 4. A shape matching numpy array
+        """
+        Addition method
 
-        # Notice that in case 3 it is a ones matrix not an identity!!
-        # (Given a 1x3 system + 5) adds [[5,5,5]].
+        Notice that in case SISO + MIMO, it is broadcasted to a ones matrix
+        not an identity (Given a 3x3 system + 5) adds 5*np.ones([3,3]).
+        """
 
-        if isinstance(other, (Transfer, State)):
-            # Trivial Rejections:
-            # ===================
-            # Reject 'ct + dt' or 'dt + dt' with different sampling periods
-            #
-            # A future addition would be converting everything to the slowest
-            # sampling system but that requires pretty comprehensive change.
+        if isinstance(other, State):
+            # We still follow the generic rule, State wins over Transfer
+            # representations.
 
             if not self._dt == other._dt:
                 raise ValueError('The sampling periods don\'t match '
-                                 'so I cannot\nadd these systems. ')
+                                 'so I cannot multiply these systems.')
 
-        # Reject if the size don't match
-            if not self._shape == other.shape:
-                raise IndexError('Addition of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                self._shape,
-                                                other.shape)
-                                 )
+            gainflag = sum([self._isgain, other._isgain])
 
-        # ===================
-            if isinstance(other, Transfer):
-                # First get the static gain case out of the way.
-                if self._isgain and other._isgain:
-                        return Transfer(self._num + other.num,
-                                        dt=self._dt)
+            # If both are static gains
+            if gainflag == 2:
+                try:
+                    return State(self.to_array()+other.to_array(), dt=self._dt)
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. Model shapes are {0} and'
+                                     ' {1}'.format(self._shape, other.shape))
 
-                # Now, we are sure that there are no possibility other than
-                # list of lists or np.arrays hence concatenation should be OK.
-
-                if self._isSISO:
-                    lcm, mults = haroldlcm(self._den, other.den)
-                    newnum = haroldpolyadd(
-                        np.convolve(self._num.flatten(), mults[0]),
-                        np.convolve(other.num.flatten(), mults[1]))
-                    if np.count_nonzero(newnum) == 0:
-                        return Transfer(0, 1)
-                    else:
-                        return Transfer(newnum, lcm)
-
+            # If one of them is a static gain
+            elif gainflag == 1:
+                if self._isgain:
+                    return other + self.to_array()
                 else:
-                    # Create empty num and den holders.
-                    newnum = [[None]*self._m for n in range(self._p)]
-                    newden = [[None]*self._m for n in range(self._p)]
-                    nonzero_num = np.zeros(self._shape, dtype=bool)
-                    # Same as SISO but over all rows/cols
-                    for row in range(self._p):
-                        for col in range(self._m):
-                            lcm, mults = haroldlcm(self._den[row][col],
-                                                   other.den[row][col])
-
-                            newnum[row][col] = np.atleast_2d(
-                                    haroldpolyadd(
-                                        np.convolve(
-                                            self._num[row][col].flatten(),
-                                            mults[0]
-                                        ),
-                                        np.convolve(
-                                            other.num[row][col].flatten(),
-                                            mults[1]
-                                        )
-                                    )
-                                )
-
-                            newden[row][col] = lcm
-
-                        # Test whether we have at least one numerator entry
-                        # that is nonzero. Otherwise return a zero MIMO tf
-                            if np.count_nonzero(newnum[row][col]) != 0:
-                                nonzero_num[row, col] = True
-
-                    if any(nonzero_num.ravel()):
-                        return Transfer(newnum, newden, dt=self._dt)
-                    else:
-                        # Numerators all cancelled to zero hence 0-gain MIMO
-                        return Transfer(np.zeros(self._shape).tolist())
+                    return transfer_to_state(self) + other.to_array()
+            # No static gains, carry on
             else:
+                pass
+
+            sisoflag = sum([self._isSISO, other._isSISO])
+
+            if sisoflag == 0 and self.shape != other.shape:
+                raise ValueError('Shapes are not compatible for '
+                                 'addition. Transfer shape is {0}'
+                                 ' but the State shape is {1}.'
+                                 ''.format(self._shape, other.shape))
+
+            else:
+                # In case one of them is SISO and will be broadcasted in the
+                # next arrival
                 return other + transfer_to_state(self)
 
-        # Last chance for matrices, convert to static gain matrices and add
-        elif isinstance(other, (int, float)):
-            return self + Transfer((other * np.ones(self._shape)).tolist(),
-                                   dt=self._dt)
+        elif isinstance(other, Transfer):
+            if not self._dt == other._dt:
+                raise ValueError('The sampling periods don\'t match '
+                                 'so I cannot multiply these systems.')
 
-        elif isinstance(other, np.ndarray):
-            # It still might be a scalar inside an array
-            if other.size == 1:
-                return self + float(other)
+            gainflag = sum([self._isgain, other._isgain])
 
-            if self._shape == other.shape:
-                return self + Transfer(other.tolist(), dt=self._dt)
+            # If both are static gains
+            if gainflag == 2:
+                try:
+                    return Transfer(self.to_array() + other.to_array(),
+                                    dt=self._dt)
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. Model shapes are {0} and'
+                                     ' {1}'.format(self._shape, other.shape))
+
             else:
-                raise IndexError('Addition of systems requires their '
-                                 'shape to match but the system shapes '
-                                 'I got are {0} vs. {1}'.format(
-                                                    self._shape, other.shape))
+                pass
+
+            sisoflag = sum([self._isSISO, other._isSISO])
+
+            # Both SISO or both MIMO
+            if sisoflag in [0, 2]:
+
+                # Create empty num and den holders.
+                newnum = [[None]*self._m for n in range(self._p)]
+                newden = [[None]*self._m for n in range(self._p)]
+                nonzero_num = np.zeros(self._shape, dtype=bool)
+
+                # in case both are siso wrap the entries into list of lists
+                if self._isSISO:
+                    snum, sden = [[self._num]], [[self._den]]
+                    onum, oden = [[other.num]], [[other.den]]
+                else:
+                    snum, sden = self._num, self._den
+                    onum, oden = other.num, other.den
+
+                # over all rows/cols, SISO is included with p, m = 1
+                for row in range(self._p):
+                    for col in range(self._m):
+                        # in case the denominators are not monic
+                        c0, c1 = sden[row][col][0, 0], oden[row][col][0, 0]
+
+                        lcm, mults = haroldlcm(sden[row][col], oden[row][col])
+
+                        newnum[row][col] = np.atleast_2d(haroldpolyadd(
+                            convolve(snum[row][col].flatten(), mults[0]*c1),
+                            convolve(onum[row][col].flatten(), mults[1]*c0)))
+
+                        newden[row][col] = lcm*c0*c1
+
+                    # Test whether we have at least one numerator entry
+                    # that is nonzero. Otherwise return a zero MIMO tf
+                        if np.count_nonzero(newnum[row][col]) != 0:
+                            nonzero_num[row, col] = True
+
+                # If SISO, unpack the list of lists
+                if self._isSISO:
+                    newnum, newden = newnum[0][0], newden[0][0]
+
+                if any(nonzero_num.ravel()):
+                    return Transfer(newnum, newden, dt=self._dt)
+                else:
+                    # Numerators all cancelled to zero hence 0-gain SISO/MIMO
+                    return Transfer(np.zeros(self._shape).tolist(),
+                                    dt=self._dt)
+
+            # One of them is SISO and will be broadcasted here
+            else:
+                if self._isSISO:
+                    return other +\
+                        Transfer([[self._num]*other.m for n in range(other.p)],
+                                 [[self._den]*other.m for n in range(other.p)],
+                                 self._dt)
+                else:
+                    return self +\
+                        Transfer([[other.num]*other.m for n in range(other.p)],
+                                 [[other.den]*other.m for n in range(other.p)],
+                                 self._dt)
+
+        # Regularize arrays and scalars and consistency checks
+        elif isinstance(other, (int, float, np.ndarray)):
+            # Complex dtype does not immediately mean complex numbers,
+            # check and forgive
+            if np.iscomplexobj(other) and np.any(other.imag):
+                raise ValueError('Complex valued representations are not '
+                                 'supported.')
+
+            if isinstance(other, np.ndarray):
+                if other.ndim == 1:
+                    if other.size == 1:
+                        s = float(other)
+                    else:
+                        s = np.atleast_2d(other.real)
+                else:
+                    s = other.real
+
+            else:
+                s = float(other)
+
+            # Self is,      # other is
+            # isgain        1- scalar
+            #               2- ndarray
+            # isSISO        3- scalar
+            #               4- ndarray
+            # isMIMO        5- scalar
+            #               6- ndarray
+            if self._isgain:
+                try:
+                    # 1, 2
+                    mat = self.to_array() + s
+                except ValueError:
+                    raise ValueError('Shapes are not compatible for '
+                                     'broadcasted addition. Transfer '
+                                     'shape is {0} but the array shape is {1}.'
+                                     ''.format(self._shape, other.shape))
+
+                return Transfer(mat, dt=self._dt)
+
+            elif self._isSISO:
+                # 3
+                if isinstance(s, float):
+                    return self + Transfer(s, dt=self._dt)
+                # 4
+                else:
+                    # Broadcast and send to MIMO TF + TF above
+                    return (self * np.ones(s.shape)) + Transfer(s.tolist(),
+                                                                dt=self._dt)
+            else:
+                # 5
+                if isinstance(s, float):
+                    return self + Transfer(np.ones(self.shape)*s, dt=self._dt)
+                # 6
+                if self.shape != other.shape:
+                    raise ValueError('Shapes are not compatible for '
+                                     'addition. Transfer shape is {0}'
+                                     ' but the array shape is {1}.'
+                                     ''.format(self._shape, other.shape))
+                return self + Transfer(other.tolist(), dt=self._dt)
         else:
-            raise ValueError('I don\'t know how to add a '
-                             '{0} to a state representation '
-                             '(yet).'.format(type(other).__name__))
+            raise ValueError('I don\'t know how to add a {0} to a '
+                             'Transfer representation (yet).'
+                             ''.format(type(other).__qualname__))
 
     def __radd__(self, other): return self + other
 

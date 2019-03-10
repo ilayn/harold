@@ -308,7 +308,7 @@ def test_Transfer_algebra_neg_add_radd():
     G = Transfer([[1, 2]], [1, 1])
     H = G + np.array([[3, 4]])
     assert_equal(H.num[0][0], np.array([[3., 4.]]))
-    with assert_raises(IndexError):
+    with assert_raises(ValueError):
         G + np.array([3, 4])
 
     G = Transfer([[1, [1, 1]]], [[[1, 2, 1], [1, 1]]])
@@ -351,26 +351,37 @@ def test_Transfer_algebra_neg_add_radd():
     F = Transfer(num2, den2)
     H = G + F
     # Flatten list of lists via sum( , []) trick
-    Hnum = [np.array([[-1., 5/3, 10/3]]),
+    Hnum = [np.array([[3., -3., -6.]]),
             np.array([[5., 6., 9.]]),
-            np.array([[1., 0.5, -0.5]]),
-            np.array([[1., 3., 0.75, -0.5]]),
-            np.array([[3., -2.]]),
-            np.array([[5., -4., 3., 16.]])
-            ]
+            np.array([[-4., -2., 2.]]),
+            np.array([[3., 2., -3., 2.]]),
+            np.array([[6., -4.]]),
+            np.array([[5., -4., 3., 16.]])]
 
-    Hden = [np.array([[1., -2/3, -4/3]]),
+    Hden = [np.array([[3., -2., -4.]]),
             np.array([[1., 2., 3., 0., 0.]]),
-            np.array([[1., 0.5, -0.5]]),
-            np.array([[1., 0.75, -0.5, 0., 0.]]),
-            np.array([[1., -0.5, -0.5]]),
-            np.array([[1., 0., 0., 4., 0.]])
-            ]
+            np.array([[-2., -1., 1.]]),
+            np.array([[-12., -9., 6., -0., -0.]]),
+            np.array([[4., -2., -2.]]),
+            np.array([[1., 0., 0., 4., 0.]])]
+
     Hnum_computed = sum(H.num, [])
     Hden_computed = sum(H.den, [])
     for x in range(np.multiply(*H.shape)):
         assert_almost_equal(Hnum[x], Hnum_computed[x])
         assert_almost_equal(Hden[x], Hden_computed[x])
+
+    # User Reported in #47
+    num = np.array([110.0, 0.0])
+    den = np.array([85.0, 20.0, 1.0])
+
+    G = Transfer(num, den)
+    H = G + 0.25
+    F = G + Transfer(0.25)
+
+    for x in [F, H]:
+        assert_almost_equal(x.num, np.array([[21.25, 115, 0.25]]))
+        assert_almost_equal(x.den, G.den)
 
 
 def test_Transfer_slicing():
