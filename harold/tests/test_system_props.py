@@ -30,6 +30,12 @@ def test_system_norm_hinf_max_at_0():
     # Nonzero feedthrough 2-norm is inf
     assert isinf(system_norm(G, 2))
 
+    # Now transpose the system for the tall matrix case
+    G = Transfer([1, 2], [1, 1])*array([[1], [-3]])
+    assert_almost_equal(system_norm(G), 2*sqrt(10))
+    # Nonzero feedthrough 2-norm is inf
+    assert isinf(system_norm(G, 2))
+
 
 def test_controllability_indices():
     test_cont_ind = [[2, 2], [3, 2], [2, 2], [1, 2], [2, 3], [1, 3],

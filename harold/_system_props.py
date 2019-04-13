@@ -106,7 +106,7 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
             lb = np.max(np.abs(f))
         else:
             # Only evaluated at two frequencies, 0 and wb
-            lb = np.max(norm(f, ord=2, axis=1))
+            lb = np.max(norm(f, ord=2, axis=(0, 1)))
 
         # Finally
         gamma_lb = np.max([lb, norm(d, ord=2)])
@@ -143,7 +143,7 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
                 if T._isSISO:
                     gamma_lb = np.max(np.abs(f))
                 else:
-                    gamma_lb = np.max(norm(f, ord=2, axis=1))
+                    gamma_lb = np.max(norm(f, ord=2, axis=(0, 1)))
 
         return (gamma_lb + gamma_ub)/2
 
