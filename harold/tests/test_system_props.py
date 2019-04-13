@@ -1,31 +1,8 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2017 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
-
 from harold import (Transfer, system_norm, transfer_to_state,
                     controllability_indices)
 from test_static_ctrl_design import byersnash_A_B_test_pairs
 
+from numpy import sqrt, array, isinf
 from numpy.testing import assert_almost_equal, assert_equal
 from pytest import raises as assert_raises
 
@@ -45,6 +22,13 @@ def test_system_norm_simple():
     F = transfer_to_state(G)
     assert_almost_equal(system_norm(F), 1.1547, decimal=5)
     assert_almost_equal(system_norm(F, p=2), 2.2360679)
+
+
+def test_system_norm_hinf_max_at_0():
+    G = Transfer([1, 2], [1, 1])*array([1, -3])
+    assert_almost_equal(system_norm(G), 2*sqrt(10))
+    # Nonzero feedthrough 2-norm is inf
+    assert isinf(system_norm(G, 2))
 
 
 def test_controllability_indices():
