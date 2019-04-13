@@ -56,7 +56,8 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
 
     """
 
-    # TODO: Try the corrections given in arXiv:1707.02497
+    # Tried the corrections given in arXiv:1707.02497, couldn't get the gains
+    # mentioned in the paper.
 
     _check_for_state_or_transfer(G)
 
@@ -67,17 +68,10 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
     T = transfer_to_state(G) if isinstance(G, Transfer) else G
     a, b, c, d = T.matrices
 
-    # 2- norm
+    # 2-norm
     if p == 2:
         # Handle trivial infinities
-        if T._isgain:
-            # If nonzero -> infinity, if zero -> zero
-            if count_nonzero(T.d) > 0:
-                return np.Inf
-            else:
-                return 0.
-
-        if not T._isstable:
+        if not np.allclose(T.d, np.zeros_like(T.d)) or (not T._isstable):
             return np.Inf
 
         if T.SamplingSet == 'R':
@@ -112,7 +106,7 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
             lb = np.max(np.abs(f))
         else:
             # Only evaluated at two frequencies, 0 and wb
-            lb = np.max(norm(f, ord=2, axis=2))
+            lb = np.max(norm(f, ord=2, axis=(0, 1)))
 
         # Finally
         gamma_lb = np.max([lb, norm(d, ord=2)])
@@ -143,14 +137,13 @@ def system_norm(G, p=np.inf, hinf_tol=1e-6, eig_tol=1e-8):
                 # Take the ones with positive imag part
                 w_i = np.sort(np.unique(np.abs(im_eigs.imag)))
                 # Evaluate the cubic interpolant
-
                 m_i = (w_i[1:] + w_i[:-1]) / 2
                 f, w = frequency_response(T, w=m_i, w_unit='rad/s',
                                           output_unit='rad/s')
                 if T._isSISO:
                     gamma_lb = np.max(np.abs(f))
                 else:
-                    gamma_lb = np.max(norm(f, ord=2, axis=2))
+                    gamma_lb = np.max(norm(f, ord=2, axis=(0, 1)))
 
         return (gamma_lb + gamma_ub)/2
 
