@@ -207,43 +207,64 @@ def _test_get_pole_reps():
 
     # Only complex
     p = array([1.+1j, 1-1j, 2.+1j, 2-1j])
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     for x in range(2):
         assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 4
+    assert nr == 0
+
     # Only real
     p = array([1, 2, 3])
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     for x in range(2):
         assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 0
+    assert nr == 3
+
     # Mixed, no reps
     p = array([1.+1j, 1-1j, 3])
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     for x in range(2):
         assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 2
+    assert nr == 1
+
     # Mixed, complex reps
     p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 3])
     p = _cplxpair(p).conj()
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     assert_array_equal(pr[0], array([[0, 2]]))
     assert_array_equal(pr[1], empty((0, 2)))
+    assert nc == 4
+    assert nr == 1
+
     # Mixed real reps
     p = array([1.+1j, 1-1j, 1., 1])
     p = _cplxpair(p).conj()
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     assert_array_equal(pr[0], empty((0, 2)))
     assert_array_equal(pr[1], array([[2, 4]]))
+    assert nc == 2
+    assert nr == 2
+
     # Mixed real reps, real dangling
     p = array([1.+1j, 1-1j, 1., 1, 0.54, 3.8])
     p = _cplxpair(p).conj()
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     assert_array_equal(pr[0], empty((0, 2)))
     assert_array_equal(pr[1], array([[3, 5]]))
+    assert nc == 2
+    assert nr == 4
+
     # Mixed complex reps, complex dangling
     p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 0.+1j, 0-1j, 0.5, 3.])
     p = _cplxpair(p).conj()
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     assert_array_equal(pr[0], array([[1, 3]]))
     assert_array_equal(pr[1], empty((0, 2)))
+    assert nc == 6
+    assert nr == 2
+
     # Mixed reps and dangling
     p = array([1.+1j, 1-1j, 1.+1j, 1-1j,
                2.+1j, 2-1j,
@@ -254,8 +275,10 @@ def _test_get_pole_reps():
                3.,
                6, 6, 6])
     p = _cplxpair(p).conj()
-    pr = _get_pole_reps(p)
+    pr, nc, nr = _get_pole_reps(p)
     assert_array_equal(pr[0], array([[0, 2],
                                      [3, 6]]))
     assert_array_equal(pr[1], array([[15, 17],
                                      [18, 21]]))
+    assert nc == 14
+    assert nr == 7

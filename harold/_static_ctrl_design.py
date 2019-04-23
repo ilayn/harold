@@ -199,6 +199,10 @@ def _get_pole_reps(p):
     p_reps : tuple
         A 2-tuple with complex and real repetitions respectively. If no
         repetition is found, a np.empty((0, 2)) is returned for that type.
+    nc : int
+        Number of complex poles
+    nr : int
+        Number of real poles
     """
     # Containers
     p_reps = []
@@ -221,8 +225,6 @@ def _get_pole_reps(p):
 
         p_reps += [ind]
 
-    p_reps += [[-1, -1]]
-
     if nr < 2:
         p_reps += [np.empty((0, 2), dtype=int)]
     else:
@@ -235,7 +237,7 @@ def _get_pole_reps(p):
         ind += nc  # Add the index to shift to the actual real index
         p_reps += [ind]
 
-    return p_reps, nc, nr
+    return (*p_reps,), nc, nr
 
 
 def pole_placement(sys_or_ab, target_poles):
