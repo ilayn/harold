@@ -140,7 +140,7 @@ def ackermann(G, loc):
     Parameters
     ----------
     G : State, tuple
-        The model or state and input arrays of the model as a tuple
+        The model or (A, B) arrays of the model as a tuple
     loc: arraylike
         Desired eigenvalue locations given as a 1D arraylike
 
@@ -240,5 +240,23 @@ def _get_pole_reps(p):
     return (*p_reps,), nc, nr
 
 
-def pole_placement(sys_or_ab, target_poles):
-    pass
+def place_poles(*args, **kwargs):
+    """An error only function for recommending SciPy's algorithm.
+
+    This function only emits a warning recommending the use of
+    `scipy.signal.place_poles` until algorithm of [1]_ is implemented.
+    Contributions are greatly appreciated about this method.
+
+    Otherwise SciPy implementation can be used directly with no modification.
+
+    References
+    ----------
+    .. [1] R. Schmid, L. Ntogramatzidis, T. Nguyen, "Arbitrary pole placement
+        with the extended Kautsky–Nichols–van Dooren parametric form", 2016,
+        :doi:`10.1080/00207179.2015.1129559`
+
+    """
+    raise NotImplementedError("Until the development of the method given "
+                              "in the docstring is completed, it is "
+                              "recommended to use SciPy's "
+                              "scipy.signal.place_poles function.")
