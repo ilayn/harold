@@ -1,6 +1,6 @@
 import numpy as np
 import warnings
-from numpy import zeros_like, kron, ndarray, zeros, exp, convolve
+from numpy import zeros_like, kron, ndarray, zeros, exp, convolve, spacing
 from numpy.random import rand, choice
 from numpy.linalg.linalg import _assertNdSquareness
 from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
@@ -2898,6 +2898,9 @@ def transfer_to_state(G, output='system'):
         else:
             # Watch out for full cancellation !!
             NumOrEmpty, datanum = haroldpolydiv(num, den)
+            # Clean up the tiny entries
+            datanum[np.abs(datanum) < spacing(100.)] = 0.
+
             # If all cancelled datanum is returned empty
             if datanum.size == 0:
                 A = None
@@ -2934,6 +2937,9 @@ def transfer_to_state(G, output='system'):
                     pass  # D[x,y] is already 0.
                 else:
                     NumOrEmpty, datanum = haroldpolydiv(datanum, dataden)
+                    # Clean up the tiny entries
+                    datanum[np.abs(datanum) < spacing(100.)] = 0.
+
                     # Case 3: If all cancelled datanum is returned empty
                     if np.count_nonzero(datanum) == 0:
                         D[x, y] = NumOrEmpty

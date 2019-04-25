@@ -8,9 +8,9 @@ from harold import (Transfer, State, e_i, haroldcompanion,
 from numpy.testing import (assert_,
                            assert_equal,
                            assert_array_equal,
-                           assert_raises,
                            assert_almost_equal,
                            assert_array_almost_equal)
+from pytest import raises as assert_raises
 
 
 def test_concatenate_state_matrices():
@@ -759,8 +759,8 @@ def test_random_state_model():
     assert not G._isgain
     assert not G._isSISO
 
-    G = random_state_model(5, 2, 4, stable=False)
-    assert np.any(G.poles.real > 0)
+    G = random_state_model(5, 2, 4, stable=True)
+    assert not (G.poles.real > 0).any()
     G = random_state_model(11, stable=False, prob_dist=[0, 0, 0.5, 0.5])
     assert_array_almost_equal(np.abs(G.poles.real), np.zeros(11))
     assert np.any(G.poles.imag)
@@ -833,6 +833,20 @@ def test_transfer_to_state():
 
     assert_array_almost_equal(Gss.c, des_c)
     assert_array_almost_equal(Gss.d, np.zeros([2, 2]))
+
+    # reported in gh-#50
+    num = [[[61.79732492202783, 36.24988430260625, 0.7301196233698941],
+            [0.0377840674057878, 0.9974993795127982, 21.763622825733773]]]
+    den = [[[84.64, 18.4, 1.0], [1.0, 7.2, 144.0]]]
+
+    TF = transfer_to_state((num, den))
+    assert_array_almost_equal([-3.6-1.14472704e+01j,
+                               -3.6+1.14472704e+01j,
+                               -0.10869565-1.74405237e-07j,
+                               -0.10869565+1.74405237e-07j,
+                               ],
+                              np.sort(TF.poles))
+    assert TF.zeros.size == 0
 
 
 def test_state_to_transfer():
