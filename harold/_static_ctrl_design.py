@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import eye, zeros, block, array, poly
+from numpy import eye, zeros, block, array, poly, diff
 from numpy.linalg import matrix_power
 from scipy.linalg import (solve, eigvals, block_diag,
                           solve_continuous_are as care,
@@ -10,7 +10,7 @@ from ._classes import Transfer, transfer_to_state, _state_or_abcd
 from ._kalman_ops import controllability_matrix
 from ._aux_linalg import matrix_slice
 
-__all__ = ['lqr', 'ackermann']
+__all__ = ['lqr', 'ackermann', 'place_poles']
 
 
 def lqr(G, Q, R=None, S=None, weight_on='state'):
@@ -140,7 +140,7 @@ def ackermann(G, loc):
     Parameters
     ----------
     G : State, tuple
-        The model or state and input arrays of the model as a tuple
+        The model or (A, B) arrays of the model as a tuple
     loc: arraylike
         Desired eigenvalue locations given as a 1D arraylike
 
@@ -184,3 +184,79 @@ def ackermann(G, loc):
         pmat += p[pow_a] * matrix_power(A, pow_a)
 
     return solve(Cc, pmat)[[-1], :]
+
+
+def _get_pole_reps(p):
+    """A helper function for finding complex and real pole repetitions
+
+    Parameters
+    ----------
+    p : array_like
+        Desired pole locations
+
+    Returns
+    -------
+    p_reps : tuple
+        A 2-tuple with complex and real repetitions respectively. If no
+        repetition is found, a np.empty((0, 2)) is returned for that type.
+    nc : int
+        Number of complex poles
+    nr : int
+        Number of real poles
+    """
+    # Containers
+    p_reps = []
+
+    # Get the index where reals start
+    # Before calling this function, p is passed through cplx_pair hence p is
+    # e-sorted and reals are always at the end
+    nr = sum(p.imag == 0.)
+    nc = p.size - nr
+    # It can't repeat with a single complex pair
+    if nc <= 2:
+        p_reps += [np.empty((0, 2), dtype=int)]
+    else:
+        pp = p[:nc:2]
+        boolarray = diff(pp) == 0
+        ind = diff(boolarray).nonzero()[0] + 1
+        ind = np.r_[0, ind] if boolarray[0] else ind
+        ind = np.r_[ind, boolarray.size] if boolarray[-1] else ind
+        ind = (ind.reshape(-1, 2) + [0, 1])  # Add 1 to have the excluded end
+
+        p_reps += [ind]
+
+    if nr < 2:
+        p_reps += [np.empty((0, 2), dtype=int)]
+    else:
+        pp = p[nc:]
+        boolarray = diff(pp) == 0
+        ind = diff(boolarray).nonzero()[0] + 1
+        ind = np.r_[0, ind] if boolarray[0] else ind
+        ind = np.r_[ind, boolarray.size] if boolarray[-1] else ind
+        ind = (ind.reshape(-1, 2) + [0, 1])  # Add 1 to have the excluded end
+        ind += nc  # Add the index to shift to the actual real index
+        p_reps += [ind]
+
+    return (*p_reps,), nc, nr
+
+
+def place_poles(*args, **kwargs):
+    """An error only function for recommending SciPy's algorithm.
+
+    This function only emits a warning recommending the use of
+    `scipy.signal.place_poles` until algorithm of [1]_ is implemented.
+    Contributions are greatly appreciated about this method.
+
+    Otherwise SciPy implementation can be used directly with no modification.
+
+    References
+    ----------
+    .. [1] R. Schmid, L. Ntogramatzidis, T. Nguyen, "Arbitrary pole placement
+        with the extended Kautsky–Nichols–van Dooren parametric form", 2016,
+        :doi:`10.1080/00207179.2015.1129559`
+
+    """
+    raise NotImplementedError("Until the development of the method given "
+                              "in the docstring is completed, it is "
+                              "recommended to use SciPy's "
+                              "scipy.signal.place_poles function.")

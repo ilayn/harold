@@ -1,9 +1,12 @@
-from numpy import eye, array, sort
+from numpy import eye, array, sort, empty
 from scipy.linalg import block_diag, eigvals
-from numpy.testing import assert_almost_equal, assert_array_almost_equal
+from scipy.signal.filter_design import _cplxpair
+from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
+                           assert_array_equal)
 
 from pytest import raises as assert_raises
 from harold import lqr, ackermann, State, Transfer, haroldcompanion
+from harold._static_ctrl_design import _get_pole_reps
 
 
 def test_lqr_arguments():
@@ -124,16 +127,16 @@ def byersnash_A_B_test_pairs():
                    [0, 1],
                    [1, 1]])),
            # Drum boiler (Bengtsson 1973)
-           (array([[-0.129, 0, 0.396, 0.25, 0.0019],
-                   [0.0329, 0, -0.0078, 0.0122, -0.621],
-                   [0.0072, 0, -0.1, 0.0009, -0.0385],
-                   [0.0041, 0, 0, -0.0822, 0],
-                   [0.0035, 0, 0.0035, 0.0043, -0.0743]]),
+           (array([[-0.129, 0, 0.396, 0.25, 0.00191],
+                   [0.0329, 0, -0.00779, 0.0122, -0.621],
+                   [0.00718, 0, -0.1, 0.000887, -0.0385],
+                   [0.00411, 0, 0, -0.0822, 0],
+                   [0.00351, 0, 0.0035, 0.00426, -0.0743]]),
             array([[0, 0.1390],
                    [0, 0.0359],
                    [0, -0.0989],
                    [0.0249, 0],
-                   [0, -0.0053]])),
+                   [0, -0.00534]])),
            # Miminis random example #1
            (array([[5.8765, 9.3456, 4.5634, 9.3520],
                    [6.6526, 0.5867, 3.5829, 0.6534],
@@ -198,3 +201,84 @@ def byersnash_A_B_test_pairs():
 
     # Return a generator
     return (x for x in ABs)
+
+
+def _test_get_pole_reps():
+
+    # Only complex
+    p = array([1.+1j, 1-1j, 2.+1j, 2-1j])
+    pr, nc, nr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 4
+    assert nr == 0
+
+    # Only real
+    p = array([1, 2, 3])
+    pr, nc, nr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 0
+    assert nr == 3
+
+    # Mixed, no reps
+    p = array([1.+1j, 1-1j, 3])
+    pr, nc, nr = _get_pole_reps(p)
+    for x in range(2):
+        assert_array_equal(pr[x], empty((0, 2)))
+    assert nc == 2
+    assert nr == 1
+
+    # Mixed, complex reps
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 3])
+    p = _cplxpair(p).conj()
+    pr, nc, nr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[0, 2]]))
+    assert_array_equal(pr[1], empty((0, 2)))
+    assert nc == 4
+    assert nr == 1
+
+    # Mixed real reps
+    p = array([1.+1j, 1-1j, 1., 1])
+    p = _cplxpair(p).conj()
+    pr, nc, nr = _get_pole_reps(p)
+    assert_array_equal(pr[0], empty((0, 2)))
+    assert_array_equal(pr[1], array([[2, 4]]))
+    assert nc == 2
+    assert nr == 2
+
+    # Mixed real reps, real dangling
+    p = array([1.+1j, 1-1j, 1., 1, 0.54, 3.8])
+    p = _cplxpair(p).conj()
+    pr, nc, nr = _get_pole_reps(p)
+    assert_array_equal(pr[0], empty((0, 2)))
+    assert_array_equal(pr[1], array([[3, 5]]))
+    assert nc == 2
+    assert nr == 4
+
+    # Mixed complex reps, complex dangling
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j, 0.+1j, 0-1j, 0.5, 3.])
+    p = _cplxpair(p).conj()
+    pr, nc, nr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[1, 3]]))
+    assert_array_equal(pr[1], empty((0, 2)))
+    assert nc == 6
+    assert nr == 2
+
+    # Mixed reps and dangling
+    p = array([1.+1j, 1-1j, 1.+1j, 1-1j,
+               2.+1j, 2-1j,
+               3.+1j, 3-1j, 3.+1j, 3-1j, 3.+1j, 3-1j,
+               4.+1j, 4-1j,
+               0,
+               0.5, 0.5,
+               3.,
+               6, 6, 6])
+    p = _cplxpair(p).conj()
+    pr, nc, nr = _get_pole_reps(p)
+    assert_array_equal(pr[0], array([[0, 2],
+                                     [3, 6]]))
+    assert_array_equal(pr[1], array([[15, 17],
+                                     [18, 21]]))
+    assert nc == 14
+    assert nr == 7
