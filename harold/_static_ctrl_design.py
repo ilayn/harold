@@ -10,7 +10,7 @@ from ._classes import Transfer, transfer_to_state, _state_or_abcd
 from ._kalman_ops import controllability_matrix
 from ._aux_linalg import matrix_slice
 
-__all__ = ['lqr', 'ackermann', 'pole_placement']
+__all__ = ['lqr', 'ackermann', 'place_poles']
 
 
 def lqr(G, Q, R=None, S=None, weight_on='state'):

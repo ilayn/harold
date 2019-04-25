@@ -38,7 +38,7 @@ Controller Design
 
     lqr
     ackermann
-    pole_placement
+    place_poles
 
 Model Functions
 ===============
