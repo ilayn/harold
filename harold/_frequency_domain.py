@@ -1,29 +1,7 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2016 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
 import numpy as np
 from numpy import (empty, empty_like, rollaxis, block, diag_indices, logspace,
-                   polyval, zeros, floor, ceil, unique, log10, real, array)
+                   geomspace, polyval, zeros, floor, ceil, unique, log10,
+                   array)
 from ._classes import State, Transfer, transfer_to_state, transmission_zeros
 from ._system_funcs import (_minimal_realization_state, hessenberg_realization)
 from ._arg_utils import _check_for_state_or_transfer
@@ -75,13 +53,7 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
             raise ValueError('Frequency unit must be "Hz" or "rad/s". "{0}"'
                              ' is not recognized.'.format(x))
 
-#    if w is None:
     w = _get_freq_grid(G, w, samples, w_unit, 'rad/s')
-#    else:
-#        w = array(w, dtype=float, ndmin=1)
-#        # Convert to rad/s if necessary
-#        if w_unit == 'Hz':
-#            w *= 2*np.pi
 
     if G._isgain:
         if G._isSISO:
@@ -192,6 +164,8 @@ def _State_freq_resp(mA, mb, sc, f, dt=None):
 
 
 def _get_freq_grid(G, w, samples, iu, ou):
+    sqeps = np.sqrt(np.spacing(1.))
+
     # internally always work with rad/s to comply with conventions(!).
     # Reconvert at the output if needed
     isDiscrete = G.SamplingSet == 'Z'
@@ -201,8 +175,9 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
     # Check the properties of the user-grid and regularize
     if w is not None:
+        w = array(w)
         # TODO: Currently this branch always returns 'rad/s'
-        w_u = np.array(np.squeeze(w), ndmin=1, dtype=float).copy()
+        w_u = np.array(w.squeeze(), ndmin=1, dtype=float)
         # needs to be a 1D array
         if w_u.ndim > 1:
             raise ValueError('The frequency array should be a 1D float array')
@@ -216,7 +191,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
             w_out = w_u[w_u <= nyq_freq] if nyq_freq < np.max(w_u) else w_u
             if w_out.size < 1:
                 raise ValueError('There are no frequency points below the '
-                                 'Nyquist frequency: {} Hz.'.format(nyq_freq))
+                                 'Nyquist frequency: {} Hz.'.format(0.5/dt))
         else:
             w_out = w_u
     # w is None, auto grid creation
@@ -239,35 +214,51 @@ def _get_freq_grid(G, w, samples, iu, ou):
                 for col in range(m):
                     # Get zeros of the subsystems without creating State models
                     abcd = transfer_to_state(G[row, col], output='matrices')
+                    if abcd[0] is None:
+                        abcd = (np.array([]),)*3 + (abcd[-1],)
                     abc = _minimal_realization_state(*abcd[:-1])
                     tzs = transmission_zeros(*abc, abcd[-1])
                     if tzs.size > 0:
                         pz_list += tzs.tolist()
 
-            # ignore multiplicities
-            pz_list = unique(pz_list)
-            # Remove modes beyond Nyquist Frequency
-            if isDiscrete:
-                pz_list = pz_list[pz_list <= nyq_freq]
+#            # Remove modes beyond Nyquist Frequency
+#            if isDiscrete:
+#                pz_list = pz_list[pz_list <= nyq_freq]
+
             # Take a single element from complex pair and remove integrators
             int_pole = 1. if isDiscrete else 0.
-            pz_list = pz_list[(np.imag(pz_list) >= 0.) & (pz_list != int_pole)]
+
+            pz_list = np.array(pz_list)
+            almost_reals = np.abs(pz_list.imag) < np.spacing(1000.)
+            pz_list[almost_reals].imag = +0.
+            pz_list = pz_list[~(pz_list.imag < 0.)]
+
+            # We already cleaned-up the noise around the integrators
+            almost_integrators = (np.abs(pz_list.real - int_pole)
+                                  < np.spacing(1000.)) & (pz_list.imag == 0.)
+            pz_list = pz_list[~almost_integrators]
+            # ignore multiplicities
+            pz_list = unique(pz_list)
+
             if pz_list.size == 0:
                 # oops all integrators. Add dummy modes for range creation
-                pz_list = np.array([0.01+0j, -0.8+0j])  # 0j needed for log
-            else:
-                pz_list = np.array([0.001, 100])
+                if isDiscrete:
+                    pz_list = np.array([0.01+0j, -0.8+0j])  # 0j needed for log
+                else:
+                    pz_list = np.array([0.001, 100])
 
             if isDiscrete:
-                nat_freq = np.empty_like(pz_list, dtype=float)
-                # sqrt(sqrt(100*eps))
-                nz_pz = np.abs(pz_list) > 0.000345267
-                nat_freq[nz_pz] = np.abs(np.log(pz_list[nz_pz] / dt))
-                nat_freq[~nz_pz] = nyq_freq
+                seq = np.empty_like(pz_list)
+                nz_pz = np.abs(pz_list) > np.spacing(1000.)
+
+                # Mark poles at the origin with inf
+                seq[nz_pz], seq[~nz_pz] = np.log(pz_list[nz_pz]) / dt, np.inf
+                nat_freq = np.abs(seq)
+                damp_fact = np.abs(seq.real) / nat_freq
+
             else:
                 nat_freq = np.abs(pz_list)
-
-            damp_fact = np.abs(real(pz_list))/nat_freq
+                damp_fact = np.abs(pz_list.real)/nat_freq
 
             # np.sqrt(np.spacing(100.)) ~ 1.2e-7
             smallest_pz = max(np.min(nat_freq), 1.3e-7)
@@ -287,48 +278,82 @@ def _get_freq_grid(G, w, samples, iu, ou):
         if samples is None:
             samples = ppd * nd
 
-        sqeps = np.sqrt(np.spacing(1.))
         # Sprinkle more points around modes to get continuous bumps and dents.
         # If the plot is going to be between [1e-6, 1e6] Hz, it needs more
         # points than 'ppd' due to the squashed range around a mode. So get a
         # better number of points depending on the range 'nd'.
 
         # Peak frequency of an underdamped response is ωp = ωc √̅1̅-̅2̅̅ζ̅²
-        # If solved for 0.5 factor, ζ ~0.61 is the threshold for underdamped
-        # modes.
-        ind = damp_fact < np.sqrt(0.375)
-        wp = nat_freq[ind] * np.sqrt(1-2*damp_fact[ind]**2)
-        underdamp = damp_fact[ind]
-        spread = log10(0.75)
+        # If filtered for the critical ζ = ~0.707,the threshold for underdamped
+        # modes:
+        ind = damp_fact < np.sqrt(0.5)
+        wp = nat_freq.copy()
+        wp[ind] = nat_freq[ind] * np.sqrt(1-2*damp_fact[ind]**2)
+        underdamp = np.full_like(wp, np.inf)
+        underdamp[ind] = damp_fact[ind]
         w_extra = []
+
         for idx, fr in enumerate(wp):
             # don't include singularity frequency for undamped modes
             # but miss a little
             if underdamp[idx] < sqeps:
                 fr += 100*np.sqrt(np.spacing(fr))
 
-            # TODO: insert points in doubly log-spaced fashion
-            # Spread is [75%, 125%]
-            frl = log10(fr)
-            num = ceil(min(40, 10 - round(5*log10(
-                                        max(underdamp[idx], sqeps))))/2)
-            w_extra += logspace(frl+spread, frl, num=num,
-                                endpoint=True).tolist()
-            w_extra += logspace(frl, frl-spread, num=num,
+            # Spread is [85%, 115%]
+            if not np.isinf(underdamp[idx]):
+                num = min(40, 10 - ceil(5*log10(max(underdamp[idx], sqeps))))
+            else:
+                num = 25
+            w_extra += _loglog_points_around(fr, spread=0.25, num=num)
+
+        # sprinkle more around the nyquist frequency
+        if isDiscrete:
+            w_extra += logspace(ud+log10(0.75), 0.995*ud, num=ppd,
                                 endpoint=False).tolist()
 
-        if isDiscrete:
-            w_extra += logspace(ud+spread, ud, num=ppd,
-                                endpoint=False).tolist()
         # Basis grid
         w = logspace(ld, ud, samples).tolist()
         w = np.sort(w + w_extra)
+
         # remove the extras if any beyond nyq_freq
-        if isDiscrete and w[-1] > nyq_freq:
-            w = w[w <= nyq_freq]
+        if isDiscrete and w[-1] > 0.995*nyq_freq:
+            w = w[w <= 0.995*nyq_freq]
+
         # Remove accidental exact undamped mode hits from the tails of others
         w_out = w[np.in1d(w, nat_freq[damp_fact < sqeps], invert=True)]
         if ou == 'Hz':
             w_out /= 2*np.pi
 
     return w_out
+
+
+def _loglog_points_around(x, spread=0.15, num=10):
+    """Places symmetriccally doubly logarithmic points around a given point x
+
+          ------------------------x------------------------
+          o---------o------o---o-o-o-o---o------o---------o
+
+    Parameters
+    ----------
+    x: float
+        The center point
+    spread: float
+        The number that defines the interval for the total range
+    num: int
+        2*num is returned around x
+
+    Returns
+    -------
+    g: ndarray
+        Resulting point array
+
+    """
+    s, e = x*(1-spread), x*(1+spread)
+    sl, el, xl = np.log10([s, e, x])
+    # Right shift
+    shr = abs(np.ceil(xl)) + 1  # Remove the 0 possibility
+    # Left shift
+    shl = abs(np.ceil(xl)) + 1  # Remove the 0 possibility
+    g = (10**(geomspace(sl-shr, xl-shr, num, endpoint=True) + shr)).tolist()
+    g += (10**(geomspace(xl+shl, el+shl, num, endpoint=False) - shl)).tolist()
+    return g
