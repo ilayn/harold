@@ -216,27 +216,15 @@ def _get_freq_grid(G, w, samples, iu, ou):
                     abcd = transfer_to_state(G[row, col], output='matrices')
                     if abcd[0] is None:
                         abcd = (np.array([]),)*3 + (abcd[-1],)
-                    abc = _minimal_realization_state(*abcd[:-1])
-                    tzs = transmission_zeros(*abc, abcd[-1])
+                    # abc = _minimal_realization_state(*abcd[:-1])
+                    tzs = transmission_zeros(*abcd)
                     if tzs.size > 0:
                         pz_list += tzs.tolist()
 
-#            # Remove modes beyond Nyquist Frequency
-#            if isDiscrete:
-#                pz_list = pz_list[pz_list <= nyq_freq]
-
             # Take a single element from complex pair and remove integrators
             int_pole = 1. if isDiscrete else 0.
-
             pz_list = np.array(pz_list)
-            almost_reals = np.abs(pz_list.imag) < np.spacing(1000.)
-            pz_list[almost_reals].imag = +0.
-            pz_list = pz_list[~(pz_list.imag < 0.)]
-
-            # We already cleaned-up the noise around the integrators
-            almost_integrators = (np.abs(pz_list.real - int_pole)
-                                  < np.spacing(1000.)) & (pz_list.imag == 0.)
-            pz_list = pz_list[~almost_integrators]
+            pz_list = pz_list[~(pz_list == int_pole) & ~(pz_list.imag < 0)]
             # ignore multiplicities
             pz_list = unique(pz_list)
 
@@ -248,21 +236,20 @@ def _get_freq_grid(G, w, samples, iu, ou):
                     pz_list = np.array([0.001, 100])
 
             if isDiscrete:
-                seq = np.empty_like(pz_list)
+                # Poles at the origin are causing warnings
+                # Map them to discrete inf
+                # J = Transfer(np.poly([-1,1,2]),np.poly([1,0,2]), 0.5)
+                # bode_plot(J)
+
                 nz_pz = np.abs(pz_list) > np.spacing(1000.)
+                pz_list[~nz_pz] = np.pi/dt
+                pz_list[nz_pz] = np.log(pz_list) / dt
 
-                # Mark poles at the origin with inf
-                seq[nz_pz], seq[~nz_pz] = np.log(pz_list[nz_pz]) / dt, np.inf
-                nat_freq = np.abs(seq)
-                damp_fact = np.abs(seq.real) / nat_freq
+            nat_freq = np.abs(pz_list)
+            damp_fact = np.abs(pz_list.real)/nat_freq
 
-            else:
-                nat_freq = np.abs(pz_list)
-                damp_fact = np.abs(pz_list.real)/nat_freq
-
-            # np.sqrt(np.spacing(100.)) ~ 1.2e-7
-            smallest_pz = max(np.min(nat_freq), 1.3e-7)
-            largest_pz = max(np.max(nat_freq), smallest_pz+10)
+            smallest_pz = max(np.min(nat_freq), np.spacing(100.))
+            largest_pz = min(np.max(nat_freq), 5e14)
             # Add one more decade padding for modes too close to the bounds
             ud, ld = ceil(log10(largest_pz))+1, floor(log10(smallest_pz))-1
             if isDiscrete:
@@ -284,9 +271,8 @@ def _get_freq_grid(G, w, samples, iu, ou):
         # better number of points depending on the range 'nd'.
 
         # Peak frequency of an underdamped response is ωp = ωc √̅1̅-̅2̅̅ζ̅²
-        # If filtered for the critical ζ = ~0.707,the threshold for underdamped
-        # modes:
-        ind = damp_fact < np.sqrt(0.5)
+        # the threshold for underdamped modes:
+        ind = damp_fact < 0.5
         wp = nat_freq.copy()
         wp[ind] = nat_freq[ind] * np.sqrt(1-2*damp_fact[ind]**2)
         underdamp = np.full_like(wp, np.inf)
@@ -303,13 +289,14 @@ def _get_freq_grid(G, w, samples, iu, ou):
             if not np.isinf(underdamp[idx]):
                 num = min(40, 10 - ceil(5*log10(max(underdamp[idx], sqeps))))
             else:
-                num = 25
+                num = 3
             w_extra += _loglog_points_around(fr, spread=0.25, num=num)
+            print(len(w_extra))
 
         # sprinkle more around the nyquist frequency
         if isDiscrete:
             w_extra += logspace(ud+log10(0.75), 0.995*ud, num=ppd,
-                                endpoint=False).tolist()
+                                endpoint=True).tolist()
 
         # Basis grid
         w = logspace(ld, ud, samples).tolist()
@@ -321,8 +308,9 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
         # Remove accidental exact undamped mode hits from the tails of others
         w_out = w[np.in1d(w, nat_freq[damp_fact < sqeps], invert=True)]
-        if ou == 'Hz':
-            w_out /= 2*np.pi
+
+    if ou == 'Hz':
+        w_out /= 2*np.pi
 
     return w_out
 
