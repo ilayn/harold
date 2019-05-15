@@ -243,13 +243,15 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
                 nz_pz = np.abs(pz_list) > np.spacing(1000.)
                 pz_list[~nz_pz] = np.pi/dt
-                pz_list[nz_pz] = np.log(pz_list) / dt
+                pz_list[nz_pz] = np.log(pz_list[nz_pz]) / dt
 
             nat_freq = np.abs(pz_list)
-            damp_fact = np.abs(pz_list.real)/nat_freq
+            sorting_ind = nat_freq.argsort()
+            nat_freq = nat_freq[sorting_ind]
+            damp_fact = np.abs(pz_list.real[sorting_ind])/nat_freq
 
-            smallest_pz = max(np.min(nat_freq), np.spacing(100.))
-            largest_pz = min(np.max(nat_freq), 5e14)
+            smallest_pz = max(nat_freq[0], np.spacing(100.))
+            largest_pz = min(nat_freq[-1], 5e14)
             # Add one more decade padding for modes too close to the bounds
             ud, ld = ceil(log10(largest_pz))+1, floor(log10(smallest_pz))-1
             if isDiscrete:
@@ -287,11 +289,13 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
             # Spread is [85%, 115%]
             if not np.isinf(underdamp[idx]):
-                num = min(40, 10 - ceil(5*log10(max(underdamp[idx], sqeps))))
+                num = max(5, 5 - ceil(log10(max(underdamp[idx], sqeps))))
             else:
                 num = 3
-            w_extra += _loglog_points_around(fr, spread=0.25, num=num)
-            print(len(w_extra))
+            w_extra += _loglog_points_around(fr,
+                                             w_extra[-1] if w_extra else None,
+                                             spread=0.15,
+                                             num=num)
 
         # sprinkle more around the nyquist frequency
         if isDiscrete:
@@ -315,16 +319,20 @@ def _get_freq_grid(G, w, samples, iu, ou):
     return w_out
 
 
-def _loglog_points_around(x, spread=0.15, num=10):
+def _loglog_points_around(x, w, spread=0.15, num=10):
     """Places symmetriccally doubly logarithmic points around a given point x
 
           ------------------------x------------------------
           o---------o------o---o-o-o-o---o------o---------o
 
+    Skips some points if the points are already covered by the previous call
+
     Parameters
     ----------
     x: float
         The center point
+    w: float, None
+        The threshold that the new points should be greater than.
     spread: float
         The number that defines the interval for the total range
     num: int
@@ -343,5 +351,8 @@ def _loglog_points_around(x, spread=0.15, num=10):
     # Left shift
     shl = abs(np.ceil(xl)) + 1  # Remove the 0 possibility
     g = (10**(geomspace(sl-shr, xl-shr, num, endpoint=True) + shr)).tolist()
+    # If not filtered as the following large models explode in number of freqs
+    # cf. "beam.mat" from SLICOT benchmark suite
+    g = g if w is None else [x for x in g if x > w*1.17876863]
     g += (10**(geomspace(xl+shl, el+shl, num, endpoint=False) - shl)).tolist()
     return g
