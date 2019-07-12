@@ -335,7 +335,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
         # Remove accidental exact undamped mode hits from the tails of others
         for p in nat_freq[damp_fact < sqeps]:
-            w = w[np.abs(w-p) < 100*eps]
+            w = w[~(np.abs(w-p) < 100*eps)]
 
         w_out = w
 

@@ -67,17 +67,28 @@ def _get_common_freq_grid(syslist):
     # Frequencies are sorted by default
     minw = min([x[0] for x in W])
     maxw = max([x[-1] for x in W])
+    lminw, lmaxw = np.log10(minw), np.log10(maxw)
 
     # now walk over all frequency grids and pad them to match the min and max
-    for w in W:
+    for ind, w in enumerate(W):
+
         if minw < w[0]:
-            lminw, lw0 = np.log10(minw), np.log10(w[0])
-            samples = np.ceil((lw0 - lminw)*ppd)
-            w = np.hstack([np.logspace(start=lminw, stop=lw0, num=samples), w])
-        if maxw > w[-1]:
-            lmaxw, lw_1 = np.log10(maxw), np.log10(w[-1])
-            samples = np.ceil((lmaxw - lw_1)*ppd)
-            w = np.hstack([np.logspace(start=lminw, stop=lw0, num=samples), w])
+            lw0 = np.log10(w[0])
+            samples = 5 if syslist[ind]._isgain else np.ceil((lw0 - lminw)*ppd)
+            W[ind] = np.hstack([np.logspace(start=lminw,
+                                            stop=lw0,
+                                            num=samples),
+                                w])
+
+        # Skip discrete time systems as they will be naturally truncated at
+        # Nyquist frequency.
+        if maxw > w[-1] and syslist[ind].SamplingSet != 'Z':
+            lw1 = np.log10(w[-1])
+            samples = 5 if syslist[ind]._isgain else np.ceil((lmaxw - lw1)*ppd)
+            W[ind] = np.hstack([w,
+                                np.logspace(start=lw1,
+                                            stop=lmaxw,
+                                            num=samples)])
 
     return W
 
@@ -125,15 +136,30 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
     max_p, max_m = np.max(np.array([x.shape for x in syslist]), axis=0)
     fig, axs = plt.subplots(2*max_p, max_m, sharex=True, squeeze=False)
 
+    # Turn off the unused axes through a kind-of-ugly hack.
+    if len(syslist) > 1:
+        dummy_array = np.full([2*max_p, max_m], np.nan)
+        for (x, y) in [x.shape for x in syslist]:
+            dummy_array[:2*x, :y] = 1
+
+    for x, y in zip(*(np.isnan(dummy_array)).nonzero()):
+        axs[x, y].set_axis_off()
+
+
     if style is None:
         style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
 
     # If multiple systems are given and no freq grid is given we need to find
     # the common freq grid.
     if w is None and len(syslist) > 1:
-        w = _get_common_freq_grid(syslist)
+        W = _get_common_freq_grid(syslist)
 
-    for G, sty in zip(syslist, style):
+    for ind, (G, sty) in enumerate(zip(syslist, style)):
+        # If multiple systems are given W is necessarily defined here.
+        if w is None and len(syslist) > 1:
+            w = W[ind]
+            if f_unit == 'Hz':
+                w /= 2*np.pi
 
         isDiscrete = True if G.SamplingSet == 'Z' else False
         if isDiscrete:
