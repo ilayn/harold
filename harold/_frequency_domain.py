@@ -164,7 +164,30 @@ def _State_freq_resp(mA, mb, sc, f, dt=None):
 
 
 def _get_freq_grid(G, w, samples, iu, ou):
-    sqeps = np.sqrt(np.spacing(1.))
+    """
+    Compute a frequency grid of points for the interesting parts.
+
+    Parameters
+    ----------
+    G : {State, Transfer}
+        The system for which the grid will be generated
+    w : array_like
+        The custom grid given by the user
+    samples : int
+        Number of samples to be generated
+    iu : str
+        'Hz' or 'rad/s'
+    ou : str
+        'Hz' or 'rad/s'
+
+    Returns
+    -------
+    wout : ndarray
+        Resulting grid of frequencies.
+
+    """
+    eps = np.spacing(1.)
+    sqeps = np.sqrt(eps)
 
     # internally always work with rad/s to comply with conventions(!).
     # Reconvert at the output if needed
@@ -311,7 +334,10 @@ def _get_freq_grid(G, w, samples, iu, ou):
             w = w[w <= 0.995*nyq_freq]
 
         # Remove accidental exact undamped mode hits from the tails of others
-        w_out = w[np.in1d(w, nat_freq[damp_fact < sqeps], invert=True)]
+        for p in nat_freq[damp_fact < sqeps]:
+            w = w[np.abs(w-p) < 100*eps]
+
+        w_out = w
 
     if ou == 'Hz':
         w_out /= 2*np.pi
