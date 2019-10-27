@@ -12,8 +12,7 @@ __all__ = ['frequency_response']
 def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
                        use_minreal=False):
     """
-    Computes the frequency response of a State() or Transfer() representation.
-
+    Compute the frequency response of a State() or Transfer() representation.
 
     Parameters
     ----------
@@ -116,17 +115,15 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
 
 
 def _State_freq_resp(mA, mb, sc, f, dt=None):
-    """
-    This is the low level function to generate the frequency response
-    values for a state space representation. The realization must be
-    strictly in the observable Hessenberg form.
+    """Generate the frequency response values for a state space representation.
+
+    The realization must be strictly in the observable Hessenberg form.
 
     Implements the inner loop of Misra, Patel SIMAX 1988 Algo. 3.1 in
     batches of B matrices instead of looping over every column of B.
 
     Parameters
     ----------
-
     mA : array_like {n x n}
         The A matrix of the realization in the upper Hessenberg form
     mb : array_like {n x m}
@@ -144,7 +141,6 @@ def _State_freq_resp(mA, mb, sc, f, dt=None):
     r  : complex-valued numpy array
 
     """
-
     nn, m = mA.shape[0], mb.shape[1]
     r = empty((f.size, m), dtype=complex)
     Ab = block([-mA, mb]).astype(complex)
@@ -282,7 +278,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
                 # place at least 2 decades if ud and ld too close
                 if ud - ld < 1.:
                     ld = floor(ud-2)
-            nd = ceil(ud - ld)
+            nd = int(ceil(ud - ld))
 
         # points per decade
         ppd = 15
@@ -312,7 +308,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
             # Spread is [85%, 115%]
             if not np.isinf(underdamp[idx]):
-                num = max(5, 5 - ceil(log10(max(underdamp[idx], sqeps))))
+                num = int(max(5, 5 - ceil(log10(max(underdamp[idx], sqeps)))))
             else:
                 num = 3
             w_extra += _loglog_points_around(fr,
@@ -346,7 +342,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
 
 
 def _loglog_points_around(x, w, spread=0.15, num=10):
-    """Places symmetriccally doubly logarithmic points around a given point x
+    """Place symmetriccally doubly logarithmic points around a given point x.
 
           ------------------------x------------------------
           o---------o------o---o-o-o-o---o------o---------o

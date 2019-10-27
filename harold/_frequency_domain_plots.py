@@ -6,7 +6,7 @@ from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['bode_plot', 'nyquist_plot']
 
-
+# %%
 def _check_sys_args(sys):
     """Check the arguments of frequency plotting funcs.
 
@@ -74,7 +74,8 @@ def _get_common_freq_grid(syslist):
 
         if minw < w[0]:
             lw0 = np.log10(w[0])
-            samples = 5 if syslist[ind]._isgain else np.ceil((lw0 - lminw)*ppd)
+            samples = 5 if syslist[ind]._isgain else int(np.ceil((lw0 - lminw)
+                                                                 * ppd))
             W[ind] = np.hstack([np.logspace(start=lminw,
                                             stop=lw0,
                                             num=samples),
@@ -84,7 +85,8 @@ def _get_common_freq_grid(syslist):
         # Nyquist frequency.
         if maxw > w[-1] and syslist[ind].SamplingSet != 'Z':
             lw1 = np.log10(w[-1])
-            samples = 5 if syslist[ind]._isgain else np.ceil((lmaxw - lw1)*ppd)
+            samples = 5 if syslist[ind]._isgain else int(np.ceil((lmaxw - lw1)
+                                                                 * ppd))
             W[ind] = np.hstack([w,
                                 np.logspace(start=lw1,
                                             stop=lmaxw,
@@ -92,9 +94,9 @@ def _get_common_freq_grid(syslist):
 
     return W
 
-
+# %%
 def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
-              style=None):
+              style=None, **kwargs):
     """Draw the Bode plot of State, Transfer model(s).
 
     As the name implies, this only creates a plot. For the actual frequency
@@ -122,9 +124,11 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
         Matplotlib cycler class instance for defining the properties of the
         plot artists. If not given, the current defaults will be used.
 
+    If any, all remaining kwargs are passed to `matplotlib.pyplot.subplots()`.
+
     Returns
     -------
-    plot : matplotlib.axes._subplots.AxesSubplot
+    plot : matplotlib.figure.Figure
 
     """
     syslist = _check_sys_args(sys)
@@ -134,17 +138,25 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
 
     # Prepare the axes for the largest model
     max_p, max_m = np.max(np.array([x.shape for x in syslist]), axis=0)
-    fig, axs = plt.subplots(2*max_p, max_m, sharex=True, squeeze=False)
 
-    # Turn off the unused axes through a kind-of-ugly hack.
-    if len(syslist) > 1:
-        dummy_array = np.full([2*max_p, max_m], np.nan)
-        for (x, y) in [x.shape for x in syslist]:
-            dummy_array[:2*x, :y] = 1
+    # Put some more space between columns to avoid ticklabel placement clashes
+    gridspec_kw = kwargs.pop('gridspec_kw', None)
+    if gridspec_kw is None:
+        gridspec_kw = {'wspace': 0.5}
+    else:
+        wspace = gridspec_kw.get('wspace', 0.5)
+        gridspec_kw['wspace'] = wspace
 
-    for x, y in zip(*(np.isnan(dummy_array)).nonzero()):
-        axs[x, y].set_axis_off()
+    # MIMO plots needs a bit bigger figure, offer a saner default
+    figsize = kwargs.pop('figsize', None)
+    if figsize is None:
+        figsize = (6.0 + 1.2*(max_m - 1), 4 + 1.5*(max_p - 1))
 
+    # Create fig and axes
+    fig, axs = plt.subplots(2*max_p, max_m, sharex=True, squeeze=False,
+                            gridspec_kw=gridspec_kw,
+                            figsize=figsize,
+                            **kwargs)
 
     if style is None:
         style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
@@ -192,9 +204,14 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
                 if mag.ndim == 1:
                     mag = mag[None, None, :]
                     pha = pha[None, None, :]
-
-                axs[2*row, col].semilogx(ww, mag[row, col, :], **sty)
-                axs[2*row+1, col].semilogx(ww, pha[row, col, :], **sty)
+                label = f'sys_{ind}_in_{col}_out_{row}_mag'
+                axs[2*row, col].semilogx(ww, mag[row, col, :],
+                                         label=label,
+                                         **sty)
+                label = f'sys_{ind}_in_{col}_out_{row}_phase'
+                axs[2*row+1, col].semilogx(ww, pha[row, col, :],
+                                           label=label,
+                                           **sty)
 
                 if isDiscrete:
                     axs[2*row, col].axvline(nyq, linestyle='dashed',
@@ -204,38 +221,61 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
 
                 axs[2*row, col].grid(True, which='both')
                 axs[2*row+1, col].grid(True, which='both')
-                # MIMO Labels and gridding
-                if col == 0:
-                    axs[2*row, col].set_ylabel(r'Magnitude {}'.format(
-                            '(dB)' if use_db else r'($\mathregular{10^x}$)'))
-                    axs[2*row+1, col].set_ylabel(r'Phase ({})'.format(
-                            'deg' if use_degree else 'rad'))
-                if row == p - 1:
-                    axs[2*row+1, col].set_xlabel(r'Frequency ({})'
-                                                 ''.format(f_unit))
 
+            # Only set the last item in that column to have x tick labels
+            plt.setp(axs[2*row + 1, col].get_xticklabels(), visible=True)
+
+    # Turn off the unused axes through a kind-of-ugly hack.
+    # I can't find any other sane way to do this with current matplotlib
+    if len(syslist) > 1:
+        dummy_array = np.full([2*max_p, max_m], 0)
+        for (x, y) in [x.shape for x in syslist]:
+            dummy_array[:2*x, :y] = 1
+
+        # Go through every column and move the x tick labels up before
+        # hiding the empty frames - Why is matplotlib so hard?
+        for col in range(max_m):
+            nonempty_frames = np.count_nonzero(dummy_array[:, col])
+            if nonempty_frames < 2*max_p:
+                # Get the ticklabels
+                axs[nonempty_frames-1, col].tick_params(axis='x',
+                                                        labelbottom=True)
+                for row in range(nonempty_frames, 2*max_p):
+                    axs[row, col].set_visible(False)
+
+    xlabel_text = f'Frequency [{f_unit}]'
+    ylabel_text = 'Magnitude {} and Phase {}'.format(
+            '[dB]' if use_db else r'[$\mathregular{10^x}$]',
+            '[deg]' if use_degree else '[rad]')
+
+    fig.text(0.5, 0, xlabel_text, ha='center')
+    fig.text(0, 0.5, ylabel_text, va='center', rotation='vertical')
     fig.align_ylabels()
 
-    return axs
+    return fig
 
 
-def nyquist_plot(G, w=None):
-    """
-    Draws the Nyquist plot of the system G.
+# %%
+def nyquist_plot(sys, w=None):
+    """Draw the Nyquist plot of State, Transfer model(s).
 
     Parameters
     ----------
-    G : {State,Transfer}
-        The system for which the Nyquist plot will be drawn
+    sys : {State,Transfer}, iterable
+        The system(s) for which the Bode plot will be drawn. For multiple
+        plots, place the systems inside a list, tuples, etc. Generators will
+        not work as they will be exhausted before the plotting is performed.
     w : array_like
-        Range of frequencies
+        Range of frequencies. For discrete systems the frequencies above the
+        nyquist frequency is ignored. If sys is an iterable w is used for
+        all systems.
 
     Returns
     -------
     plot : matplotlib.axes._subplots.AxesSubplot
 
     """
-    _check_for_state_or_transfer(G)
+    syslist = _check_sys_args(sys)
 
     if w is not None:
         fre, ww = frequency_response(G, w)
