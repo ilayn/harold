@@ -2,7 +2,6 @@ import numpy as np
 import warnings
 from numpy import zeros_like, kron, ndarray, zeros, exp, convolve, spacing
 from numpy.random import rand, choice
-from numpy.linalg.linalg import _assertNdSquareness
 from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
                           inv, LinAlgError)
 from scipy.linalg.decomp import _asarray_validated
@@ -12,7 +11,7 @@ from itertools import zip_longest, chain
 
 from ._polynomial_ops import (haroldpoly, haroldpolyadd, haroldpolydiv,
                               haroldpolymul, haroldcompanion, haroldlcm)
-
+from ._array_validators import _assert_square
 from ._aux_linalg import haroldsvd
 from ._global_constants import _KnownDiscretizationMethods
 from copy import deepcopy
@@ -26,6 +25,7 @@ class Transfer:
     """
     A class for creating Transfer functions.
     """
+
     def __init__(self, num, den=None, dt=None):
         """
         For SISO models, 1D lists or 1D numpy arrays are expected, e.g.,::
@@ -648,12 +648,12 @@ class Transfer:
 
             elif self._isSISO and other._isSISO:
 
-                    if not np.any(self._num) or not np.any(other.num):
-                        return Transfer(0, 1, dt=self.SamplingPeriod)
+                if not np.any(self._num) or not np.any(other.num):
+                    return Transfer(0, 1, dt=self.SamplingPeriod)
 
-                    return Transfer(haroldpolymul(self._num, other.num),
-                                    haroldpolymul(self._den, other.den),
-                                    dt=self.SamplingPeriod)
+                return Transfer(haroldpolymul(self._num, other.num),
+                                haroldpolymul(self._den, other.den),
+                                dt=self.SamplingPeriod)
 
             elif other._isSISO or self._isSISO:
                 # Which one is MIMO
@@ -1524,6 +1524,7 @@ class State:
     """
     A class for creating State space models.
     """
+
     def __init__(self, a, b=None, c=None, d=None, dt=None):
         """
         A State object can be instantiated in a straightforward manner by
@@ -2396,7 +2397,7 @@ class State:
             cb = np.squeeze(cb).tolist()
 
         if self._isgain:
-                return State(self.d[rc, cb], dt=self._dt)
+            return State(self.d[rc, cb], dt=self._dt)
 
         # Enforce fancyness, avoid mixing. Why do we even have to do this?
         btemp = self.b[n[:, None], cb]
@@ -2460,7 +2461,7 @@ class State:
         a regular 2D-ndarray.
         '''
         if self._isgain:
-                return self._d
+            return self._d
         else:
             raise ValueError('Only static gain models can be converted to '
                              'ndarrays.')
@@ -2507,7 +2508,7 @@ class State:
             if abcd is None:
                 if verbose:
                     print('{0} is None'.format(entrytext[abcd_index]))
-                returned_abcd_list[abcd_index] = np.empty((0,0))
+                returned_abcd_list[abcd_index] = np.empty((0, 0))
                 None_flags[abcd_index] = True
                 continue
 
@@ -3218,7 +3219,7 @@ def _state_or_abcd(arg, n=4):
         else:
             # Start with squareness of a - always given
             a = arg[0]
-            _assertNdSquareness(a)
+            _assert_square(a)
 
             if n == 1:
                 return system_or_not, np.atleast_2d(arg[0])
