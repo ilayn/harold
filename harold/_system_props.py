@@ -1,9 +1,9 @@
 import numpy as np
-from numpy import count_nonzero, block
-from numpy.linalg.linalg import (_assertRank2, _assertNdSquareness,
-                                 _assertNoEmpty2d, _makearray)
+from numpy import block
+from numpy.linalg.linalg import _makearray
 from scipy.linalg import solve, norm, eigvals, qr
 
+from ._array_validators import _assert_2d, _assert_square, _assert_finite
 from ._frequency_domain import frequency_response
 from ._classes import Transfer, transfer_to_state
 from ._solvers import lyapunov_eq_solver
@@ -212,9 +212,9 @@ def controllability_indices(A, B, tol=None):
     """
     a, _ = _makearray(A)
     b, _ = _makearray(B)
-    _assertRank2(a, b)
-    _assertNoEmpty2d(a, b)
-    _assertNdSquareness(a)
+    _assert_2d(a, b)
+    _assert_finite(a, b)
+    _assert_square(a)
 
     n, m = b.shape
 
