@@ -270,7 +270,7 @@ def _get_freq_grid(G, w, samples, iu, ou):
             damp_fact = np.abs(pz_list.real[sorting_ind])/nat_freq
 
             smallest_pz = max(nat_freq[0], np.spacing(100.))
-            largest_pz = min(nat_freq[-1], 5e14)
+            largest_pz = min(nat_freq[-1], 1e16)
             # Add one more decade padding for modes too close to the bounds
             ud, ld = ceil(log10(largest_pz))+1, floor(log10(smallest_pz))-1
             if isDiscrete:

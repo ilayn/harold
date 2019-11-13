@@ -130,6 +130,15 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
     -------
     plot : matplotlib.figure.Figure
 
+    Notes
+    -----
+    Every curve plotted in the Bode plot is labeled with the convention of
+    ``sys_<number>_in_<number>_out_<number>_<mag or phase>`` where numbers are
+    all 0-indexed.
+    The first index is the model number given in the ``sys`` argument, and
+    the other two are only nonzero when MIMO models are used. For discrete
+    models the vertical lines are suffixed with ``_nyqline``.
+
     """
     syslist = _check_sys_args(sys)
 
@@ -214,10 +223,16 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
                                            **sty)
 
                 if isDiscrete:
+                    label = f'sys_{ind}_in_{col}_out_{row}_mag_nyqline'
                     axs[2*row, col].axvline(nyq, linestyle='dashed',
-                                            linewidth=2, **sty)
+                                            linewidth=2,
+                                            label=label,
+                                            **sty)
+                    label = f'sys_{ind}_in_{col}_out_{row}_phase_nyqline'
                     axs[2*row+1, col].axvline(nyq, linestyle='dashed',
-                                              linewidth=2, **sty)
+                                              linewidth=2,
+                                              label=label,
+                                              **sty)
 
                 axs[2*row, col].grid(True, which='both')
                 axs[2*row+1, col].grid(True, which='both')
@@ -256,7 +271,7 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
 
 
 # %%
-def nyquist_plot(sys, w=None):
+def nyquist_plot(sys, w=None, use_hz='Hz', style=None, **kwargs):
     """Draw the Nyquist plot of State, Transfer model(s).
 
     Parameters
@@ -277,33 +292,74 @@ def nyquist_plot(sys, w=None):
     """
     syslist = _check_sys_args(sys)
 
-    if w is not None:
-        fre, ww = frequency_response(G, w)
+    f_unit = 'Hz' if use_hz else 'rad/s'
+
+    # Prepare the axes for the largest model
+    max_p, max_m = np.max(np.array([x.shape for x in syslist]), axis=0)
+
+    # Put some more space between columns to avoid ticklabel placement clashes
+    gridspec_kw = kwargs.pop('gridspec_kw', None)
+    if gridspec_kw is None:
+        gridspec_kw = {'wspace': 0.5}
     else:
-        fre, ww = frequency_response(G)
+        wspace = gridspec_kw.get('wspace', 0.5)
+        gridspec_kw['wspace'] = wspace
 
-    rr = fre.real
-    ii = fre.imag
+    # MIMO plots needs a bit bigger figure, offer a saner default
+    figsize = kwargs.pop('figsize', None)
+    if figsize is None:
+        figsize = (6.0 + 1.2*(max_m - 1), 4 + 1.5*(max_p - 1))
 
-    p, m = G.shape
-    fig, axs = plt.subplots(p, m, squeeze=False)
+    # Create fig and axes
+    fig, axs = plt.subplots(max_p, max_m, sharex=True, squeeze=False,
+                            gridspec_kw=gridspec_kw,
+                            figsize=figsize,
+                            **kwargs)
 
-    for col in range(m):
-        for row in range(p):
-            if G._isSISO:
-                rdata = rr
-                idata = ii
-            else:
-                rdata = rr[row, col, :]
-                idata = ii[row, col, :]
+    if style is None:
+        style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
 
-            axs[row, col].plot(rdata, idata, '-')
-            axs[row, col].plot(rdata, -idata, '-.')
-            axs[row, col].plot([-1], [0], 'b+')
-            axs[row, col].grid(True, which='both')
-            # MIMO Labels and gridding
-            if col == 0:
-                axs[row, col].set_ylabel('Imaginary Part')
-            if row == p - 1:
-                axs[row, col].set_xlabel('Real Part')
-    return axs
+    # If multiple systems are given and no freq grid is given we need to find
+    # the common freq grid.
+    if w is None and len(syslist) > 1:
+        W = _get_common_freq_grid(syslist)
+
+    for ind, (G, sty) in enumerate(zip(syslist, style)):
+        # If multiple systems are given W is necessarily defined here.
+        if w is None and len(syslist) > 1:
+            w = W[ind]
+            if f_unit == 'Hz':
+                w /= 2*np.pi
+
+        if w is not None:
+            fre, ww = frequency_response(G, w, w_unit=f_unit,
+                                         output_unit=f_unit)
+        else:
+            fre, ww = frequency_response(G, output_unit=f_unit)
+
+        rr = fre.real
+        ii = fre.imag
+
+        p, m = G.shape
+
+        for col in range(m):
+            for row in range(p):
+                # If SISO expand the arrays to 3D
+                if G._isSISO:
+                    rdata = rr
+                    idata = ii
+                else:
+                    rdata = rr[row, col, :]
+                    idata = ii[row, col, :]
+
+                axs[row, col].plot(rdata, idata, '-')
+                axs[row, col].plot(rdata, -idata, '-.')
+                axs[row, col].plot([-1], [0], 'b+')
+                axs[row, col].grid(True, which='both')
+                # MIMO Labels and gridding
+                if col == 0:
+                    axs[row, col].set_ylabel('Imaginary Part')
+                if row == p - 1:
+                    axs[row, col].set_xlabel('Real Part')
+
+    return fig
