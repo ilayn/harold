@@ -7,12 +7,12 @@ def test_bode_plot_shape():
     seed(1234)
     # SISO
     f = bode_plot(Transfer(5, dt=0.5))
-    assert f.shape == (2, 1)
+    assert f._gridspecs[0].get_geometry() == (2, 1)
     # MIMO
     a, b, c = -3*eye(5) + rand(5, 5), rand(5, 3), rand(4, 5)
     G = State(a, b, c)
     f = bode_plot(G)
-    assert f.shape == (G.shape[0]*2, G.shape[1])
+    assert f._gridspecs[0].get_geometry() == (G.shape[0]*2, G.shape[1])
 
 
 def test_nyquist_plot_shape():
@@ -20,9 +20,9 @@ def test_nyquist_plot_shape():
     # SISO
     H = Transfer(5, dt=0.5)
     f = nyquist_plot(H)
-    assert f.shape == (1, 1)
+    assert f._gridspecs[0].get_geometry() == (1, 1)
     # MIMO
     a, b, c = -3*eye(5) + rand(5, 5), rand(5, 3), rand(4, 5)
     G = State(a, b, c)
     f = nyquist_plot(G)
-    assert f.shape == G.shape
+    assert f._gridspecs[0].get_geometry() == G.shape

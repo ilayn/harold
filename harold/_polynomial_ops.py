@@ -320,7 +320,7 @@ def haroldpoly(rootlist):
     """
     Takes a 1D array-like numerical elements as roots and forms the polynomial
     """
-    if isinstance(rootlist, collections.Iterable):
+    if isinstance(rootlist, collections.abc.Iterable):
         r = np.array([x for x in rootlist], dtype=complex)
     else:
         raise TypeError('The argument must be something iterable,\nsuch as '
