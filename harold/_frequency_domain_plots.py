@@ -6,7 +6,7 @@ from ._arg_utils import _check_for_state_or_transfer
 
 __all__ = ['bode_plot', 'nyquist_plot']
 
-# %%
+
 def _check_sys_args(sys):
     """Check the arguments of frequency plotting funcs.
 
@@ -94,7 +94,7 @@ def _get_common_freq_grid(syslist):
 
     return W
 
-# %%
+
 def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
               style=None, **kwargs):
     """Draw the Bode plot of State, Transfer model(s).
@@ -270,8 +270,8 @@ def bode_plot(sys, w=None, use_db=False, use_hz=True, use_degree=True,
     return fig
 
 
-# %%
-def nyquist_plot(sys, w=None, use_hz='Hz', style=None, **kwargs):
+def nyquist_plot(sys, w=None, use_hz=True, negative_freqs=True,
+                 style=None, **kwargs):
     """Draw the Nyquist plot of State, Transfer model(s).
 
     Parameters
@@ -284,10 +284,20 @@ def nyquist_plot(sys, w=None, use_hz='Hz', style=None, **kwargs):
         Range of frequencies. For discrete systems the frequencies above the
         nyquist frequency is ignored. If sys is an iterable w is used for
         all systems.
+    use_hz : bool, optional
+        Uses Hz unit for the output frequencies. This also assumes the input
+        frequencies are in Hz.
+    negative_freqs : bool
+        Draw or hide the negative frequencies. Default is True
+    style : cycler.Cycler, optional
+        Matplotlib cycler class instance for defining the properties of the
+        plot artists. If not given, the current defaults will be used.
+
+    If any, all remaining kwargs are passed to `matplotlib.pyplot.subplots()`.
 
     Returns
     -------
-    plot : matplotlib.axes._subplots.AxesSubplot
+    plot : matplotlib.figure.Figure
 
     """
     syslist = _check_sys_args(sys)
