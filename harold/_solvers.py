@@ -218,7 +218,7 @@ def _solve_continuous_generalized_lyapunov(A, E, Y, tol=1e-12):
         nextr = bs[row+1]
         # This block is executed at the second and further spins of the
         # for loop. Humans should start reading from (**)
-        if row is not 0:
+        if row != 0:
             Ys[thisr:nextr, thisr:nextr] +=  \
                             As[thisr:nextr, thisr:nextr].T @ \
                             Xs[thisr:nextr, :thisr] @ \
@@ -382,7 +382,7 @@ def _solve_discrete_generalized_lyapunov(A, E, Y, tol=1e-12):
 
         # This block is executed at the second and further spins of the
         # for loop. Humans should start reading from (**)
-        if row is not 0:
+        if row != 0:
             Ys[thisr:nextr, thisr:nextr] +=  \
                 As[thisr:nextr, thisr:nextr].T @ \
                 Xs[thisr:nextr, :thisr] @ \
@@ -543,7 +543,7 @@ def _solve_continuous_lyapunov(A, Y):
 
         # This block is executed at the second and further spins of the
         # for loop. Humans should start reading from (**)
-        if row is not 0:
+        if row != 0:
             Ys[thisr:nextr, thisr:] +=  \
                       Xs[thisr:nextr, 0:thisr] @ As[0:thisr, thisr:]
 
@@ -667,7 +667,7 @@ def _solve_discrete_lyapunov(A, Y):
         thisr = bs[row]
         nextr = bs[row+1]
 
-        if row is not 0:
+        if row != 0:
             Ys[thisr:nextr, thisr:nextr] +=  \
                 As[thisr:nextr, thisr:nextr].T @ \
                 Xs[thisr:nextr, :thisr] @ \
