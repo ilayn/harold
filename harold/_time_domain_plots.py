@@ -1,35 +1,43 @@
-"""
-The MIT License (MIT)
-
-Copyright (c) 2017 Ilhan Polat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
+import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib as mpl
 from ._arg_utils import _check_for_state_or_transfer
 from ._time_domain import simulate_step_response, simulate_impulse_response
 
 __all__ = ['step_response_plot', 'impulse_response_plot']
 
 
-def step_response_plot(sys, t=None):
+def _check_sys_args(sys):
+    """Check the arguments of frequency plotting funcs.
+
+    Parameters
+    ----------
+    sys : State, Transfer or iterable containing State or Transfer objects.
+
+    Returns
+    -------
+    syslist : list
+        Resulting system list including singletons.
+
+    """
+    try:
+        _check_for_state_or_transfer(sys)
+        syslist = [sys]
+    except ValueError:
+        # We probably have multiple systems, walk over it just to be sure
+        for x in sys:
+            _check_for_state_or_transfer(x)
+
+        syslist = sys
+
+    return syslist
+
+
+def _get_common_dt_tf():
+    pass
+
+
+def step_response_plot(sys, t=None, style=None, **kwargs):
     """
     Plots the step response of a model. If the system is MIMO then the
     response is plotted as a subplot from input m to output p on a (p x m)
@@ -37,10 +45,19 @@ def step_response_plot(sys, t=None):
 
     Parameters
     ----------
-    sys : {State, Transfer}
-        The system to be simulated
+    sys : {State, Transfer}, iterable
+        The system(s) for which the step response plots will be drawn. For
+        multiple plots, place the systems inside a list, tuples, etc.
+        Generators will not work as they will be exhausted before the plotting
+        is performed.
     t : array_like, optional
-        The 1D array that represents the time sequence
+        The 1D array that represents the time sequence. If sys is an iterable
+        t is used for all systems.
+    style : cycler.Cycler, optional
+        Matplotlib cycler class instance for defining the properties of the
+        plot artists. If not given, the current defaults will be used.
+
+    If any, all remaining kwargs are passed to `matplotlib.pyplot.subplots()`.
 
     Returns
     -------
@@ -48,7 +65,37 @@ def step_response_plot(sys, t=None):
         Returns the figure handle of the step response
 
     """
-    _check_for_state_or_transfer(sys)
+    syslist = _check_sys_args(sys)
+    # Prepare the axes for the largest model
+    max_p, max_m = np.max(np.array([x.shape for x in syslist]), axis=0)
+
+    # Put some more space between columns to avoid ticklabel placement clashes
+    gridspec_kw = kwargs.pop('gridspec_kw', None)
+    if gridspec_kw is None:
+        gridspec_kw = {'wspace': 0.5}
+    else:
+        wspace = gridspec_kw.get('wspace', 0.5)
+        gridspec_kw['wspace'] = wspace
+
+    # MIMO plots needs a bit bigger figure, offer a saner default
+    figsize = kwargs.pop('figsize', None)
+    if figsize is None:
+        figsize = (6.0 + 1.2*(max_m - 1), 4 + 1.5*(max_p - 1))
+
+    if style is None:
+        style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
+
+    # Create fig and axes
+    fig, axs = plt.subplots(2*max_p, max_m, sharex=True, squeeze=False,
+                            gridspec_kw=gridspec_kw,
+                            figsize=figsize,
+                            **kwargs)
+
+    # If multiple systems are given and no t given we need to find a
+    # compromise for the shorter ones
+    if t is None and len(syslist) > 1:
+        t = _get_common_dt_tf(syslist)
+
     yout, tout = simulate_step_response(sys, t=t)
 
     if sys._isSISO:
