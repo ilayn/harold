@@ -679,7 +679,7 @@ class Transfer:
             else:
                 # Both MIMO
                 if not self._shape == other.shape:
-                    raise IndexError('Cannot multiply Transfer with {0} '
+                    raise ValueError('Cannot multiply Transfer with {0} '
                                      ' shape with {1} with {2} shape.'
                                      ''.format(self._shape,
                                                type(other).__qualname__,
