@@ -128,7 +128,7 @@ class Transfer:
     def shape(self):
         """
         A read only property that holds the shape of the system as a tuple
-        such that the result is ``(# of inputs , # of outputs)``.
+        such that the result is ``(# of outputs, # of inputs)``.
         """
         return self._shape
 
