@@ -302,8 +302,17 @@ class Transfer:
                 # Create a dummy statespace and check the zeros there
                 zzz = transfer_to_state((self._num, self._den),
                                         output='matrices')
-                self.zeros = transmission_zeros(*zzz)
-                self.poles = eigvals(zzz[0])
+                if zzz[0].size == 0:
+                    # Oops, its static gain in disguise with exact cancellation
+                    # reset numerator and copy poles to zeros
+                    zzz = transfer_to_state(([[1]*self._m]*self._p,
+                                             self._den),
+                                            output='matrices')
+                    self.poles = eigvals(zzz[0])
+                    self.zeros = self.poles.copy()
+                else:
+                    self.zeros = transmission_zeros(*zzz)
+                    self.poles = eigvals(zzz[0])
 
         self._set_stability()
         self._set_representation()
@@ -789,9 +798,9 @@ class Transfer:
                 arr = other.real.astype(float)
 
             if not self._m == arr.shape[0]:
-                raise ValueError(f'Size mismatch: Transfer representation '
-                                 'has {self._m} inputs but array has '
-                                 '{arr.shape[0]} rows.')
+                raise ValueError('Size mismatch: Transfer representation '
+                                 f'has {self._m} inputs but array has '
+                                 f'{arr.shape[0]} rows.')
 
             # If self is gain, this is just matrix multiplication
             if self._isgain:
@@ -1802,8 +1811,8 @@ class State:
             else:
                 self._DiscretizedWith = value
         else:
-            raise ValueError('{0} is not among the known methods:\n{}'
-                             ''.format(value, _KnownDiscretizationMethods))
+            raise ValueError(f'{value} is not among the known methods:'
+                             f'\n{_KnownDiscretizationMethods}')
 
     @DiscretizationMatrix.setter
     def DiscretizationMatrix(self, value):
@@ -2957,9 +2966,15 @@ def transfer_to_state(G, output='system'):
                     num[x][y] = np.array([1/den[x][y][0, 0]])*num[x][y]
                     den[x][y] = np.array([1/den[x][y][0, 0]])*den[x][y]
 
+        # anything left for dynamics (Static Gain)?
+        if all([np.array_equal(num[x][y].ravel(), np.array([0.]))
+                for x in range(p) for y in range(m)]):
+            # Do nothing D is populated above anyways
+            A, B, C = (np.empty((0, 0)),)*3
+            return (A, B, C, D) if output == 'matrices' else State(D, dt=dt)
         # OK first check if the denominator is common in all entries
-        if all([np.array_equal(den[x][y], den[0][0]) for x in range(p)
-                for y in range(m)]):
+        elif all([np.array_equal(den[x][y], den[0][0]) for x in range(p)
+                  for y in range(m)]):
 
             # Nice, less work. Off to realization. Decide rows or cols?
             if p >= m:  # Tall or square matrix => Right Coprime Fact.

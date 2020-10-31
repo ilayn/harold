@@ -6,6 +6,7 @@ from harold import (Transfer, State, e_i, haroldcompanion,
                     random_state_model, concatenate_state_matrices)
 
 from numpy.testing import (assert_,
+                           assert_allclose,
                            assert_equal,
                            assert_array_equal,
                            assert_almost_equal,
@@ -66,6 +67,13 @@ def test_Transfer_Instantiations():
     assert_equal(G.poles.size, 0)
 
     assert_raises(IndexError, Transfer, np.ones((3, 2)), [[[1, 2], [1, 1]]])
+
+    # user-reported gh-64
+    G = Transfer([[[1.0], [1.0, 0.0]]], [[[1.0], [1.0, 0.0]]], 0.02)
+    assert_(not G._isgain)
+    assert_allclose(G.num[0][1], np.array([[1., 0.]]))
+    assert_allclose(G.poles, np.array([0+0.j]))
+    assert_allclose(G.zeros, np.array([0+0.j]))
 
 
 def test_Transfer_property():
