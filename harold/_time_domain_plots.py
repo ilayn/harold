@@ -8,7 +8,7 @@ __all__ = ['step_response_plot', 'impulse_response_plot']
 
 
 def _check_sys_args(sys):
-    """Check the arguments of frequency plotting funcs.
+    """Check the arguments of time domain plotting funcs.
 
     Parameters
     ----------
@@ -86,41 +86,40 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
         style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
 
     # Create fig and axes
-    fig, axs = plt.subplots(2*max_p, max_m, sharex=True, squeeze=False,
+    fig, axs = plt.subplots(max_p, max_m, sharex=True, squeeze=False,
                             gridspec_kw=gridspec_kw,
                             figsize=figsize,
                             **kwargs)
 
-    # If multiple systems are given and no t given we need to find a
-    # compromise for the shorter ones
-    if t is None and len(syslist) > 1:
-        t = _get_common_dt_tf(syslist)
+    # TODO: If multiple systems are given and no t given we need to find a
+    # compromise for the shorter ones. For now, just plot everything on top of
+    # each other independently and cut to the shortest. Yes, it sucks; I know.
+    tmin = np.inf
+    for sys in syslist:
+        yout, tout = simulate_step_response(sys, t=t)
+        tmin = np.min([tout[-1], tmin])
+        if sys._isSISO:
+            if sys._isdiscrete:
+                axs[0, 0].step(tout, yout, where='post')
+            else:
+                axs[0, 0].plot(tout, yout)
 
-    yout, tout = simulate_step_response(sys, t=t)
-
-    if sys._isSISO:
-        fig, axs = plt.subplots(1, 1, squeeze=False)
-        if sys._isdiscrete:
-            axs[0, 0].step(tout, yout, where='post')
+            axs[0, 0].grid(b=True)
         else:
-            axs[0, 0].plot(tout, yout)
+            nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2\
+                else yout.shape[1:]
 
-        axs[0, 0].grid(b=True)
-    else:
-        nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else yout.shape[1:]
-        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True,
-                                sharey=True, squeeze=False)
+            # Get the appropriate plotter line plot or a step plot
+            ptype = 'step' if sys._isdiscrete else 'plot'
+            w_dict = {'where': 'post'} if sys._isdiscrete else {}
+            for row in range(nrows):
+                for col in range(ncols):
+                    getattr(axs[row, col], ptype)(tout, yout[:, row, col]
+                                                  if yout.ndim == 3
+                                                  else yout[:, row], **w_dict)
+                    axs[row, col].grid(b=True)
 
-        # Get the appropriate plotter line plot or a step plot
-        ptype = 'step' if sys._isdiscrete else 'plot'
-        w_dict = {'where': 'post'} if sys._isdiscrete else {}
-        for row in range(nrows):
-            for col in range(ncols):
-                getattr(axs[row, col], ptype)(tout, yout[:, row, col]
-                                              if yout.ndim == 3
-                                              else yout[:, row], **w_dict)
-                axs[row, col].grid(b=True)
-
+    axs[0, 0].set_xlim(left=0, right=tmin)
     fig.text(0, .5, 'Amplitude', ha='center', va='center', rotation='vertical')
     fig.text(.5, 0, 'Time', ha='center', va='center')
     fig.suptitle('Step response')
