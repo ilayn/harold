@@ -82,7 +82,9 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
         style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
 
     # Create fig and axes
-    fig, axs = plt.subplots(max_p, max_m, sharex=True, squeeze=False,
+    fig, axs = plt.subplots(max_p, max_m,
+                            sharex=True, sharey=True,
+                            squeeze=False,
                             gridspec_kw=gridspec_kw,
                             figsize=figsize,
                             **kwargs)
@@ -91,14 +93,14 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
     # compromise for the shorter ones. For now, just plot everything on top of
     # each other independently and cut to the shortest. Yes, it sucks; I know.
     tmin = np.inf
-    for sys in syslist:
+    for sys, sty in zip(syslist, style):
         yout, tout = simulate_step_response(sys, t=t)
         tmin = np.min([tout[-1], tmin])
         if sys._isSISO:
             if sys._isdiscrete:
-                axs[0, 0].step(tout, yout, where='post')
+                axs[0, 0].step(tout, yout, where='post', **sty)
             else:
-                axs[0, 0].plot(tout, yout)
+                axs[0, 0].plot(tout, yout, **sty)
 
             axs[0, 0].grid(b=True)
         else:
@@ -112,7 +114,9 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
                 for col in range(ncols):
                     getattr(axs[row, col], ptype)(tout, yout[:, row, col]
                                                   if yout.ndim == 3
-                                                  else yout[:, row], **w_dict)
+                                                  else yout[:, row],
+                                                  **w_dict,
+                                                  **sty)
                     axs[row, col].grid(b=True)
 
     axs[0, 0].set_xlim(left=0, right=tmin)
@@ -172,7 +176,8 @@ def impulse_response_plot(sys, t=None, style=None, **kwargs):
         style = mpl.cycler(mpl.rcParams['axes.prop_cycle'])
 
     # Create fig and axes
-    fig, axs = plt.subplots(max_p, max_m, sharex=True, squeeze=False,
+    fig, axs = plt.subplots(max_p, max_m, sharex=True, sharey=True,
+                            squeeze=False,
                             gridspec_kw=gridspec_kw,
                             figsize=figsize,
                             **kwargs)
