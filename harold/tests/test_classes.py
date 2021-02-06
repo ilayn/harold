@@ -856,6 +856,11 @@ def test_transfer_to_state():
                               np.sort(TF.poles))
     assert TF.zeros.size == 0
 
+    # rectengular static gain
+    gain = np.ones([2, 3])
+    Gss = transfer_to_state(Transfer(gain))
+    assert_array_almost_equal(gain, Gss.d)
+
 
 def test_state_to_transfer():
     G = State(-2*np.eye(2), np.eye(2), [[1, -3], [0, 0]], [[0, 1], [-1, 0]])

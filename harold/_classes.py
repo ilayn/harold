@@ -2880,7 +2880,7 @@ def transfer_to_state(G, output='system'):
     if it_is_gain:
         A, B, C = (np.empty((0, 0)),)*3
         if np.max((m, p)) > 1:
-            D = np.empty((m, p), dtype=float)
+            D = np.empty((p, m), dtype=float)
             for rows in range(p):
                 for cols in range(m):
                     D[rows, cols] = num[rows][cols]/den[rows][cols]
