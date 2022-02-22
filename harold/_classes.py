@@ -4,7 +4,7 @@ from numpy import zeros_like, kron, ndarray, zeros, exp, convolve, spacing
 from numpy.random import rand, choice
 from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
                           inv, LinAlgError)
-from scipy.linalg.decomp import _asarray_validated
+from scipy.linalg._decomp import _asarray_validated
 from scipy.stats import ortho_group
 from tabulate import tabulate
 from itertools import zip_longest, chain
