@@ -617,6 +617,30 @@ def test_State_algebra_mul_rmul_mimo_siso():
     assert_almost_equal((dyn_mimo_sq + sta_mimo).d, 2*np.eye(3))
 
 
+def test_State_algebra_mul_rmul_miso_simo():
+    # gh-73
+    # MISO Example
+    G1 = Transfer([[[1], [1]]],  # end of num
+                  [1, 2, 1]  # common den
+                  )
+    G2 = transfer_to_state(G1)
+    G3 = Transfer([1], [1, 0])  # Pure integrator
+    G = G2 * G3
+    assert G.NumberOfStates == 3
+    assert G.NumberOfInputs == 2
+    assert G.NumberOfOutputs == 1
+
+    # SIMO Example
+    G1 = Transfer([[1], [1]],  # end of num
+                  [1, 2, 1]  # common den
+                  )
+    G2 = transfer_to_state(G1)
+    G3 = Transfer([1], [1, 0])  # Pure integrator
+    G = G2 * G3
+    assert G.NumberOfStates == 3
+    assert G.NumberOfInputs == 1
+    assert G.NumberOfOutputs == 2
+
 def test_State_algebra_add_radd():
     sta_siso = State(5)
     sta_mimo = State(2.0*np.eye(3))
