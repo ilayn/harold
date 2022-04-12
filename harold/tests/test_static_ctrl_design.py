@@ -1,6 +1,6 @@
 from numpy import eye, array, sort, empty
 from scipy.linalg import block_diag, eigvals
-from scipy.signal.filter_design import _cplxpair
+from scipy.signal._filter_design import _cplxpair
 from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
                            assert_array_equal)
 
