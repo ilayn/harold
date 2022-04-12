@@ -537,11 +537,14 @@ class Transfer:
                              'Transfer representation (yet).'
                              ''.format(type(other).__qualname__))
 
-    def __radd__(self, other): return self + other
+    def __radd__(self, other):
+        return self + other
 
-    def __sub__(self, other): return self + (-other)
+    def __sub__(self, other):
+        return self + (-other)
 
-    def __rsub__(self, other): return -self + other
+    def __rsub__(self, other):
+        return -self + other
 
     def __mul__(self, other):
         # TODO: There are a few repeated code segments. Refactor!
@@ -2036,11 +2039,14 @@ class State:
                              'State representation (yet).'
                              ''.format(type(other).__qualname__))
 
-    def __radd__(self, other): return self + other
+    def __radd__(self, other):
+        return self + other
 
-    def __sub__(self, other): return self + (-other)
+    def __sub__(self, other):
+        return self + (-other)
 
-    def __rsub__(self, other): return -self + other
+    def __rsub__(self, other):
+        return -self + other
 
     def __mul__(self, other):
         """

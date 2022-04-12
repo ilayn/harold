@@ -74,8 +74,8 @@ def _get_common_freq_grid(syslist):
 
         if minw < w[0]:
             lw0 = np.log10(w[0])
-            samples = 5 if syslist[ind]._isgain else int(np.ceil((lw0 - lminw)
-                                                                 * ppd))
+            samples = (5 if syslist[ind]._isgain else
+                       int(np.ceil((lw0 - lminw) * ppd)))
             W[ind] = np.hstack([np.logspace(start=lminw,
                                             stop=lw0,
                                             num=samples),
@@ -85,8 +85,8 @@ def _get_common_freq_grid(syslist):
         # Nyquist frequency.
         if maxw > w[-1] and syslist[ind].SamplingSet != 'Z':
             lw1 = np.log10(w[-1])
-            samples = 5 if syslist[ind]._isgain else int(np.ceil((lmaxw - lw1)
-                                                                 * ppd))
+            samples = (5 if syslist[ind]._isgain else
+                       int(np.ceil((lmaxw - lw1) * ppd)))
             W[ind] = np.hstack([w,
                                 np.logspace(start=lw1,
                                             stop=lmaxw,

@@ -34,8 +34,8 @@ def test_simple_lqr():
     H.a = H.a.T
     f, _, _ = lqr(H[:, 0], block_diag(0, 0, 1e-5, 1e-5), 0.1)
     assert_almost_equal(k, array([[1.00554916, -1, 52.52180106, 18.51107167]]))
-    assert_almost_equal(f,  array([[-577.370350, 173.600463,
-                                    0.383744946, 0.050228534]]), decimal=5)
+    assert_almost_equal(f, array([[-577.370350, 173.600463,
+                                   0.383744946, 0.050228534]]), decimal=5)
 
 
 def test_simple_lqry():
@@ -59,7 +59,7 @@ def test_simple_dlqr():
     H.a = H.a.T
     f, _, _ = lqr(H[:, 0], block_diag(0, 0, 1e-5, 1e-5), 0.1)
     assert_almost_equal(k, array([[0, 0, -2.08727337333631e-06, 0]]))
-    assert_almost_equal(f,  array([[1.71884123e-11, 0, 0, -1.79301359e-15]]))
+    assert_almost_equal(f, array([[1.71884123e-11, 0, 0, -1.79301359e-15]]))
 
 
 def test_ackermann_args():
