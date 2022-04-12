@@ -326,7 +326,7 @@ class Transfer:
     def _set_representation(self):
         self._repr_type = 'Transfer'
 
-    # %% Transfer class arithmetic methods
+    # Transfer class arithmetic methods
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None
@@ -1862,7 +1862,7 @@ class State:
     def _set_representation(self):
         self._repr_type = 'State'
 
-    # %% State class arithmetic methods
+    # % State class arithmetic methods
 
     # Overwrite numpy array ufuncs
     __array_ufunc__ = None
@@ -2096,35 +2096,48 @@ class State:
 
             sisoflag = sum([self._isSISO, other._isSISO])
 
-            # If both are SISO or both MIMO, straightforward series connection
-            if sisoflag == 2 or sisoflag == 0:
-                if sisoflag == 0 and self._m != other._p:
-                    raise ValueError('Shapes are not compatible for '
-                                     'multiplication. Model shapes are {0} and'
-                                     ' {1}'.format(self._shape, other.shape))
-
-                multa = block_diag(self._a, other.a)
-                multa[:self._n, self._n:] = self._b @ other.c
-                multb = np.block([[self._b @ other.d], [other.b]])
-                multc = np.block([self._c, self._d @ other.c])
-                multd = self._d @ other.d
-                return State(multa, multb, multc, multd, dt=self._dt)
             # One of them is SISO and needs to be broadcasted
-            else:
+            if sisoflag == 1 and (self._m != other.NumberOfOutputs):
                 # Thanks to commutativity of SISO system we take the minimum
                 # of the input and the output of the MIMO system
+                # In case of SIMO/MIMO we always adjust it to the singleton
                 if self._isSISO:
+                    # Handle SIMO - MISO
+                    if other.NumberOfInputs == 1:
+                        return other @ self
+                    elif other.NumberOfOutputs:
+                        return self @ other
+
                     k = min(*other.shape)
                     if other.NumberOfInputs <= other.NumberOfOutputs:
                         return other @ (self @ np.eye(k))
                     else:
                         return (self @ np.eye(k)) @ other
                 else:
+                    # Handle SIMO - MISO
+                    if self._m == 1:
+                        return self @ other
+                    elif self._p == 1:
+                        return other @ self
+
                     k = min(self._p, self._m)
-                    if self.NumberOfInputs <= self.NumberOfOutputs:
+                    if self._m <= self._p:
                         return self @ (other @ np.eye(k))
                     else:
                         return (other @ np.eye(k)) @ self
+
+            # If sizes match straightforward series connection
+            if sisoflag == 0 and self._m != other._p:
+                raise ValueError('Shapes are not compatible for '
+                                 'multiplication. Model shapes are {0} and'
+                                 ' {1}'.format(self._shape, other.shape))
+
+            multa = block_diag(self._a, other.a)
+            multa[:self._n, self._n:] = self._b @ other.c
+            multb = np.block([[self._b @ other.d], [other.b]])
+            multc = np.block([self._c, self._d @ other.c])
+            multd = self._d @ other.d
+            return State(multa, multb, multc, multd, dt=self._dt)
 
         elif isinstance(other, Transfer):
             if not self._dt == other._dt:
