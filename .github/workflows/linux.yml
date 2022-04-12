@@ -20,7 +20,7 @@ concurrency:
 jobs:
   test:
     name: Harold Linux Tests
-	if: "github.repository == 'ilayn/harold' || github.repository == ''"
+    if: "github.repository == 'ilayn/harold' || github.repository == ''"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
