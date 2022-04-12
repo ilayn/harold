@@ -1,4 +1,66 @@
 # pyproject.toml
+
+[project]
+name = "harold"
+license = {file = "LICENSE.txt"}
+description = """
+An open-source systems and controls toolbox for Python3.
+"""
+
+maintainers = [
+    {name = "Ilhan Polat", email = "harold.of.python@gmail.com"},
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.18.5",
+	"scipy>=1.7.0",
+	"matplotlib",
+	"tabulate"
+]
+readme = "README.rst"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov"
+]
+doc = [
+    "sphinx!=3.1.0, !=4.1.0",
+    "pydata-sphinx-theme>=0.8.1",
+    "sphinx-panels>=0.5.2",
+    "matplotlib>2",
+    "numpydoc",
+]
+dev = [
+    "flake8"
+]
+
+[project.urls]
+homepage = "https://github.com/ilayn/harold"
+documentation = "https://harold.readthedocs.org"
+source = "https://github.com/ilayn/harold"
+download = "https://github.com/ilayn/harold/releases"
+tracker = "https://github.com/ilayn/harold/issues"
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q"
