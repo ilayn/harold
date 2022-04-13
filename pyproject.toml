@@ -10,14 +10,17 @@ An open-source systems and controls toolbox for Python3.
 maintainers = [
     {name = "Ilhan Polat", email = "harold.of.python@gmail.com"},
 ]
+
 requires-python = ">=3.8"
+
 dependencies = [
-    "numpy>=1.18.5",
-	"scipy>=1.7.0",
+	"scipy>=1.8.0",
 	"matplotlib",
 	"tabulate"
 ]
+
 readme = "README.rst"
+
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Topic :: Software Development :: Build Tools",
@@ -36,22 +39,19 @@ classifiers = [
     "Operating System :: Unix",
     "Operating System :: MacOS"
 ]
+
 dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
     "pytest",
-    "pytest-cov"
-]
-doc = [
-    "sphinx!=3.1.0, !=4.1.0",
-    "pydata-sphinx-theme>=0.8.1",
-    "sphinx-panels>=0.5.2",
-    "matplotlib>2",
-    "numpydoc",
-]
-dev = [
     "flake8"
+]
+
+doc = [
+    "sphinx",
+	"cloud_sptheme",
+    "numpydoc",
 ]
 
 [project.urls]
@@ -67,3 +67,24 @@ addopts = "-ra -q"
 testpaths = [
     "harold/tests"
 ]
+
+[tool.poetry]
+name = "harold"
+version = "1.0.2"
+description = "An open-source systems and controls toolbox for Python3."
+authors = ["Ilhan Polat <ilhanpolat@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "~3.8,<3.11"
+scipy = "^1.8.0"
+matplotlib = "^3.4.0"
+tabulate = "^0.8.9"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.0.0"
+flake8 = "^4.0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

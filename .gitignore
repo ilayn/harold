@@ -60,5 +60,5 @@ target/
 # pyenv
 .python-version
 
-# harold specific
-harold/_version.py
+# poetry specific
+poetry.lock
