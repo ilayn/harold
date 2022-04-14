@@ -402,8 +402,10 @@ class Transfer:
             # If both are static gains
             if gainflag == 2:
                 try:
-                    return Transfer(self.to_array() + other.to_array(),
-                                    dt=self._dt)
+                    s = self.shape
+                    num = (self.to_array() +
+                           other.to_array()).reshape(*s, 1).tolist()
+                    return Transfer(num, dt=self._dt)
                 except ValueError:
                     raise ValueError('Shapes are not compatible for '
                                      'addition. Model shapes are {0} and'
