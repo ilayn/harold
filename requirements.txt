@@ -1,6 +1,0 @@
-numpy>=1.13
-scipy>=0.19.1
-tabulate
-matplotlib
-cloud_sptheme
-numpydoc

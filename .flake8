@@ -1,0 +1,48 @@
+[flake8]
+max_line_length = 79
+ignore = 
+	#  Continuation line under-indented for hanging indent (E121)
+	E121,
+	#  Continuation line missing indentation or outdented (E122)
+	E122,
+	#  Closing bracket does not match indentation of opening bracket's line (E123)
+	E123,
+	#  Continuation line with same indent as next logical line (E125)
+	E125,
+	#  Continuation line over-indented for hanging indent (E126)
+	E126,
+	#  Continuation line over-indented for visual indent (E127)
+	E127,
+	#  Continuation line under-indented for visual indent (E128)
+	E128,
+	#  Missing whitespace around arithmetic operator (E226)
+	E226,
+	#  Unexpected spaces around keyword / parameter equals (E251)
+	E251,
+	#  Block comment should start with '# ' (E265)
+	E265,
+	#  Too many leading '#' for block comment (E266)
+	E266,
+	#  Expected 2 blank lines, found 0 (E302)
+	E302,
+	#  Module level import not at top of file (E402)
+	E402,
+	#  Comparison to true should be 'if cond is true:' or 'if cond:' (E712)
+	E712,
+	#  Do not assign a lambda expression, use a def (E731)
+	E731,
+	#  Do not use variables named 'I', 'O', or 'l' (E741)
+	E741,
+	#  Blank line contains whitespace (W293)
+	W293,
+	#  Line break occurred after a binary operator (W504)
+	W504,
+	#  Module imported but unused (F401)
+	F401,
+	#  'from module import *' used; unable to detect undefined names (F403)
+	F403,
+	#  Name may be undefined, or defined from star imports: module (F405)
+	F405,
+	#  Local variable name is assigned to but never used (F841)
+	F841
+exclude = ./docs/

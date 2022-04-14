@@ -73,7 +73,7 @@ def feedback(G, H, negative=True):
 
     # Depending on static models certain channels are removed. If both are
     # static models then in boils down to D ∓ DΔ⁻¹ND (or simply (I ± DN)⁻¹D)
-    (p1, m1), n1, n2 = g.shape, g.NumberOfStates,  h.NumberOfStates
+    (p1, m1), n1, n2 = g.shape, g.NumberOfStates, h.NumberOfStates
     (a, b, c, d), (k, l, m, n) = g.matrices, h.matrices
     delta = np.eye(m1) - n @ d
 
@@ -155,7 +155,7 @@ def _check_for_feedback_ic(G, H):
 
     # Both are either ndarrays ints floats or rejected
     if not np.any(flag_sys):
-            g, h = [State(_check_for_int_float_array(x)) for x in ([G, H])]
+        g, h = [State(_check_for_int_float_array(x)) for x in ([G, H])]
 
     # both are system models
     elif np.all(flag_sys):

@@ -63,7 +63,7 @@ def test_haroldlcm():
     # Test the multipliers
     for ind, x in enumerate([array([1., -10., 33., -36.]),
                              array([1., -3., -6., 8.]),
-                             array([1., -3., -12., 20.,  48.]),
+                             array([1., -3., -12., 20., 48.]),
                              array([1., -5., 1., 21., -18.])]):
         assert_almost_equal(b[ind], x)
 

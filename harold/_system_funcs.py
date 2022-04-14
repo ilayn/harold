@@ -199,7 +199,7 @@ def hessenberg_realization(G, compute_T=False, form='c', invert=False,
     if invert:
         ah, bh, ch = fliplr(flipud(ah)), flipud(bh), fliplr(ch)
         if compute_T:
-                T = flipud(T)
+            T = flipud(T)
 
     if form == 'o':
         ah, bh, ch = ah.T, ch.T, bh.T

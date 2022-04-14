@@ -179,7 +179,7 @@ def pair_complex_numbers(a, tol=1e-9, realness_tol=1e-9,
     """
     try:
         array_r_j = np.array(a, dtype='complex').flatten()
-    except:
+    except ValueError:
         raise ValueError('Something in the argument array prevents me to '
                          'convert the entries to complex numbers.')
 
