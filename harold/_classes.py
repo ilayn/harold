@@ -2111,7 +2111,7 @@ class State:
                     # Handle SIMO - MISO
                     if other.NumberOfInputs == 1:
                         return other @ self
-                    elif other.NumberOfOutputs:
+                    elif other.NumberOfOutputs == 1:
                         return self @ other
 
                     k = min(*other.shape)

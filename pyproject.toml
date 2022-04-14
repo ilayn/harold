@@ -76,7 +76,7 @@ authors = ["Ilhan Polat <ilhanpolat@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "~3.8,<3.11"
+python = "^3.8,<3.11"
 scipy = "^1.8.0"
 matplotlib = "^3.4.0"
 tabulate = "^0.8.9"

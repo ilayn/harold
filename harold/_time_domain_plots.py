@@ -102,7 +102,7 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
             else:
                 axs[0, 0].plot(tout, yout, **sty)
 
-            axs[0, 0].grid(b=True)
+            axs[0, 0].grid(visible=True)
         else:
             nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2\
                 else yout.shape[1:]
@@ -117,7 +117,7 @@ def step_response_plot(sys, t=None, style=None, **kwargs):
                                                   else yout[:, row],
                                                   **w_dict,
                                                   **sty)
-                    axs[row, col].grid(b=True)
+                    axs[row, col].grid(visible=True)
 
     axs[0, 0].set_xlim(left=0, right=tmin)
     fig.text(0, .5, 'Amplitude', ha='center', va='center', rotation='vertical')
@@ -195,7 +195,7 @@ def impulse_response_plot(sys, t=None, style=None, **kwargs):
             else:
                 axs[0, 0].plot(tout, yout)
 
-            axs[0, 0].grid(b=True)
+            axs[0, 0].grid(visible=True)
         else:
             nrows, ncols = (yout.shape[1], 1) if yout.ndim == 2 else\
                 yout.shape[1:]
@@ -208,7 +208,7 @@ def impulse_response_plot(sys, t=None, style=None, **kwargs):
                     getattr(axs[row, col], ptype)(tout, yout[:, row, col]
                                                   if yout.ndim == 3
                                                   else yout[:, row], **w_dict)
-                    axs[row, col].grid(b=True)
+                    axs[row, col].grid(visible=True)
     axs[0, 0].set_xlim(left=0, right=tmin)
     fig.text(0, .5, 'Amplitude', ha='center', va='center', rotation='vertical')
     fig.text(.5, 0, 'Time', ha='center', va='center')
