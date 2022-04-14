@@ -409,6 +409,19 @@ def test_Transfer_algebra_neg_add_radd():
         Transfer([[1, 2], [3, 4]]) + Transfer([[3, 4], [1, 2]], dt=1)
 
 
+def test_Transfer_neg_add_radd_static_simo_miso():
+    # See gh-68
+    tf1 = Transfer([[[0.0], [1.0]]], 1., 0.02)
+    tf2 = Transfer([[[1.0], [0.5]]], 1., 0.02)
+    tf = tf1 + tf2
+    assert_allclose(tf.to_array(), np.array([[1., 1.5]]))
+
+    tf1 = Transfer([[[0.0]], [[1.0]]], 1., 0.02)
+    tf2 = Transfer([[[1.0]], [[0.5]]], 1., 0.02)
+    tf = tf1 + tf2
+    assert_allclose(tf.to_array(), np.array([[1.], [1.5]]))
+
+
 def test_Transfer_slicing():
     Hind = [(1, 5), (4, 1),
             (4, 5), (1, 1),
