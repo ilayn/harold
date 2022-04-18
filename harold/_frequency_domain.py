@@ -57,14 +57,14 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
     if G._isgain:
         if G._isSISO:
             if isinstance(G, Transfer):
-                fr_arr = array([1]*2)*G.num[0, 0]
+                fr_arr = array([1]*len(w))*G.num[0, 0]
             else:
-                fr_arr = array([1]*2)*G.d[0, 0]
+                fr_arr = array([1]*len(w))*G.d[0, 0]
         else:
             if isinstance(G, Transfer):
-                fr_arr = zeros((2,)+G.shape) + G.to_array()
+                fr_arr = zeros((len(w),)+G.shape) + G.to_array()
             else:
-                fr_arr = zeros((2,)+G.shape) + G.d
+                fr_arr = zeros((len(w),)+G.shape) + G.d
 
             fr_arr = rollaxis(fr_arr, 0, 3)
     else:
