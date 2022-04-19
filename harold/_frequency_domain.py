@@ -2,7 +2,7 @@ import numpy as np
 from numpy import (empty, empty_like, rollaxis, block, diag_indices, logspace,
                    geomspace, polyval, zeros, floor, ceil, unique, log10,
                    array)
-from ._classes import State, Transfer, transfer_to_state, transmission_zeros
+from ._classes import transfer_to_state, transmission_zeros
 from ._system_funcs import (_minimal_realization_state, hessenberg_realization)
 from ._arg_utils import _check_for_state_or_transfer
 
@@ -56,12 +56,12 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
 
     if G._isgain:
         if G._isSISO:
-            if isinstance(G, Transfer):
+            if type(G).__name__ == 'Transfer':
                 fr_arr = array([1]*2)*G.num[0, 0]
             else:
                 fr_arr = array([1]*2)*G.d[0, 0]
         else:
-            if isinstance(G, Transfer):
+            if type(G).__name__ == 'Transfer':
                 fr_arr = zeros((2,)+G.shape) + G.to_array()
             else:
                 fr_arr = zeros((2,)+G.shape) + G.d
@@ -71,7 +71,7 @@ def frequency_response(G, w=None, samples=None, w_unit='Hz', output_unit='Hz',
         p, m = G.shape
         fr_arr = empty((len(w), m, p), dtype='complex')
 
-        if isinstance(G, State):
+        if type(G).__name__ == 'State':
             for row in range(p):
                 aa, bb, cc = hessenberg_realization((G.a, G.b, G.c[[row], :]),
                                                     form='o', invert=True,
