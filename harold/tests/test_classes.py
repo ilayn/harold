@@ -447,6 +447,29 @@ def test_Transfer_slicing():
     assert_raises(ValueError, H.__setitem__)
 
 
+def test_Transfer_siso_dcgain():
+    G = Transfer(1, [1, 4])
+    assert G.dcgain == 0.25
+    H = Transfer([1, 1], [24, -16], 0.1)
+    assert H.dcgain == 0.25
+
+    G = Transfer([1, 4, 0], [3, 2, 1, 0])
+    assert abs(G.dcgain - 4.) < 1.e-12
+    # Discrete version of G above
+    H = Transfer([0.01933924, -0.01289283, -0.01933924, 0.01289283],
+                 [1., -2.93231265, 2.86784851, -0.93553586],
+                 dt=0.1)
+    assert abs(H.dcgain - 4.) < 1.e-4
+
+
+def test_Transfer_mimo_miso_simo_dcgain():
+    G = Transfer([[[1], [1, -1]], [[1], [1, 2]]],
+                 [[[1], [1, 1, 3]], [[1, 1], [1, -3]]])
+    assert_allclose(G.dcgain, np.array([[1, -1/3], [1, -2/3]]))
+    assert_allclose(G[:, 0].dcgain, np.array([[1], [1]]))
+    assert_allclose(G[0, :].dcgain, np.array([[1, -1/3]]))
+
+
 def test_State_Instantiations():
     assert_raises(TypeError, State)
     G = State(5)

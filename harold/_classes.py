@@ -5,6 +5,7 @@ from numpy.random import rand, choice
 from scipy.linalg import (eigvals, svdvals, block_diag, qz, norm, solve, expm,
                           inv, LinAlgError)
 from scipy.linalg._decomp import _asarray_validated
+from scipy.signal import deconvolve
 from scipy.stats import ortho_group
 from tabulate import tabulate
 from itertools import zip_longest, chain
@@ -139,6 +140,65 @@ class Transfer:
         denominator as the outputs.
         """
         return self._num, self._den
+
+    @property
+    def dcgain(self):
+        """
+        Returns the low-frequency gain of the Transfer model.
+        """
+        if self._isgain:
+            return self.to_array()
+        # Get the common integrator modes out to avoid 0/0 cases:
+        # G = Transfer([1, 0], [1,2,0]) gives NaN otherwise
+
+        dcg = np.zeros([*self.shape], dtype=float)
+        if self._dt is None:
+            for c in range(self._m):
+                for r in range(self._p):
+                    if self._isSISO:
+                        num = self.num.flatten()
+                        den = self.den.flatten()
+                    else:
+                        num = self.num[r][c].flatten()
+                        den = self.den[r][c].flatten()
+
+                    for el in range(len(num)):
+                        if (num[-1] == 0.) and (den[-1] == 0.):
+                            num = num[:-1]
+                            den = den[:-1]
+                        else:
+                            break
+                    else:
+                        dcg[r, c] = 0.
+                        continue
+                    with np.errstate(divide='ignore'):
+                        dcg[r, c] = np.polyval(num, 0) / np.polyval(den, 0)
+
+        else:
+            # Now we need to strip off the discrete -1 poles like above :(
+            # Lack of convenience for 0, evaluate at 1 and see if it is both ~0
+            tol = 10*np.spacing(1.)
+            for c in range(self._m):
+                for r in range(self._p):
+                    if self._isSISO:
+                        num = self.num.flatten()
+                        den = self.den.flatten()
+                    else:
+                        num = self.num[r][c].flatten()
+                        den = self.den[r][c].flatten()
+                    for el in range(len(num)):
+                        if (abs(num.sum()) < tol) and (abs(den.sum()) < tol):
+                            num, _ = deconvolve(num, [1, -1])
+                            den, _ = deconvolve(den, [1, -1])
+                        else:
+                            break
+                    else:
+                        dcg[r, c] = 0.
+                        continue
+                    with np.errstate(divide='ignore'):
+                        dcg[r, c] = num.sum() / den.sum()
+
+        return dcg[0, 0] if self._isSISO else dcg
 
     @property
     def DiscretizedWith(self):
