@@ -1,4 +1,4 @@
-|Travis-CI| |License| |Gitter| |Coveralls| |ReadTheDocs| |Downloads|
+|License| |ReadTheDocs| |Downloads|
 
 harold
 ======
@@ -67,15 +67,9 @@ If you have questions/comments feel free to shoot one to
 
 .. |License| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/ilayn/harold/blob/master/LICENSE
-.. |Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/ilayn/harold?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-.. |Travis-CI| image:: https://travis-ci.com/ilayn/harold.svg?branch=master
-    :target: https://travis-ci.com/ilayn/harold
-.. |Coveralls| image:: https://coveralls.io/repos/github/ilayn/harold/badge.svg?branch=master
-    :target: https://coveralls.io/github/ilayn/harold?branch=master
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/harold/badge/?version=latest
     :target: http://harold.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 .. |Downloads| image:: http://pepy.tech/badge/harold
-    :target: http://pepy.tech/count/harold
+    :target: https://pepy.tech/project/harold
     :alt: Download Counts
