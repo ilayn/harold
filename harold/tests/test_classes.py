@@ -738,6 +738,30 @@ def test_State_slicing():
     assert_raises(ValueError, H.__setitem__)
 
 
+def test_State_siso_dcgain():
+    # double integrator - inf dcgain
+    G = State([[0, 1], [0, 0]], [[0], [1]], [[1, 0]])
+    assert np.isinf(G.dcgain)
+    G = State(-4, 1, 1)
+    assert G.dcgain == 0.25
+    H = State(2/3, 1, 10/144, 0.125/3, dt=0.1)
+    assert abs(H.dcgain - 0.25) < 1e-12
+
+    G = State([[0, 1, 0], [0, 0, 1], [0, -1/3, -2/3]],
+              [[0.], [0.], [1.]],
+              [[0, 4/3, 1/3]])
+    assert abs(G.dcgain - 4.) < 1.e-12
+    # Discrete version of G above
+    H = State([[1, 0.09991942, 0.00483481],
+               [0, 0.9983884, 0.09669621],
+               [0, -0.03223207, 0.93392425]],
+              [[0.00076445], [0.01528901], [0.30578027]],
+              [[0, 0.41959849, 0.12231211]],
+              [[0.01933924]],
+              dt=0.1)
+    assert abs(H.dcgain - 4.) < 1.e-4
+
+
 def test_model_zeros():
     # Test example
     A = np.array(

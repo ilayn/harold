@@ -1,10 +1,11 @@
 from copy import deepcopy
+import warnings
 import numpy as np
 from numpy.linalg import cond, eig, norm
 from numpy import array, flipud, fliplr, eye, zeros
 from numpy.random import rand
 from scipy.linalg import (solve, svdvals, qr, block_diag,
-                          hessenberg, matrix_balance)
+                          hessenberg, matrix_balance, LinAlgError)
 from ._aux_linalg import haroldsvd, matrix_slice, e_i
 from ._classes import State, Transfer, transfer_to_state
 from ._arg_utils import _check_for_state_or_transfer
@@ -68,7 +69,8 @@ def staircase(A, B, C, compute_T=False, form='c', invert=False,
     if form not in {'c', 'o'}:
         raise ValueError('The "form" key can only take values "c" or "o".')
 
-    _ = State.validate_arguments(A, B, C, zeros((C.shape[0], B.shape[1])))
+    _ = State.validate_arguments(A, B, C, zeros((C.shape[0],
+                                                 B.shape[1])))
     if form == 'o':
         A, B, C = A.T, C.T, B.T
 
@@ -180,7 +182,7 @@ def hessenberg_realization(G, compute_T=False, form='c', invert=False,
     else:
         _check_for_state_or_transfer(G)
         in_is_sys = True
-        if isinstance(G, Transfer):
+        if type(G).__name__ == 'Transfer':
             a, b, c, _ = transfer_to_state(G, output='matrices')
         else:
             a, b, c = G.a, G.b, G.c
@@ -331,7 +333,7 @@ def minimal_realization(G, tol=1e-6):
     """
     _check_for_state_or_transfer(G)
 
-    if isinstance(G, State):
+    if type(G).__name__ == 'State':
         if G._isgain:
             return State(G.to_array())
         else:
@@ -409,6 +411,7 @@ def _minimal_realization_state(A, B, C, tol=1e-6):
                 Ao, Bo, Co = Ao[1:, 1:], Bo[1:, :], Co[:, 1:]
                 if Ao.size == 0:
                     A, B, C = [array([], dtype=float)]*3
+                    break
                 else:
                     ko, *_ = cancellation_distance(Ao, Bo)
 
@@ -527,3 +530,53 @@ def _minimal_realization_simplify(num, den, tol):
                 safe_z += [np.conj(z)]
 
     return np.atleast_2d(k_gain*np.poly(safe_z)), np.atleast_2d(np.poly(plz))
+
+
+# Monkey-patch State here because module is infested with circular-imports
+@property
+def dcgain(self):
+    """
+    Returns the low-frequency gain of the Transfer model.
+    """
+    if self._isgain:
+        return self.d
+
+    # First try if A is not singular
+    try:
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            aa, bb, cc = _minimal_realization_state(self.a, self.b, self.c)
+            R = cc @ solve(np.eye(aa.shape[0]) - aa if self._dt else -aa, bb)
+            R[R > 1/np.spacing(1.)] = np.inf
+            return R + self.d
+
+    except LinAlgError:
+        # Maybe single channel subsystems would remove singularities
+        if self._isSISO:
+            return np.inf
+
+        R = np.empty_like(self.d)
+        for c in range(self._m):
+            for r in range(self._p):
+                aa, bb, cc = _minimal_realization_state(self.a,
+                                                        self.b[:, [c]],
+                                                        self.c[[r], :])
+                # try again
+                if self._dt:
+                    # -(zI - A) at z=1
+                    aa -= np.eye(aa.shape[0])
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        val = cc @ solve(-aa, bb)
+                        if abs(val) > 1/np.spacing(1.):
+                            val = np.inf
+                        R[r, c] = val
+                except LinAlgError:
+                    # OK fine
+                    R[r, c] = np.inf
+        return R + self.d
+
+
+setattr(State, 'dcgain', dcgain)
