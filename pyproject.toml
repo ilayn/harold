@@ -3,9 +3,7 @@
 [project]
 name = "harold"
 license = {file = "LICENSE.txt"}
-description = """
-An open-source systems and controls toolbox for Python3.
-"""
+description = "An open-source systems and controls toolbox for Python3."
 
 maintainers = [
     {name = "Ilhan Polat", email = "harold.of.python@gmail.com"},
@@ -74,6 +72,21 @@ version = "1.0.2"
 description = "An open-source systems and controls toolbox for Python3."
 authors = ["Ilhan Polat <ilhanpolat@gmail.com>"]
 license = "MIT"
+readme = "README.rst"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+]
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"

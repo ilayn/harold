@@ -3,7 +3,7 @@
 harold
 ======
 
-A control systems package for Python>=3.6.
+A control systems package for Python>=3.8.
 
 Introduction
 ============
