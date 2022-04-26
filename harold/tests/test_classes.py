@@ -447,6 +447,29 @@ def test_Transfer_slicing():
     assert_raises(ValueError, H.__setitem__)
 
 
+def test_Transfer_siso_dcgain():
+    G = Transfer(1, [1, 4])
+    assert G.dcgain == 0.25
+    H = Transfer([1, 1], [24, -16], 0.1)
+    assert H.dcgain == 0.25
+
+    G = Transfer([1, 4, 0], [3, 2, 1, 0])
+    assert abs(G.dcgain - 4.) < 1.e-12
+    # Discrete version of G above
+    H = Transfer([0.01933924, -0.01289283, -0.01933924, 0.01289283],
+                 [1., -2.93231265, 2.86784851, -0.93553586],
+                 dt=0.1)
+    assert abs(H.dcgain - 4.) < 1.e-4
+
+
+def test_Transfer_mimo_miso_simo_dcgain():
+    G = Transfer([[[1], [1, -1]], [[1], [1, 2]]],
+                 [[[1], [1, 1, 3]], [[1, 1], [1, -3]]])
+    assert_allclose(G.dcgain, np.array([[1, -1/3], [1, -2/3]]))
+    assert_allclose(G[:, 0].dcgain, np.array([[1], [1]]))
+    assert_allclose(G[0, :].dcgain, np.array([[1, -1/3]]))
+
+
 def test_State_Instantiations():
     assert_raises(TypeError, State)
     G = State(5)
@@ -713,6 +736,30 @@ def test_State_slicing():
             assert_equal(x.shape, sind[ind])
 
     assert_raises(ValueError, H.__setitem__)
+
+
+def test_State_siso_dcgain():
+    # double integrator - inf dcgain
+    G = State([[0, 1], [0, 0]], [[0], [1]], [[1, 0]])
+    assert np.isinf(G.dcgain)
+    G = State(-4, 1, 1)
+    assert G.dcgain == 0.25
+    H = State(2/3, 1, 10/144, 0.125/3, dt=0.1)
+    assert abs(H.dcgain - 0.25) < 1e-12
+
+    G = State([[0, 1, 0], [0, 0, 1], [0, -1/3, -2/3]],
+              [[0.], [0.], [1.]],
+              [[0, 4/3, 1/3]])
+    assert abs(G.dcgain - 4.) < 1.e-12
+    # Discrete version of G above
+    H = State([[1, 0.09991942, 0.00483481],
+               [0, 0.9983884, 0.09669621],
+               [0, -0.03223207, 0.93392425]],
+              [[0.00076445], [0.01528901], [0.30578027]],
+              [[0, 0.41959849, 0.12231211]],
+              [[0.01933924]],
+              dt=0.1)
+    assert abs(H.dcgain - 4.) < 1.e-4
 
 
 def test_model_zeros():
