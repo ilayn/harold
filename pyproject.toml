@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "Topic :: Software Development",
@@ -68,7 +69,7 @@ testpaths = [
 
 [tool.poetry]
 name = "harold"
-version = "1.0.2"
+version = "1.0.3"
 description = "An open-source systems and controls toolbox for Python3."
 authors = ["Ilhan Polat <ilhanpolat@gmail.com>"]
 license = "MIT"
@@ -89,7 +90,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.11"
+python = "^3.8"
 scipy = "^1.8.0"
 matplotlib = "^3.4.0"
 tabulate = "^0.8.9"
