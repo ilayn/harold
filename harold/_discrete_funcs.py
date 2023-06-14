@@ -297,7 +297,7 @@ def _undiscretize(T, dt, method, prewarp_at, q):
         M = block([[T.a, T.b], [zeros((m, n)), eye(m)]])
         Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
 
-        eM = logm(M) * (sca[:, None] * np.reciprocal(sca)) * (1/dt)
+        eM = logm(Ms) * (sca[:, None] * np.reciprocal(sca)) * (1/dt)
         if np.any(eM.imag):
             raise ValueError(logmsg)
 
