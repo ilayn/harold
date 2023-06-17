@@ -297,7 +297,7 @@ def _undiscretize(T, dt, method, prewarp_at, q):
         M = block([[T.a, T.b], [zeros((m, n)), eye(m)]])
         Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
 
-        eM = logm(M) * (sca[:, None] * np.reciprocal(sca)) * (1/dt)
+        eM = logm(Ms) * (sca[:, None] * np.reciprocal(sca)) * (1/dt)
         if np.any(eM.imag):
             raise ValueError(logmsg)
 
@@ -331,7 +331,7 @@ def _undiscretize(T, dt, method, prewarp_at, q):
                    [zeros((m, n+m)), eye(m)]])
         Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
         # Look out for the initial dt factor of T.b
-        eM = logm(M)/dt * (sca[:, None] * np.reciprocal(sca))
+        eM = logm(Ms)/dt * (sca[:, None] * np.reciprocal(sca))
         if np.any(eM.imag):
             raise ValueError(logmsg)
 
@@ -342,7 +342,7 @@ def _undiscretize(T, dt, method, prewarp_at, q):
         M = block([[T.a, Bc0],
                    [zeros((m, n)), eye(m)]])
         Ms, (sca, _) = matrix_balance(M, permute=0, separate=1)
-        eM = logm(M)/dt * (sca[:, None] * np.reciprocal(sca))
+        eM = logm(Ms)/dt * (sca[:, None] * np.reciprocal(sca))
         if np.any(eM.imag):
             raise ValueError(logmsg)
 
