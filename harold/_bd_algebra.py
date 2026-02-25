@@ -75,7 +75,7 @@ def feedback(G, H, negative=True):
     # static models then in boils down to D ∓ DΔ⁻¹ND (or simply (I ± DN)⁻¹D)
     (p1, m1), n1, n2 = g.shape, g.NumberOfStates, h.NumberOfStates
     (a, b, c, d), (k, l, m, n) = g.matrices, h.matrices
-    delta = np.eye(m1) - n @ d
+    delta = np.eye(m1) - sign * n @ d
 
     # Since models are typically at most up to O(10^2) SVD is not the most
     # time consuming step thus we check for well-posedness via svdvals instead
